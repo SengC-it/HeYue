@@ -72,7 +72,7 @@ async function sendWithConfig(
   });
 
   const result = await transporter.sendMail({
-    from: user,
+    from: { name: "HeYue", address: user },
     to: recipient,
     subject: message.subject,
     text: message.text,
