@@ -30,13 +30,13 @@ export interface ClaimResult {
 }
 
 export async function upsertInstruments(supabase: SupabaseClient, instruments: unknown[]) {
-  const { error } = await supabase.from("bca_instruments").upsert(instruments, { onConflict: "symbol" });
+  const { error } = await supabase.from("hy_instruments").upsert(instruments, { onConflict: "symbol" });
   if (error) throw new Error(`Supabase instrument upsert failed: ${error.message}`);
 }
 
 export async function createScanRun(supabase: SupabaseClient, input: ScanRunInput): Promise<string> {
   const { data: existing, error: existingError } = await supabase
-    .from("bca_scan_runs")
+    .from("hy_scan_runs")
     .select("id")
     .eq("run_key", input.runKey)
     .maybeSingle();
@@ -44,7 +44,7 @@ export async function createScanRun(supabase: SupabaseClient, input: ScanRunInpu
   if (existing?.id) return existing.id as string;
 
   const { data, error } = await supabase
-    .from("bca_scan_runs")
+    .from("hy_scan_runs")
     .insert({
       run_key: input.runKey,
       scan_group_key: input.scanGroupKey,
@@ -71,7 +71,7 @@ export async function completeScanRun(
   },
 ) {
   const { error } = await supabase
-    .from("bca_scan_runs")
+    .from("hy_scan_runs")
     .update({
       scanned_symbols: patch.scannedSymbols,
       candidate_count: patch.candidateCount,
@@ -82,6 +82,38 @@ export async function completeScanRun(
     })
     .eq("id", scanRunId);
   if (error) throw new Error(`Supabase scan completion failed: ${error.message}`);
+}
+
+export async function hasRecentSignal(
+  supabase: SupabaseClient,
+  input: { symbol: string; sourceTimestamp: number; cooldownHours: number },
+): Promise<boolean> {
+  if (input.cooldownHours <= 0) return false;
+  const cutoff = new Date(input.sourceTimestamp - input.cooldownHours * 60 * 60 * 1000).toISOString();
+  const sourceTimestamp = new Date(input.sourceTimestamp).toISOString();
+  const { data, error } = await supabase
+    .from("hy_signals")
+    .select("id")
+    .eq("symbol", input.symbol)
+    .gte("source_data_timestamp", cutoff)
+    .lt("source_data_timestamp", sourceTimestamp)
+    .order("source_data_timestamp", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase cooldown lookup failed: ${error.message}`);
+  return Boolean(data?.id);
+}
+
+export async function expireSignals(
+  supabase: SupabaseClient,
+  now = new Date(),
+): Promise<number> {
+  const { data, error } = await supabase.rpc("hy_expire_signals", {
+    p_now: now.toISOString(),
+  });
+  if (error) throw new Error(`Supabase signal expiry failed: ${error.message}`);
+  const count = Number(data);
+  return Number.isFinite(count) ? count : 0;
 }
 
 export async function claimSignal(
@@ -96,7 +128,7 @@ export async function claimSignal(
     shouldEmail: boolean;
   },
 ): Promise<ClaimResult> {
-  const { data, error } = await supabase.rpc("bca_claim_signal", {
+  const { data, error } = await supabase.rpc("hy_claim_signal", {
     p_signal: {
       scan_run_id: input.scanRunId ?? null,
       signal_key: input.signalKey,
@@ -107,7 +139,12 @@ export async function claimSignal(
       strategy_family: input.candidate.strategyFamily,
       strategy_version: input.strategyVersion,
       score: input.candidate.score,
-      score_components: input.candidate.scoreComponents,
+      score_components: {
+        ...input.candidate.scoreComponents,
+        ...(input.candidate.microstructure
+          ? { microstructure: input.candidate.microstructure }
+          : {}),
+      },
       market_regime: input.candidate.marketRegime,
       regime_dependency: input.candidate.regimeDependency,
       entry_price: input.plan.entryPrice,
@@ -139,7 +176,7 @@ export async function createNotification(
   input: { signalId: string; idempotencyKey: string; recipient: string; subject: string },
 ): Promise<boolean> {
   const { data, error } = await supabase
-    .from("bca_notifications")
+    .from("hy_notifications")
     .insert({
       signal_id: input.signalId,
       idempotency_key: input.idempotencyKey,
@@ -161,7 +198,7 @@ export async function finishNotification(
   patch: { status: "SENT" | "FAILED" | "SKIPPED"; providerMessageId?: string; error?: string },
 ) {
   const { error } = await supabase
-    .from("bca_notifications")
+    .from("hy_notifications")
     .update({
       status: patch.status,
       provider_message_id: patch.providerMessageId,
@@ -183,7 +220,7 @@ export async function recordSystemEvent(
     details?: unknown;
   },
 ) {
-  const { error } = await supabase.from("bca_system_events").insert({
+  const { error } = await supabase.from("hy_system_events").insert({
     event_type: event.eventType,
     severity: event.severity,
     component: event.component,

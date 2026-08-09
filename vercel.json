@@ -5,6 +5,12 @@
     },
     "app/api/health/route.ts": {
       "maxDuration": 10
+    },
+    "app/api/paper/settle/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/strategy/activate/route.ts": {
+      "maxDuration": 10
     }
   }
 }

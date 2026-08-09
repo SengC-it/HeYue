@@ -1,9 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BinancePublicClient, mapWithConcurrency } from "../lib/binance/public-client";
+import { BinancePublicClient, buildMicrostructure, mapWithConcurrency } from "../lib/binance/public-client";
 import { atr, donchian, ema, rsi } from "../lib/core/indicators";
-import { scoreCandidate } from "../lib/core/scoring";
+import {
+  fitScoreCalibration,
+  passesEmpiricalScoreCalibration,
+  rankCandidates,
+  scoreCandidate,
+} from "../lib/core/scoring";
 import { buildTradePlan } from "../lib/core/risk";
+import { estimateExecutionCostRisk } from "../lib/core/risk";
+import { createRuntimeStrategyPolicy, passesGlobalRegimeFilter, passesRuntimeCandidateFilter } from "../lib/core/runtime-strategy";
+import { passesStrategyApprovalGate } from "../lib/core/strategy-approval";
+import { DEFAULT_STRATEGY_PARAMS } from "../lib/core/strategies";
+import { runBacktest } from "../lib/backtest/engine";
 import { createParameterGrid } from "../lib/backtest/optimizer";
+import type { HistoricalDataset } from "../lib/backtest/types";
 import type { Candle, Instrument, StrategyCandidate } from "../lib/core/types";
 
 const instrument: Instrument = {
@@ -61,6 +72,51 @@ describe("score and risk plan", () => {
     expect(scored.scoreComponents).toEqual(candidate.scoreComponents);
   });
 
+  it("applies the calibrated side, family, and minimum-score policy before ranking", () => {
+    const accepted = baseCandidate({
+      side: "SHORT",
+      strategyFamily: "TREND",
+      scoreComponents: {
+        trendAlignment: 0.8,
+        momentum: 0.8,
+        structure: 0.8,
+        liquidity: 0.8,
+        volatility: 0.8,
+        regimeFit: 0.8,
+        dataQuality: 0.8,
+      },
+    });
+    const rejectedForSide = baseCandidate({ side: "LONG" });
+    const rejectedForFamily = baseCandidate({ strategyFamily: "BREAKOUT" });
+
+    const ranked = rankCandidates([accepted, rejectedForSide, rejectedForFamily], {
+      minimumScore: 70,
+      sideFilter: "SHORT",
+      strategyFamily: "TREND",
+    });
+
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].side).toBe("SHORT");
+    expect(ranked[0].strategyFamily).toBe("TREND");
+    expect(ranked[0].score).toBe(80);
+  });
+
+  it("fits score calibration on net R and rejects unknown or weak score buckets", () => {
+    const model = fitScoreCalibration([
+      ...Array.from({ length: 4 }, () => ({ score: 82, netR: 0.5 })),
+      ...Array.from({ length: 4 }, () => ({ score: 86, netR: -0.25 })),
+    ], {
+      bucketSize: 5,
+      minimumSamples: 4,
+      minimumExpectedNetR: 0.05,
+      priorWeight: 0,
+    });
+
+    expect(passesEmpiricalScoreCalibration(model, 82)).toBe(true);
+    expect(passesEmpiricalScoreCalibration(model, 86)).toBe(false);
+    expect(passesEmpiricalScoreCalibration(model, 95)).toBe(false);
+  });
+
   it("rounds a long plan safely and calculates theoretical stop risk", () => {
     const scored = scoreCandidate(baseCandidate({
       entryPrice: 100,
@@ -94,6 +150,110 @@ describe("score and risk plan", () => {
     expect(plan.validUntil).toBe(1_700_259_200_000);
   });
 
+  it("uses an explicit reward-risk multiple when supplied", () => {
+    const scored = scoreCandidate(baseCandidate({
+      entryPrice: 100,
+      stopReferencePrice: 95,
+      side: "LONG",
+    }));
+
+    const plan = buildTradePlan(scored, instrument, {
+      marginUsdt: 100,
+      leverage: 20,
+      singleSignalRiskCapUsdt: 100,
+      dailyRiskBudgetUsdt: 600,
+      maxHoldHours: 72,
+      rewardRisk: 1.5,
+    }, 1_700_000_000_000);
+
+    expect(plan.takeProfitPrice).toBe(107.5);
+    expect(plan.rewardRisk).toBe(1.5);
+  });
+
+  it("builds one runtime policy from strategy, filter, risk, and execution settings", () => {
+    const policy = createRuntimeStrategyPolicy({
+      version: "paper-breakout-v1",
+      entryMode: "DEFAULT",
+      stopAtrMultiplier: 0.75,
+      minScore: 70,
+      sideFilter: "SHORT",
+      strategyFamily: "BREAKOUT",
+      requireRegimeAlignment: true,
+      riskPolicy: {
+        marginUsdt: 100,
+        leverage: 20,
+        singleSignalRiskCapUsdt: 50,
+        dailyRiskBudgetUsdt: 600,
+        maxHoldHours: 72,
+        rewardRisk: 2.5,
+        riskPerTradeUsdt: 50,
+      },
+      cooldownHours: 48,
+      maxExecutionCostRiskFraction: 0.1,
+      takerFeeRate: 0.0004,
+      slippageBps: 2,
+      globalRegimeAlignment: true,
+      globalReferenceSymbol: "BTCUSDT",
+      globalReferenceTimeframe: "4h",
+    });
+
+    expect(policy.version).toBe("paper-breakout-v1");
+    expect(policy.params.stopAtrMultiplier).toBe(0.75);
+    expect(policy.riskPolicy.rewardRisk).toBe(2.5);
+    expect(policy.cooldownHours).toBe(48);
+    expect(passesGlobalRegimeFilter(scoreCandidate(baseCandidate({ side: "SHORT" })), policy, "BEAR")).toBe(true);
+    expect(passesGlobalRegimeFilter(scoreCandidate(baseCandidate({ side: "SHORT" })), policy, "BULL")).toBe(false);
+    expect(passesRuntimeCandidateFilter(scoreCandidate(baseCandidate({
+      side: "SHORT",
+      strategyFamily: "BREAKOUT",
+      marketRegime: "BEAR",
+    })), policy)).toBe(true);
+    expect(passesRuntimeCandidateFilter(scoreCandidate(baseCandidate({
+      side: "SHORT",
+      strategyFamily: "TREND",
+      marketRegime: "BEAR",
+    })), policy)).toBe(false);
+  });
+
+  it("estimates round-trip execution cost as a fraction of theoretical risk", () => {
+    const scored = scoreCandidate(baseCandidate({ entryPrice: 100, stopReferencePrice: 95 }));
+    const plan = buildTradePlan(scored, instrument, {
+      marginUsdt: 100,
+      leverage: 20,
+      singleSignalRiskCapUsdt: 100,
+      dailyRiskBudgetUsdt: 600,
+      maxHoldHours: 72,
+      rewardRisk: 2,
+    }, 1_700_000_000_000);
+
+    expect(estimateExecutionCostRisk(plan, 0.0004, 2)).toBeGreaterThan(0);
+  });
+
+  it("requires positive OOS economics before a strategy can be approved", () => {
+    const gate = {
+      minProfitFactor: 1.1,
+      minOutOfSampleSignals: 100,
+      maxDrawdownPercent: 30,
+    };
+
+    expect(passesStrategyApprovalGate({
+      out_of_sample: {
+        netPnlUsdt: 125,
+        profitFactor: 1.2,
+        trades: 120,
+        maxDrawdownPercent: 18,
+      },
+    }, gate)).toBe(true);
+    expect(passesStrategyApprovalGate({
+      out_of_sample: {
+        netPnlUsdt: 125,
+        profitFactor: 1.05,
+        trades: 120,
+        maxDrawdownPercent: 18,
+      },
+    }, gate)).toBe(false);
+  });
+
   it("rejects a stop on the wrong side of the entry", () => {
     const scored = scoreCandidate(baseCandidate({
       entryPrice: 100,
@@ -108,6 +268,39 @@ describe("score and risk plan", () => {
       dailyRiskBudgetUsdt: 600,
       maxHoldHours: 72,
     }, Date.now())).toThrow(/Invalid stop/);
+  });
+
+  it("does not value an exit candle after a short holding-time boundary", () => {
+    const candles = Array.from({ length: 100 }, (_, index) => candle(index, 100 + index));
+    candles[81].high = candles[81].close + 0.5;
+    const candidate = scoreCandidate(baseCandidate({
+      entryPrice: candles[80].close,
+      stopReferencePrice: candles[80].close - 1,
+      atr: 1,
+    }));
+    const dataset: HistoricalDataset = {
+      symbol: "BTCUSDT",
+      instrument,
+      candles: { "15m": candles, "1h": candles, "4h": candles },
+      fundingRates: [],
+    };
+    const evaluationStartTime = candles[80].closeTime;
+    const evaluationEndTime = candles[81].closeTime;
+    const shortHold = runBacktest(dataset, { ...DEFAULT_STRATEGY_PARAMS }, {
+      initialCapitalUsdt: 10_000,
+      minimumSampleDays: 0,
+      minScore: 0,
+      maxHoldHours: 0.1,
+      riskPerTradeUsdt: 50,
+      maxPositionNotionalUsdt: 10_000,
+      singleSignalRiskCapUsdt: 50,
+      dailyRiskBudgetUsdt: 600,
+      evaluationStartTime,
+      evaluationEndTime,
+      candidateCache: new Map([[80, [candidate]]]),
+    });
+
+    expect(shortHold.trades).toHaveLength(0);
   });
 });
 
@@ -133,6 +326,38 @@ describe("Binance public client", () => {
     expect(Object.keys(snapshot.candles)).toEqual(["15m", "1h", "4h"]);
     expect(snapshot.tickerPrice).toBe(100);
     expect(snapshot.sourceTimestamp).toBe(1_000_000);
+  });
+
+  it("derives order-book, aggressive-flow, basis, funding, and open-interest fields", () => {
+    const microstructure = buildMicrostructure(
+      {
+        lastUpdateId: 42,
+        T: 2_000,
+        bids: [["100", "2"], ["99", "1"]],
+        asks: [["100.2", "1"], ["101", "2"]],
+      },
+      [
+        { a: 1, p: "100", q: "2", f: 1, l: 1, T: 2_001, m: false },
+        { a: 2, p: "100", q: "1", f: 2, l: 2, T: 2_002, m: true },
+      ],
+      {
+        symbol: "BTCUSDT",
+        markPrice: "100.1",
+        indexPrice: "100",
+        lastFundingRate: "0.0001",
+        nextFundingTime: 3_000,
+        time: 2_003,
+      },
+      { symbol: "BTCUSDT", openInterest: "123", time: 2_004 },
+    );
+
+    expect(microstructure.depthUpdateId).toBe(42);
+    expect(microstructure.topBidNotional).toBe(299);
+    expect(microstructure.topAskNotional).toBe(302.2);
+    expect(microstructure.aggressiveBuyRatio).toBeCloseTo(2 / 3, 5);
+    expect(microstructure.markIndexBasisBps).toBeCloseTo(10, 5);
+    expect(microstructure.openInterest).toBe(123);
+    expect(microstructure.sourceTimestamp).toBe(2_004);
   });
 
   it("limits concurrent work to the requested worker count", async () => {
