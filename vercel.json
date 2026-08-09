@@ -1,4 +1,6 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["sin1"],
   "functions": {
     "app/api/scan/route.ts": {
       "maxDuration": 60
