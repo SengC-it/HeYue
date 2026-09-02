@@ -4,7 +4,10 @@ import { resolve } from "node:path";
 import { buildCandidateCache, runPortfolioBacktest, type BacktestOptions } from "@/lib/backtest/engine";
 import { assertHistoricalDatasetIntegrity } from "@/lib/backtest/data-integrity";
 import type { BacktestTrade, HistoricalDataset } from "@/lib/backtest/types";
+import { buildValidationUniverseMetadata, type ValidationUniverseMetadata } from "@/lib/backtest/validation-metadata";
 import { BinancePublicClient } from "@/lib/binance/public-client";
+import { readHyEnv, type HyEnvName } from "@/lib/config";
+import { volumeSourceForDatasets } from "@/lib/backtest/volume";
 import { fitScoreCalibration, type ScoreCalibrationFitOptions, type ScoreCalibrationModel } from "@/lib/core/scoring";
 import { DEFAULT_STRATEGY_PARAMS, type EntryMode, type StrategyParams } from "@/lib/core/strategies";
 import type { Instrument, ScoredCandidate } from "@/lib/core/types";
@@ -16,7 +19,7 @@ const MINIMUM_VALIDATION_CANDLES_15M = 365 * 24 * 4;
 const MAX_VALIDATION_CANDIDATES = 100;
 const MAX_HOLD_HOURS = 72;
 const INITIAL_CAPITAL_USDT = 10_000;
-const CANDIDATE_CACHE_VERSION = "candidate-cache-v3";
+const CANDIDATE_CACHE_VERSION = "candidate-cache-v4";
 const DEFAULT_SYMBOL_COUNT = 50;
 
 interface Variant {
@@ -48,7 +51,7 @@ interface Metrics {
 }
 
 async function main() {
-  const configuredWindowEnd = timestampEnv("CS_VALIDATION_END_TIME");
+  const configuredWindowEnd = timestampEnv("HY_VALIDATION_END_TIME");
   const currentBucketOpen = configuredWindowEnd === undefined
     ? Math.floor(Date.now() / FIFTEEN_MINUTES) * FIFTEEN_MINUTES
     : configuredWindowEnd + 1;
@@ -58,26 +61,26 @@ async function main() {
   const splitTime = addMonths(windowStart, 9);
   const trainEnd = splitTime - MAX_HOLD_HOURS * HOUR;
   const oosStart = splitTime;
-  const minScore = numberEnv("CS_VALIDATION_MIN_SCORE", 60);
-  const feeRate = numberEnv("CS_VALIDATION_FEE_RATE", 0.0004);
-  const slippageBps = numberEnv("CS_VALIDATION_SLIPPAGE_BPS", 2);
-  const concurrency = Math.max(1, Math.min(4, Math.floor(numberEnv("CS_VALIDATION_CONCURRENCY", 1))));
-  const interSymbolDelayMs = Math.max(0, Math.floor(numberEnv("CS_VALIDATION_INTER_SYMBOL_DELAY_MS", 2_000)));
-  const focus = process.env.CS_VALIDATION_FOCUS ?? "calibrated-trend-selected";
+  const minScore = numberEnv("HY_VALIDATION_MIN_SCORE", 60);
+  const feeRate = numberEnv("HY_VALIDATION_FEE_RATE", 0.0004);
+  const slippageBps = numberEnv("HY_VALIDATION_SLIPPAGE_BPS", 2);
+  const concurrency = Math.max(1, Math.min(4, Math.floor(numberEnv("HY_VALIDATION_CONCURRENCY", 1))));
+  const interSymbolDelayMs = Math.max(0, Math.floor(numberEnv("HY_VALIDATION_INTER_SYMBOL_DELAY_MS", 2_000)));
+  const focus = readHyEnv("HY_VALIDATION_FOCUS") ?? "calibrated-trend-selected";
   const validationSymbolCount = Math.max(
     50,
-    Math.min(100, Math.floor(numberEnv("CS_VALIDATION_SYMBOL_COUNT", DEFAULT_SYMBOL_COUNT))),
+    Math.min(100, Math.floor(numberEnv("HY_VALIDATION_SYMBOL_COUNT", DEFAULT_SYMBOL_COUNT))),
   );
-  const requestedSymbols = parseSymbols(process.env.CS_VALIDATION_SYMBOLS);
+  const requestedSymbols = parseSymbols(readHyEnv("HY_VALIDATION_SYMBOLS"));
   const targetSymbolCount = requestedSymbols.length > 0 ? requestedSymbols.length : validationSymbolCount;
-  const client = new BinancePublicClient(process.env.BINANCE_API_BASE_URL);
+  const client = new BinancePublicClient(readHyEnv("HY_BINANCE_API_BASE_URL"), undefined, numberEnv("HY_BINANCE_REQUEST_DELAY_MS", 0));
   const cacheDir = resolve("data/validation-cache");
   await mkdir(cacheDir, { recursive: true });
-  const offlineValidation = process.env.CS_VALIDATION_OFFLINE === "true" && requestedSymbols.length > 0;
+  const offlineValidation = readHyEnv("HY_VALIDATION_OFFLINE") === "true" && requestedSymbols.length > 0;
   const universe = offlineValidation ? [] : await client.getUniverse();
   const candidateInstruments = offlineValidation
     ? await loadCachedInstruments(requestedSymbols, cacheDir, windowStart, windowEnd)
-    : selectInstruments(universe, requestedSymbols, validationSymbolCount);
+    : selectInstruments(universe, requestedSymbols, validationSymbolCount, focus === "production-parity" ? validationSymbolCount : undefined);
 
   console.info(JSON.stringify({
     stage: "fetching_validation_history",
@@ -151,22 +154,48 @@ async function main() {
     throw new Error(`Only ${datasets.length} of ${targetSymbolCount} requested symbols have at least one year of history within the top ${candidateInstruments.length} candidates`);
   }
   const instruments = datasets.map((dataset) => dataset.instrument);
+  const universeMetadata = buildValidationUniverseMetadata({
+    requestedSymbols,
+    candidatePoolSize: candidateInstruments.length,
+    dynamicUniverseSize: focus === "production-parity" ? 10 : undefined,
+    lookbackHours: focus === "production-parity" ? 24 : undefined,
+    datasets,
+  });
 
   const allVariants = createVariants(minScore, feeRate, slippageBps, focus);
-  const requestedVariantIds = parseVariantIds(process.env.CS_VALIDATION_VARIANT_IDS);
+  const requestedVariantIds = parseVariantIds(readHyEnv("HY_VALIDATION_VARIANT_IDS"));
   const variants = requestedVariantIds.length === 0
     ? allVariants
     : allVariants.filter((variant) => requestedVariantIds.includes(variant.id));
   if (variants.length === 0) {
-    throw new Error("CS_VALIDATION_VARIANT_IDS did not match any configured variants");
+    throw new Error("HY_VALIDATION_VARIANT_IDS did not match any configured variants");
   }
   const candidateCacheDir = resolve("data/candidate-cache");
+  if (focus === "production-parity") {
+    const candidateCaches = await loadCandidateCaches(datasets, variants[0].params, windowEnd, candidateCacheDir);
+    await writeProductionParityValidationReport({
+      datasets,
+      variant: variants[0],
+      candidateCaches,
+      universeMetadata,
+      windowStart,
+      windowEnd,
+      warmupStart,
+      feeRate,
+      slippageBps,
+      concurrency,
+      interSymbolDelayMs,
+      symbols: instruments.map((instrument) => instrument.symbol),
+    });
+    return;
+  }
   if (focus === "calibrated-rolling" || focus === "cost-frequency-rolling" || focus === "improved-quality-rolling" || focus === "improved-quality-control-rolling" || focus === "liquid-quality-rolling" || focus === "dynamic-liquid-quality-rolling" || focus === "dynamic-liquid-regime-rolling" || focus === "dynamic-liquid-regime-confirmation-rolling" || focus === "dynamic-liquid-risk-rolling" || focus === "dynamic-liquid-exit-rolling" || focus === "dynamic-liquid-train-grid-rolling" || focus === "exit-rolling") {
     const candidateCaches = await loadCandidateCaches(datasets, variants[0].params, windowEnd, candidateCacheDir);
     await writeRollingValidationReport({
       datasets,
       variant: variants[0],
       candidateCaches,
+      universeMetadata,
       windowStart,
       windowEnd,
       warmupStart,
@@ -193,6 +222,7 @@ async function main() {
       datasets,
       variant: variants[0],
       candidateCaches,
+      universeMetadata,
       windowStart,
       windowEnd,
       trainEnd,
@@ -212,6 +242,7 @@ async function main() {
       datasets,
       variant: variants[0],
       candidateCaches,
+      universeMetadata,
       windowStart,
       windowEnd,
       warmupStart,
@@ -290,9 +321,10 @@ async function main() {
       note: "The suggested gate is a research threshold, not a profit guarantee.",
     },
     universe: {
+      ...universeMetadata,
       symbols: instruments.map((instrument) => instrument.symbol),
       selection: `top ${candidateInstruments.length} USDT-M perpetual candidates by 24h quote volume, retaining ${instruments.length} with at least one year of history`,
-      note: "Set CS_VALIDATION_SYMBOL_COUNT to 100 for the full top-100 candidate run, or CS_VALIDATION_SYMBOLS for an explicit reproducible list.",
+      note: "Set HY_VALIDATION_SYMBOL_COUNT to 100 for the full top-100 candidate run, or HY_VALIDATION_SYMBOLS for an explicit reproducible list.",
     },
     variants: results,
     data: datasets.map((dataset) => ({
@@ -352,6 +384,37 @@ function createVariants(minScore: number, feeRate: number, slippageBps: number, 
     selectionSlippageBps: 2,
     entryDelayBars: 1,
   } satisfies BacktestOptions;
+
+  if (focus === "production-parity") {
+    return [{
+      id: "hy-paper-candidate-v2-production-parity",
+      description: "Research-only reproduction of the current PAPER policy: TREND_PULLBACK, TREND, SHORT, score >= 80, strict local and BTC 4h global regime alignment, 24h cooldown, 50U risk, 10,000U max notional, 2R target, 48h max hold, execution cost risk <= 10%.",
+      params: {
+        ...DEFAULT_STRATEGY_PARAMS,
+        entryMode: "TREND_PULLBACK",
+        stopAtrMultiplier: 0.75,
+      },
+      options: {
+        ...common,
+        minScore: 80,
+        maxHoldHours: 48,
+        riskPerTradeUsdt: 50,
+        maxPositionNotionalUsdt: 10_000,
+        singleSignalRiskCapUsdt: 50,
+        rewardRisk: 2,
+        requireRegimeAlignment: true,
+        sideFilter: "SHORT",
+        strategyFamilies: ["TREND"],
+        cooldownHours: 24,
+        maxExecutionCostRiskFraction: 0.1,
+        dynamicUniverseSize: 10,
+        dynamicUniverseLookbackDays: 1,
+        globalReferenceSymbol: "BTCUSDT",
+        globalReferenceTimeframe: "4h",
+        globalRegimeAlignment: true,
+      },
+    }];
+  }
 
   const fixedRisk = (stopAtrMultiplier: number, extras: Partial<BacktestOptions> = {}, variantMinScore = minScore): Variant => ({
     id: "risk50-stop" + stopAtrMultiplier.toString().replace(".", "-") + variantSuffix(extras, variantMinScore, minScore),
@@ -562,8 +625,8 @@ function createVariants(minScore: number, feeRate: number, slippageBps: number, 
   }
 
   if (focus === "improved-quality-rolling") {
-    const rollingScore = numberEnv("CS_VALIDATION_ROLLING_SCORE", 75);
-    const rollingStopAtr = numberEnv("CS_VALIDATION_ROLLING_STOP_ATR", 0.75);
+    const rollingScore = numberEnv("HY_VALIDATION_ROLLING_SCORE", 75);
+    const rollingStopAtr = numberEnv("HY_VALIDATION_ROLLING_STOP_ATR", 0.75);
     return [improvedQualityVariant(rollingScore, rollingStopAtr)];
   }
 
@@ -596,11 +659,11 @@ function createVariants(minScore: number, feeRate: number, slippageBps: number, 
   }
 
   if (focus === "dynamic-liquid-risk") {
-    return [dynamicLiquidQualityVariant(true, undefined, numberEnv("CS_VALIDATION_DAILY_LOSS_LIMIT_USDT", 300))];
+    return [dynamicLiquidQualityVariant(true, undefined, numberEnv("HY_VALIDATION_DAILY_LOSS_LIMIT_USDT", 300))];
   }
 
   if (focus === "dynamic-liquid-risk-rolling") {
-    return [dynamicLiquidQualityVariant(true, undefined, numberEnv("CS_VALIDATION_DAILY_LOSS_LIMIT_USDT", 300))];
+    return [dynamicLiquidQualityVariant(true, undefined, numberEnv("HY_VALIDATION_DAILY_LOSS_LIMIT_USDT", 300))];
   }
 
   if (focus === "dynamic-liquid-exit") {
@@ -758,11 +821,11 @@ function createVariants(minScore: number, feeRate: number, slippageBps: number, 
   }
 
   if (focus === "score-calibrated" || focus === "score-calibrated-rolling") {
-    const bucketSize = numberEnv("CS_VALIDATION_CALIBRATION_BUCKET_SIZE", 5);
-    const minimumSamples = numberEnv("CS_VALIDATION_CALIBRATION_MIN_SAMPLES", 40);
-    const minimumExpectedNetR = numberEnv("CS_VALIDATION_CALIBRATION_MIN_NET_R", 0.02);
-    const priorWeight = numberEnv("CS_VALIDATION_CALIBRATION_PRIOR_WEIGHT", 20);
-    const groupByStrategyFamily = process.env.CS_VALIDATION_CALIBRATION_GROUP_FAMILY !== "false";
+    const bucketSize = numberEnv("HY_VALIDATION_CALIBRATION_BUCKET_SIZE", 5);
+    const minimumSamples = numberEnv("HY_VALIDATION_CALIBRATION_MIN_SAMPLES", 40);
+    const minimumExpectedNetR = numberEnv("HY_VALIDATION_CALIBRATION_MIN_NET_R", 0.02);
+    const priorWeight = numberEnv("HY_VALIDATION_CALIBRATION_PRIOR_WEIGHT", 20);
+    const groupByStrategyFamily = readHyEnv("HY_VALIDATION_CALIBRATION_GROUP_FAMILY") !== "false";
     return [{
       id: `score-calibrated-short-${groupByStrategyFamily ? "family-" : ""}b${bucketSize}-n${minimumSamples}-r${minimumExpectedNetR}`,
       description: `Empirical score calibration fitted on train only; short-only strict regime, 8h cooldown, execution cost <= 10% of risk, ${groupByStrategyFamily ? "family-specific, " : ""}bucket ${bucketSize}, minimum ${minimumSamples} samples, expected net R >= ${minimumExpectedNetR}`,
@@ -793,14 +856,14 @@ function createVariants(minScore: number, feeRate: number, slippageBps: number, 
   }
 
   if (focus === "cost-frequency-rolling") {
-    const rollingScore = numberEnv("CS_VALIDATION_ROLLING_SCORE", 90);
-    const rollingCooldown = numberEnv("CS_VALIDATION_ROLLING_COOLDOWN_HOURS", 8);
-    const rollingCost = numberEnv("CS_VALIDATION_ROLLING_COST_RISK", 0.1);
-    const rollingEntryInterval = numberEnv("CS_VALIDATION_ROLLING_ENTRY_INTERVAL_HOURS", 0);
-    const rollingEntryMode = (process.env.CS_VALIDATION_ROLLING_ENTRY_MODE ?? "DEFAULT") as EntryMode;
-    const rollingSide = process.env.CS_VALIDATION_ROLLING_SIDE === "LONG"
-      || process.env.CS_VALIDATION_ROLLING_SIDE === "SHORT"
-      ? process.env.CS_VALIDATION_ROLLING_SIDE
+    const rollingScore = numberEnv("HY_VALIDATION_ROLLING_SCORE", 90);
+    const rollingCooldown = numberEnv("HY_VALIDATION_ROLLING_COOLDOWN_HOURS", 8);
+    const rollingCost = numberEnv("HY_VALIDATION_ROLLING_COST_RISK", 0.1);
+    const rollingEntryInterval = numberEnv("HY_VALIDATION_ROLLING_ENTRY_INTERVAL_HOURS", 0);
+    const rollingEntryMode = (readHyEnv("HY_VALIDATION_ROLLING_ENTRY_MODE") ?? "DEFAULT") as EntryMode;
+    const rollingSideValue = readHyEnv("HY_VALIDATION_ROLLING_SIDE");
+    const rollingSide = rollingSideValue === "LONG" || rollingSideValue === "SHORT"
+      ? rollingSideValue
       : undefined;
     return [{
       id: `costfreq-${rollingEntryMode.toLowerCase()}-${rollingSide?.toLowerCase() ?? "adaptive"}-score${rollingScore}-cooldown${rollingCooldown}-cost${Math.round(rollingCost * 100)}-interval${rollingEntryInterval}`,
@@ -826,18 +889,18 @@ function createVariants(minScore: number, feeRate: number, slippageBps: number, 
   }
 
   if (focus === "exit-rolling") {
-    const rollingScore = numberEnv("CS_VALIDATION_ROLLING_SCORE", 70);
-    const rollingCooldown = numberEnv("CS_VALIDATION_ROLLING_COOLDOWN_HOURS", 8);
-    const rollingCost = numberEnv("CS_VALIDATION_ROLLING_COST_RISK", 0.1);
-    const rollingStopAtr = numberEnv("CS_VALIDATION_ROLLING_STOP_ATR", 0.75);
-    const rollingRewardRisk = numberEnv("CS_VALIDATION_ROLLING_REWARD_RISK", 2.5);
-    const rollingMaxHoldHours = numberEnv("CS_VALIDATION_ROLLING_MAX_HOLD_HOURS", 72);
-    const rollingEntryMode = (process.env.CS_VALIDATION_ROLLING_ENTRY_MODE ?? "DEFAULT") as EntryMode;
-    const rollingSide = process.env.CS_VALIDATION_ROLLING_SIDE === "LONG"
-      || process.env.CS_VALIDATION_ROLLING_SIDE === "SHORT"
-      ? process.env.CS_VALIDATION_ROLLING_SIDE
+    const rollingScore = numberEnv("HY_VALIDATION_ROLLING_SCORE", 70);
+    const rollingCooldown = numberEnv("HY_VALIDATION_ROLLING_COOLDOWN_HOURS", 8);
+    const rollingCost = numberEnv("HY_VALIDATION_ROLLING_COST_RISK", 0.1);
+    const rollingStopAtr = numberEnv("HY_VALIDATION_ROLLING_STOP_ATR", 0.75);
+    const rollingRewardRisk = numberEnv("HY_VALIDATION_ROLLING_REWARD_RISK", 2.5);
+    const rollingMaxHoldHours = numberEnv("HY_VALIDATION_ROLLING_MAX_HOLD_HOURS", 72);
+    const rollingEntryMode = (readHyEnv("HY_VALIDATION_ROLLING_ENTRY_MODE") ?? "DEFAULT") as EntryMode;
+    const rollingSideValue = readHyEnv("HY_VALIDATION_ROLLING_SIDE");
+    const rollingSide = rollingSideValue === "LONG" || rollingSideValue === "SHORT"
+      ? rollingSideValue
       : undefined;
-    const rollingFamily = process.env.CS_VALIDATION_ROLLING_FAMILY === "BREAKOUT"
+    const rollingFamily = readHyEnv("HY_VALIDATION_ROLLING_FAMILY") === "BREAKOUT"
       ? ["BREAKOUT"] as Array<"BREAKOUT">
       : undefined;
     return [{
@@ -1058,10 +1121,156 @@ function createVariants(minScore: number, feeRate: number, slippageBps: number, 
   ];
 }
 
+async function writeProductionParityValidationReport(input: {
+  datasets: HistoricalDataset[];
+  variant: Variant;
+  candidateCaches: Array<Map<number, ScoredCandidate[]>>;
+  universeMetadata: ValidationUniverseMetadata;
+  windowStart: number;
+  windowEnd: number;
+  warmupStart: number;
+  feeRate: number;
+  slippageBps: number;
+  concurrency: number;
+  interSymbolDelayMs: number;
+  symbols: string[];
+}): Promise<void> {
+  const reportPath = resolve("reports", `hy-r1-production-parity-validation-${new Date(input.windowEnd).toISOString().slice(0, 10).replaceAll("-", "")}.json`);
+  const splitTime = addMonths(input.windowStart, 9);
+  const productionMaxHoldHours = 48;
+  const trainEnd = splitTime - productionMaxHoldHours * HOUR;
+  const oosStart = splitTime;
+  const quarterLength = Math.floor((input.windowEnd - input.windowStart + 1) / 4);
+  const run = (evaluationStartTime: number, evaluationEndTime: number) => runPortfolioBacktest(
+    input.datasets,
+    input.variant.params,
+    {
+      ...input.variant.options,
+      evaluationStartTime,
+      evaluationEndTime,
+      candidateCaches: input.candidateCaches,
+    },
+  );
+  const summarizeRun = (result: ReturnType<typeof run>) => ({
+    rawTradeCount: result.rawTrades.length,
+    rawMetrics: summarize(result.rawTrades),
+    tradeCount: result.trades.length,
+    metrics: summarize(result.trades),
+    rejectionCounts: result.rejectionCounts,
+  });
+
+  try {
+    const full = summarizeRun(run(input.windowStart, input.windowEnd));
+    const train = summarizeRun(run(input.windowStart, trainEnd));
+    const outOfSample = summarizeRun(run(oosStart, input.windowEnd));
+    const folds = Array.from({ length: 4 }, (_, index) => {
+      const start = input.windowStart + index * quarterLength;
+      const end = index === 3 ? input.windowEnd : input.windowStart + (index + 1) * quarterLength - 1;
+      return {
+        id: `q${index + 1}`,
+        start: new Date(start).toISOString(),
+        end: new Date(end).toISOString(),
+        ...summarizeRun(run(start, end)),
+      };
+    });
+    const report = {
+      generatedAt: new Date().toISOString(),
+      status: "COMPLETED",
+      purpose: "Research-only validation of the unchanged HeYue PAPER policy against a bounded historical candidate cohort",
+      focus: "production-parity",
+      universeMetadata: input.universeMetadata,
+      policy: {
+        id: input.variant.id,
+        description: input.variant.description,
+        strategyVersion: "hy-paper-candidate-v2",
+        params: input.variant.params,
+        options: input.variant.options,
+      },
+      universe: {
+        ...input.universeMetadata,
+        symbols: input.symbols,
+        selection: `historical trailing 24h quote-volume ranking over a ${input.universeMetadata.candidatePoolSize}-symbol candidate pool, selecting dynamic top ${input.universeMetadata.dynamicUniverseSize ?? 10}`,
+      },
+      window: {
+        start: new Date(input.windowStart).toISOString(),
+        end: new Date(input.windowEnd).toISOString(),
+        warmupStart: new Date(input.warmupStart).toISOString(),
+        train: { start: new Date(input.windowStart).toISOString(), end: new Date(trainEnd).toISOString() },
+        outOfSample: { start: new Date(oosStart).toISOString(), end: new Date(input.windowEnd).toISOString() },
+        embargoHours: productionMaxHoldHours,
+      },
+      assumptions: {
+        primaryTimeframe: "15m",
+        confirmationTimeframes: ["1h", "4h"],
+        dynamicUniverseLookbackHours: 24,
+        initialCapitalUsdt: INITIAL_CAPITAL_USDT,
+        maxHoldHours: productionMaxHoldHours,
+        takeProfitRewardRisk: 2,
+        takerFeeRate: input.feeRate,
+        slippageBps: input.slippageBps,
+        funding: "actual cached Binance USDⓈ-M fundingRate observations; no synthetic fallback rate",
+        entryModel: "signal on a closed 15m candle; fill at the next 15m open plus adverse slippage",
+        intrabarModel: "stop-first when both levels are inside one candle; gap-through stops fill at the worse open",
+        note: "This is a research artifact only. It does not select or activate a production strategy.",
+      },
+      results: { full, train, outOfSample, folds },
+      data: input.datasets.map((dataset) => ({
+        symbol: dataset.symbol,
+        candles15m: dataset.candles["15m"].length,
+        candles1h: dataset.candles["1h"]?.length ?? 0,
+        candles4h: dataset.candles["4h"]?.length ?? 0,
+        fundingRates: dataset.fundingRates?.length ?? 0,
+        volumeSource: volumeSourceForDatasets([dataset.candles["15m"]]),
+      })),
+      knownLimitations: [input.universeMetadata.survivorshipBiasLimitation, "Dynamic ranking is limited to the supplied historical cohort; no claim is made about contracts absent from the cohort or cache."],
+      runSettings: { concurrency: input.concurrency, interSymbolDelayMs: input.interSymbolDelayMs },
+    };
+    await mkdir(resolve("reports"), { recursive: true });
+    await writeFile(reportPath, JSON.stringify(report, null, 2) + "\n", "utf8");
+    console.info(JSON.stringify({
+      ok: true,
+      reportPath,
+      status: report.status,
+      candidatePoolSize: input.universeMetadata.candidatePoolSize,
+      dynamicUniverseSize: input.universeMetadata.dynamicUniverseSize,
+      volumeSource: input.universeMetadata.volumeSource,
+      productionParityLevel: input.universeMetadata.productionParityLevel,
+      outOfSample: {
+        trades: outOfSample.tradeCount,
+        profitFactor: outOfSample.metrics.profitFactor,
+        netPnlUsdt: outOfSample.metrics.netPnlUsdt,
+        maxDrawdownPercent: outOfSample.metrics.maxDrawdownPercent,
+      },
+    }, null, 2));
+  } catch (error) {
+    const report = {
+      generatedAt: new Date().toISOString(),
+      status: "NOT_COMPLETED",
+      purpose: "Research-only validation of the unchanged HeYue PAPER policy",
+      focus: "production-parity",
+      universeMetadata: input.universeMetadata,
+      candidatePool: input.symbols,
+      window: {
+        start: new Date(input.windowStart).toISOString(),
+        end: new Date(input.windowEnd).toISOString(),
+        warmupStart: new Date(input.warmupStart).toISOString(),
+      },
+      progress: "Historical datasets and candidate caches were loaded before the production-parity backtest failed.",
+      error: errorMessage(error),
+      metrics: null,
+      knownLimitations: [input.universeMetadata.survivorshipBiasLimitation],
+    };
+    await mkdir(resolve("reports"), { recursive: true });
+    await writeFile(reportPath, JSON.stringify(report, null, 2) + "\n", "utf8");
+    console.error(JSON.stringify({ ok: false, reportPath, status: report.status, error: report.error }, null, 2));
+  }
+}
+
 async function writeScoreCalibrationReport(input: {
   datasets: HistoricalDataset[];
   variant: Variant;
   candidateCaches: Array<Map<number, ScoredCandidate[]>>;
+  universeMetadata: ValidationUniverseMetadata;
   windowStart: number;
   windowEnd: number;
   trainEnd: number;
@@ -1133,6 +1342,7 @@ async function writeScoreCalibrationReport(input: {
       note: "Raw metrics measure signal edge before portfolio/email caps; calibrated metrics measure the alert account after those caps.",
     },
     universe: {
+      ...input.universeMetadata,
       symbols: input.symbols,
       selection: "fixed liquid symbols",
       note: "This is not the full production top-100 universe.",
@@ -1189,6 +1399,7 @@ async function writeScoreCalibratedRollingReport(input: {
   datasets: HistoricalDataset[];
   variant: Variant;
   candidateCaches: Array<Map<number, ScoredCandidate[]>>;
+  universeMetadata: ValidationUniverseMetadata;
   windowStart: number;
   windowEnd: number;
   warmupStart: number;
@@ -1267,6 +1478,7 @@ async function writeScoreCalibratedRollingReport(input: {
       note: "Q1 is reserved as initial calibration history. Each later quarter fits on all prior data with a 72h embargo, then evaluates a fresh 10,000U account. No quarter's outcomes fit its own model.",
     },
     universe: {
+      ...input.universeMetadata,
       symbols: input.symbols,
       selection: "fixed liquid symbols",
       note: "This is not the full production top-100 universe.",
@@ -1304,6 +1516,7 @@ async function writeRollingValidationReport(input: {
   datasets: HistoricalDataset[];
   variant: Variant;
   candidateCaches: Array<Map<number, ScoredCandidate[]>>;
+  universeMetadata: ValidationUniverseMetadata;
   windowStart: number;
   windowEnd: number;
   warmupStart: number;
@@ -1359,6 +1572,7 @@ async function writeRollingValidationReport(input: {
       note: "Each fold is evaluated independently with a fresh 10,000U paper capital base; this is a stability check, not a compounded equity curve.",
     },
     universe: {
+      ...input.universeMetadata,
       symbols: input.symbols,
       selection: "fixed liquid symbols",
       note: "This is not the full production top-100 universe.",
@@ -1523,7 +1737,7 @@ function historicalDatasetFingerprint(dataset: HistoricalDataset): string {
   for (const timeframe of ["15m", "1h", "4h"] as const) {
     hash.update(timeframe);
     for (const candle of dataset.candles[timeframe] ?? []) {
-      hash.update(`${candle.openTime},${candle.open},${candle.high},${candle.low},${candle.close},${candle.volume},${candle.closeTime};`);
+      hash.update(`${candle.openTime},${candle.open},${candle.high},${candle.low},${candle.close},${candle.volume},${candle.quoteVolume ?? ""},${candle.closeTime};`);
     }
   }
   for (const point of dataset.fundingRates ?? []) {
@@ -1532,10 +1746,15 @@ function historicalDatasetFingerprint(dataset: HistoricalDataset): string {
   return hash.digest("hex");
 }
 
-function selectInstruments(universe: Instrument[], symbols: string[], symbolCount: number): Instrument[] {
+function selectInstruments(
+  universe: Instrument[],
+  symbols: string[],
+  symbolCount: number,
+  candidatePoolSize?: number,
+): Instrument[] {
   const bySymbol = new Map(universe.map((instrument) => [instrument.symbol, instrument]));
   if (symbols.length === 0) {
-    const candidateCount = Math.min(MAX_VALIDATION_CANDIDATES, symbolCount + 25);
+    const candidateCount = Math.min(MAX_VALIDATION_CANDIDATES, candidatePoolSize ?? symbolCount + 25);
     return universe.slice(0, candidateCount);
   }
   const missing = symbols.filter((symbol) => !bySymbol.has(symbol));
@@ -1570,7 +1789,7 @@ function addMonths(timestamp: number, months: number): number {
 }
 
 function numberEnv(name: string, fallback: number): number {
-  const value = Number(process.env[name]);
+  const value = Number(readHyEnv(name as HyEnvName));
   return Number.isFinite(value) ? value : fallback;
 }
 
@@ -1585,7 +1804,7 @@ function validationReportFileName(focus: string, feeRate: number, slippageBps: n
 }
 
 function timestampEnv(name: string): number | undefined {
-  const value = process.env[name];
+  const value = readHyEnv(name as HyEnvName);
   if (!value?.trim()) return undefined;
   const numeric = Number(value);
   if (Number.isFinite(numeric)) return numeric;
@@ -1596,6 +1815,10 @@ function timestampEnv(name: string): number | undefined {
 function round(value: number, digits: number): number {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function loadLatestPriorCache(
@@ -1634,7 +1857,9 @@ async function loadCachedInstruments(
       const dataset = JSON.parse(await readFile(cachePath, "utf8")) as HistoricalDataset;
       instruments.push(dataset.instrument);
     } catch {
-      throw new Error(`Offline validation cache is missing for ${symbol}: ${cachePath}`);
+      const prior = await loadLatestPriorCache(cacheDir, symbol, windowEnd);
+      if (!prior) throw new Error(`Offline validation cache is missing for ${symbol}: ${cachePath}`);
+      instruments.push(prior.instrument);
     }
   }
   return instruments;
@@ -1644,7 +1869,41 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+main().catch(async (error) => {
+  if (readHyEnv("HY_VALIDATION_FOCUS") === "production-parity") {
+    try {
+      const configuredWindowEnd = timestampEnv("HY_VALIDATION_END_TIME");
+      const currentBucketOpen = configuredWindowEnd === undefined
+        ? Math.floor(Date.now() / FIFTEEN_MINUTES) * FIFTEEN_MINUTES
+        : configuredWindowEnd + 1;
+      const windowStart = currentBucketOpen - 365 * DAY;
+      const windowEnd = currentBucketOpen - 1;
+      const reportPath = resolve("reports", `hy-r1-production-parity-validation-${new Date(windowEnd).toISOString().slice(0, 10).replaceAll("-", "")}.json`);
+      await mkdir(resolve("reports"), { recursive: true });
+      await writeFile(reportPath, JSON.stringify({
+        generatedAt: new Date().toISOString(),
+        status: "NOT_COMPLETED",
+        purpose: "Research-only validation of the unchanged HeYue PAPER policy",
+        focus: "production-parity",
+        candidatePoolSize: null,
+        dynamicUniverseSize: 10,
+        lookbackHours: 24,
+        volumeSource: null,
+        productionParityLevel: null,
+        window: {
+          start: new Date(windowStart).toISOString(),
+          end: new Date(windowEnd).toISOString(),
+        },
+        progress: "Validation failed before a complete production-parity result could be written.",
+        error: errorMessage(error),
+        metrics: null,
+        knownLimitations: ["The run did not complete; no performance metrics are reported."],
+      }, null, 2) + "\n", "utf8");
+      console.error(`Validation report written with status NOT_COMPLETED: ${reportPath}`);
+    } catch (reportError) {
+      console.error(`Unable to write NOT_COMPLETED validation report: ${errorMessage(reportError)}`);
+    }
+  }
+  console.error(errorMessage(error));
   process.exitCode = 1;
 });

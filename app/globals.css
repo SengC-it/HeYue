@@ -212,6 +212,19 @@ h2 {
   white-space: nowrap;
 }
 
+.diagnostic-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin-top: 12px;
+  padding: 12px 2px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.diagnostic-strip strong { color: var(--ink); }
+
 .rules-grid { margin-top: 16px; }
 
 .rule-card {

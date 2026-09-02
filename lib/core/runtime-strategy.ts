@@ -128,6 +128,13 @@ export function passesRuntimeCandidateFilter(
 ): boolean {
   if (policy.sideFilter && candidate.side !== policy.sideFilter) return false;
   if (policy.strategyFamily && candidate.strategyFamily !== policy.strategyFamily) return false;
+  return passesLocalRegimeFilter(candidate, policy);
+}
+
+export function passesLocalRegimeFilter(
+  candidate: ScoredCandidate,
+  policy: RuntimeStrategyPolicy,
+): boolean {
   if (!policy.requireRegimeAlignment) return true;
 
   if (candidate.strategyFamily === "MEAN_REVERSION") {

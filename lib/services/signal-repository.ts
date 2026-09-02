@@ -1,4 +1,5 @@
 import type { ScoredCandidate, TradePlan } from "@/lib/core/types";
+import type { FilterFunnelTelemetry, PerSymbolDiagnostics } from "@/lib/core/candidate-funnel";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface ScanRunInput {
@@ -8,6 +9,16 @@ export interface ScanRunInput {
   batchNumber: number;
   batchCount: number;
   universeSize: number;
+}
+
+export interface ScanDiagnosticsInput {
+  scanRunId: string;
+  strategyVersion: string;
+  globalRegime: string | null;
+  deepUniverseSize: number;
+  deepUniverseSymbols: string[];
+  filterFunnel: FilterFunnelTelemetry;
+  symbolDiagnostics: PerSymbolDiagnostics[];
 }
 
 export interface SignalClaimInput {
@@ -82,6 +93,24 @@ export async function completeScanRun(
     })
     .eq("id", scanRunId);
   if (error) throw new Error(`Supabase scan completion failed: ${error.message}`);
+}
+
+export async function upsertScanDiagnostics(
+  supabase: SupabaseClient,
+  input: ScanDiagnosticsInput,
+): Promise<void> {
+  const { error } = await supabase
+    .from("hy_scan_diagnostics")
+    .upsert({
+      scan_run_id: input.scanRunId,
+      strategy_version: input.strategyVersion,
+      global_regime: input.globalRegime,
+      deep_universe_size: input.deepUniverseSize,
+      deep_universe_symbols: input.deepUniverseSymbols,
+      filter_funnel: input.filterFunnel,
+      symbol_diagnostics: input.symbolDiagnostics,
+    }, { onConflict: "scan_run_id" });
+  if (error) throw new Error(`Supabase scan diagnostics write failed: ${error.message}`);
 }
 
 export async function hasRecentSignal(

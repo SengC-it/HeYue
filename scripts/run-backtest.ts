@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { runPortfolioBacktest } from "@/lib/backtest/engine";
 import type { BacktestTrade, HistoricalDataset } from "@/lib/backtest/types";
 import { BinancePublicClient, mapWithConcurrency } from "@/lib/binance/public-client";
+import { readHyEnv, type HyEnvName } from "@/lib/config";
 import { DEFAULT_STRATEGY_PARAMS } from "@/lib/core/strategies";
 import type { Instrument, Side } from "@/lib/core/types";
 
@@ -47,19 +48,19 @@ async function main() {
   const windowEnd = currentBucketOpen - 1;
   const windowStart = currentBucketOpen - 365 * DAY;
   const warmupStart = windowStart - 14 * DAY;
-  const minScore = numberEnv("CS_BACKTEST_MIN_SCORE", 70);
-  const takerFeeRate = numberEnv("CS_BACKTEST_FEE_RATE", 0.0004);
-  const slippageBps = numberEnv("CS_BACKTEST_SLIPPAGE_BPS", 2);
-  const concurrency = Math.max(1, Math.min(4, Math.floor(numberEnv("CS_BACKTEST_CONCURRENCY", 2))));
+  const minScore = numberEnv("HY_BACKTEST_MIN_SCORE", 70);
+  const takerFeeRate = numberEnv("HY_BACKTEST_FEE_RATE", 0.0004);
+  const slippageBps = numberEnv("HY_BACKTEST_SLIPPAGE_BPS", 2);
+  const concurrency = Math.max(1, Math.min(4, Math.floor(numberEnv("HY_BACKTEST_CONCURRENCY", 2))));
   const backtestSymbolCount = Math.max(
     50,
-    Math.min(100, Math.floor(numberEnv("CS_BACKTEST_SYMBOL_COUNT", DEFAULT_SYMBOL_COUNT))),
+    Math.min(100, Math.floor(numberEnv("HY_BACKTEST_SYMBOL_COUNT", DEFAULT_SYMBOL_COUNT))),
   );
-  const symbols = parseSymbols(process.env.CS_BACKTEST_SYMBOLS);
-  const sideFilter = parseSide(process.env.CS_BACKTEST_SIDE_FILTER ?? "SHORT");
-  const strategyFamily = parseStrategyFamily(process.env.CS_BACKTEST_STRATEGY_FAMILY ?? "TREND");
+  const symbols = parseSymbols(readHyEnv("HY_BACKTEST_SYMBOLS"));
+  const sideFilter = parseSide(readHyEnv("HY_BACKTEST_SIDE_FILTER") ?? "SHORT");
+  const strategyFamily = parseStrategyFamily(readHyEnv("HY_BACKTEST_STRATEGY_FAMILY") ?? "TREND");
 
-  const client = new BinancePublicClient(process.env.BINANCE_API_BASE_URL);
+  const client = new BinancePublicClient(readHyEnv("HY_BINANCE_API_BASE_URL"), undefined, numberEnv("HY_BINANCE_REQUEST_DELAY_MS", 0));
   const universe = await client.getUniverse();
   const instruments = selectInstruments(universe, symbols, backtestSymbolCount);
 
@@ -138,7 +139,7 @@ async function main() {
     universe: {
       selection: `top ${instruments.length} USDT-M perpetuals by 24h quote volume`,
       symbols: instruments.map((instrument) => instrument.symbol),
-      note: "Set CS_BACKTEST_SYMBOL_COUNT to 100 for the full top-100 run, or CS_BACKTEST_SYMBOLS for an explicit reproducible list.",
+      note: "Set HY_BACKTEST_SYMBOL_COUNT to 100 for the full top-100 run, or HY_BACKTEST_SYMBOLS for an explicit reproducible list.",
     },
     assumptions: {
       primaryTimeframe: "15m",
@@ -284,20 +285,20 @@ function parseSymbols(value: string | undefined): string[] {
 }
 
 function numberEnv(name: string, fallback: number): number {
-  const value = Number(process.env[name]);
+  const value = Number(readHyEnv(name as HyEnvName));
   return Number.isFinite(value) ? value : fallback;
 }
 
 function parseSide(value: string): Side | undefined {
   if (value === "LONG" || value === "SHORT") return value;
   if (value === "BOTH" || value === "ALL") return undefined;
-  throw new Error("CS_BACKTEST_SIDE_FILTER must be LONG, SHORT, BOTH, or ALL");
+  throw new Error("HY_BACKTEST_SIDE_FILTER must be LONG, SHORT, BOTH, or ALL");
 }
 
 function parseStrategyFamily(value: string): "TREND" | "BREAKOUT" | "MEAN_REVERSION" | undefined {
   if (value === "TREND" || value === "BREAKOUT" || value === "MEAN_REVERSION") return value;
   if (value === "ALL") return undefined;
-  throw new Error("CS_BACKTEST_STRATEGY_FAMILY must be TREND, BREAKOUT, MEAN_REVERSION, or ALL");
+  throw new Error("HY_BACKTEST_STRATEGY_FAMILY must be TREND, BREAKOUT, MEAN_REVERSION, or ALL");
 }
 
 function round(value: number, digits: number): number {

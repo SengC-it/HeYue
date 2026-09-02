@@ -1,6 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { getServerConfig } from "@/lib/config";
+import { getServerConfig, readHyEnv } from "@/lib/config";
 import { assertHistoricalDatasetIntegrity } from "@/lib/backtest/data-integrity";
 import { createParameterGrid, optimizeDatasets } from "@/lib/backtest/optimizer";
 import type { HistoricalDataset } from "@/lib/backtest/types";
@@ -8,7 +8,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 async function main() {
   const config = getServerConfig();
-  const dataDirectory = resolve(process.env.CS_OPTIMIZER_DATA_DIR ?? "data/raw");
+  const dataDirectory = resolve(readHyEnv("HY_OPTIMIZER_DATA_DIR") ?? "data/raw");
   const datasets = await loadDatasets(dataDirectory);
   if (datasets.length === 0) {
     throw new Error(`No optimizer datasets found in ${dataDirectory}`);
@@ -77,7 +77,7 @@ async function main() {
     eligible: best.eligible,
     train: best.train,
     outOfSample: best.outOfSample,
-    dryRun: config.CS_DRY_RUN,
+    dryRun: config.HY_DRY_RUN,
   }, null, 2));
 }
 

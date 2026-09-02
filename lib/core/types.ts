@@ -9,6 +9,8 @@ export interface Candle {
   low: number;
   close: number;
   volume: number;
+  /** Binance quote-asset volume; absent only in legacy local caches. */
+  quoteVolume?: number;
   closeTime: number;
 }
 

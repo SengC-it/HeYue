@@ -37,9 +37,9 @@ const DEFAULT_REQUEST_DELAY_MS = 0;
 
 export class BinancePublicClient {
   constructor(
-    private readonly baseUrl = process.env.BINANCE_API_BASE_URL ?? "https://fapi.binance.com",
+    private readonly baseUrl = "https://fapi.binance.com",
     private readonly timeoutMs = 12_000,
-    private readonly requestDelayMs = configuredRequestDelayMs(),
+    private readonly requestDelayMs = DEFAULT_REQUEST_DELAY_MS,
   ) {}
 
   private nextRequestAt = 0;
@@ -394,8 +394,9 @@ export async function mapWithConcurrency<T, R>(
   return results;
 }
 
-function parseKline(raw: unknown[]): BinanceKline {
+export function parseKline(raw: unknown[]): BinanceKline {
   if (raw.length < 7) throw new Error("Malformed Binance kline");
+  const quoteVolume = Number(raw[7]);
   const candle = {
     openTime: Number(raw[0]),
     open: Number(raw[1]),
@@ -403,6 +404,7 @@ function parseKline(raw: unknown[]): BinanceKline {
     low: Number(raw[3]),
     close: Number(raw[4]),
     volume: Number(raw[5]),
+    ...(Number.isFinite(quoteVolume) && quoteVolume >= 0 ? { quoteVolume } : {}),
     closeTime: Number(raw[6]),
   };
   if (Object.values(candle).some((value) => !Number.isFinite(value))) {
@@ -444,11 +446,6 @@ function roundMetric(value: number): number {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function configuredRequestDelayMs(): number {
-  const value = Number(process.env.BINANCE_REQUEST_DELAY_MS);
-  return Number.isFinite(value) ? Math.max(0, value) : DEFAULT_REQUEST_DELAY_MS;
 }
 
 function configureNodeProxy(): void {

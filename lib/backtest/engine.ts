@@ -10,6 +10,7 @@ import type {
   HistoricalDataset,
   PortfolioBacktestResult,
 } from "./types";
+import { quoteVolumeForCandle } from "./volume";
 
 const DEFAULT_TAKER_FEE_RATE = 0.0004;
 const DEFAULT_SLIPPAGE_BPS = 2;
@@ -310,7 +311,7 @@ function collectEntryTimes(
   return [...times].sort((left, right) => left - right);
 }
 
-function buildDynamicUniverseByTimestamp(
+export function buildDynamicUniverseByTimestamp(
   datasets: HistoricalDataset[],
   entryTimes: number[],
   requestedSize: number,
@@ -354,7 +355,7 @@ function buildGlobalRegimeByTimestamp(
 function quoteVolumePrefix(candles: Candle[]): number[] {
   const prefix = [0];
   for (const candle of candles) {
-    const quoteVolume = Math.max(0, candle.close * candle.volume);
+    const quoteVolume = quoteVolumeForCandle(candle);
     prefix.push(prefix[prefix.length - 1] + quoteVolume);
   }
   return prefix;
@@ -644,7 +645,7 @@ function rollingQuoteVolumeAtIndex(candles: Candle[], index: number, periods: nu
   const start = Math.max(0, index - periods + 1);
   for (let candleIndex = start; candleIndex <= index; candleIndex += 1) {
     const candle = candles[candleIndex];
-    total += candle.close * candle.volume;
+    total += quoteVolumeForCandle(candle);
   }
   return total;
 }

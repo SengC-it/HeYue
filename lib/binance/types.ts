@@ -36,6 +36,7 @@ export interface BinanceKline {
   low: number;
   close: number;
   volume: number;
+  quoteVolume?: number;
   closeTime: number;
 }
 
