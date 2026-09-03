@@ -190,7 +190,7 @@ export function runBacktest(
       continue;
     }
 
-    const trade = evaluateTrade(dataset, entryIndex, executionCandidate, plan, {
+    const trade = evaluateHistoricalTrade(dataset, entryIndex, executionCandidate, plan, {
       maxHoldHours,
       takerFeeRate,
       slippageBps,
@@ -335,7 +335,7 @@ export function buildDynamicUniverseByTimestamp(
   return result;
 }
 
-function buildGlobalRegimeByTimestamp(
+export function buildGlobalRegimeByTimestamp(
   datasets: HistoricalDataset[],
   entryTimes: number[],
   referenceSymbol: string,
@@ -500,7 +500,7 @@ function isAllowedCandidate(
     : candidate.marketRegime === "BEAR";
 }
 
-function snapshotAt(dataset: HistoricalDataset, index: number): MarketSnapshot {
+export function snapshotAt(dataset: HistoricalDataset, index: number): MarketSnapshot {
   const primary = dataset.candles["15m"];
   const sourceTimestamp = primary[index].closeTime;
   const asOf = (candles: Candle[] | undefined) => {
@@ -526,7 +526,7 @@ function snapshotAt(dataset: HistoricalDataset, index: number): MarketSnapshot {
   };
 }
 
-function evaluateTrade(
+export function evaluateHistoricalTrade(
   dataset: HistoricalDataset,
   entryIndex: number,
   candidate: ReturnType<typeof rankCandidates>[number],

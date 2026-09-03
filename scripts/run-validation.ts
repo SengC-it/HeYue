@@ -4,11 +4,13 @@ import { resolve } from "node:path";
 import { buildCandidateCache, runPortfolioBacktest, type BacktestOptions } from "@/lib/backtest/engine";
 import { assertHistoricalDatasetIntegrity } from "@/lib/backtest/data-integrity";
 import type { BacktestTrade, HistoricalDataset } from "@/lib/backtest/types";
+import { runProductionParityBacktest } from "@/lib/backtest/production-parity";
 import { buildValidationUniverseMetadata, type ValidationUniverseMetadata } from "@/lib/backtest/validation-metadata";
 import { BinancePublicClient } from "@/lib/binance/public-client";
 import { readHyEnv, type HyEnvName } from "@/lib/config";
 import { volumeSourceForDatasets } from "@/lib/backtest/volume";
 import { fitScoreCalibration, type ScoreCalibrationFitOptions, type ScoreCalibrationModel } from "@/lib/core/scoring";
+import type { RuntimeStrategyPolicy } from "@/lib/core/runtime-strategy";
 import { DEFAULT_STRATEGY_PARAMS, type EntryMode, type StrategyParams } from "@/lib/core/strategies";
 import type { Instrument, ScoredCandidate } from "@/lib/core/types";
 
@@ -412,6 +414,8 @@ function createVariants(minScore: number, feeRate: number, slippageBps: number, 
         globalReferenceSymbol: "BTCUSDT",
         globalReferenceTimeframe: "4h",
         globalRegimeAlignment: true,
+        maxConcurrentPositions: undefined,
+        dailyLossLimitUsdt: undefined,
       },
     }];
   }
@@ -1121,6 +1125,35 @@ function createVariants(minScore: number, feeRate: number, slippageBps: number, 
   ];
 }
 
+function productionRuntimePolicy(variant: Variant): RuntimeStrategyPolicy {
+  const options = variant.options;
+  return {
+    version: "hy-paper-candidate-v2",
+    params: variant.params,
+    minScore: options.minScore ?? 80,
+    sideFilter: options.sideFilter,
+    strategyFamily: options.strategyFamilies?.length === 1 ? options.strategyFamilies[0] : undefined,
+    requireRegimeAlignment: options.requireRegimeAlignment === true,
+    riskPolicy: {
+      marginUsdt: options.marginUsdt ?? 100,
+      leverage: options.leverage ?? 20,
+      singleSignalRiskCapUsdt: options.singleSignalRiskCapUsdt ?? 50,
+      dailyRiskBudgetUsdt: options.dailyRiskBudgetUsdt ?? 600,
+      maxHoldHours: options.maxHoldHours ?? 48,
+      rewardRisk: options.rewardRisk,
+      riskPerTradeUsdt: options.riskPerTradeUsdt,
+      maxPositionNotionalUsdt: options.maxPositionNotionalUsdt,
+    },
+    cooldownHours: options.cooldownHours ?? 24,
+    maxExecutionCostRiskFraction: options.maxExecutionCostRiskFraction,
+    takerFeeRate: options.takerFeeRate ?? 0.0004,
+    slippageBps: options.slippageBps ?? 2,
+    globalRegimeAlignment: options.globalRegimeAlignment === true,
+    globalReferenceSymbol: options.globalReferenceSymbol ?? "BTCUSDT",
+    globalReferenceTimeframe: options.globalReferenceTimeframe ?? "4h",
+  };
+}
+
 async function writeProductionParityValidationReport(input: {
   datasets: HistoricalDataset[];
   variant: Variant;
@@ -1141,22 +1174,31 @@ async function writeProductionParityValidationReport(input: {
   const trainEnd = splitTime - productionMaxHoldHours * HOUR;
   const oosStart = splitTime;
   const quarterLength = Math.floor((input.windowEnd - input.windowStart + 1) / 4);
-  const run = (evaluationStartTime: number, evaluationEndTime: number) => runPortfolioBacktest(
-    input.datasets,
-    input.variant.params,
-    {
-      ...input.variant.options,
-      evaluationStartTime,
-      evaluationEndTime,
-      candidateCaches: input.candidateCaches,
-    },
-  );
+  const policy = productionRuntimePolicy(input.variant);
+  const run = (evaluationStartTime: number, evaluationEndTime: number) => runProductionParityBacktest(input.datasets, {
+    policy,
+    candidateCaches: input.candidateCaches,
+    evaluationStartTime,
+    evaluationEndTime,
+    dynamicUniverseSize: input.variant.options.dynamicUniverseSize,
+    dynamicUniverseLookbackDays: input.variant.options.dynamicUniverseLookbackDays,
+    maxEmailsPerDay: input.variant.options.maxEmailsPerDay ?? 10,
+    maxEmailsPerScan: input.variant.options.maxEmailsPerScan ?? 6,
+    budgetTimezone: readHyEnv("HY_DEFAULT_TIMEZONE") ?? "Asia/Shanghai",
+    // Validation records cap decisions without sending external email.
+    emailObservationEnabled: true,
+    dryRun: true,
+  });
   const summarizeRun = (result: ReturnType<typeof run>) => ({
-    rawTradeCount: result.rawTrades.length,
-    rawMetrics: summarize(result.rawTrades),
+    qualifiedCandidateCount: result.counts.qualifiedCandidateCount,
+    claimedSignalCount: result.counts.claimedSignalCount,
+    paperTradeCount: result.counts.paperTradeCount,
+    emailAllowedCount: result.counts.emailAllowedCount,
+    emailDeliveredEquivalentCount: result.counts.emailDeliveredEquivalentCount,
     tradeCount: result.trades.length,
     metrics: summarize(result.trades),
     rejectionCounts: result.rejectionCounts,
+    deliveryStatusCounts: result.deliveryStatusCounts,
   });
 
   try {
@@ -1178,6 +1220,17 @@ async function writeProductionParityValidationReport(input: {
       status: "COMPLETED",
       purpose: "Research-only validation of the unchanged HeYue PAPER policy against a bounded historical candidate cohort",
       focus: "production-parity",
+      executionSemantics: "PRODUCTION_CLAIM_PARITY",
+      cooldownBasis: "SIGNAL_SOURCE_TIMESTAMP",
+      replacementRiskAccounting: "INCREMENTAL_DELTA",
+      concurrentPositionCap: "NONE",
+      dailyRealizedLossGate: "NONE",
+      emailCapAffectsTradeSelection: false,
+      qualifiedCandidateCount: full.qualifiedCandidateCount,
+      claimedSignalCount: full.claimedSignalCount,
+      paperTradeCount: full.paperTradeCount,
+      emailAllowedCount: full.emailAllowedCount,
+      emailDeliveredEquivalentCount: full.emailDeliveredEquivalentCount,
       universeMetadata: input.universeMetadata,
       policy: {
         id: input.variant.id,
@@ -1211,6 +1264,8 @@ async function writeProductionParityValidationReport(input: {
         funding: "actual cached Binance USDⓈ-M fundingRate observations; no synthetic fallback rate",
         entryModel: "signal on a closed 15m candle; fill at the next 15m open plus adverse slippage",
         intrabarModel: "stop-first when both levels are inside one candle; gap-through stops fill at the worse open",
+        claimSimulation: "same-symbol active replacement expires at valid_until; cooldown uses prior signal source timestamp; daily reservation uses max(newRisk - oldActiveRisk, 0)",
+        emailSimulation: "email caps are measured as allowed/equivalent delivery only and never remove qualified, claimed, or paper samples; no external email is sent",
         note: "This is a research artifact only. It does not select or activate a production strategy.",
       },
       results: { full, train, outOfSample, folds },
@@ -1222,7 +1277,7 @@ async function writeProductionParityValidationReport(input: {
         fundingRates: dataset.fundingRates?.length ?? 0,
         volumeSource: volumeSourceForDatasets([dataset.candles["15m"]]),
       })),
-      knownLimitations: [input.universeMetadata.survivorshipBiasLimitation, "Dynamic ranking is limited to the supplied historical cohort; no claim is made about contracts absent from the cohort or cache."],
+      knownLimitations: [input.universeMetadata.survivorshipBiasLimitation, "Dynamic ranking is limited to the supplied historical cohort; no claim is made about contracts absent from the cohort or cache.", "Legacy caches without quoteVolume use ESTIMATED_CLOSE_X_BASE_VOLUME; email delivery counts are equivalent projections in dry-run mode."],
       runSettings: { concurrency: input.concurrency, interSymbolDelayMs: input.interSymbolDelayMs },
     };
     await mkdir(resolve("reports"), { recursive: true });
@@ -1248,6 +1303,17 @@ async function writeProductionParityValidationReport(input: {
       status: "NOT_COMPLETED",
       purpose: "Research-only validation of the unchanged HeYue PAPER policy",
       focus: "production-parity",
+      executionSemantics: "PRODUCTION_CLAIM_PARITY",
+      cooldownBasis: "SIGNAL_SOURCE_TIMESTAMP",
+      replacementRiskAccounting: "INCREMENTAL_DELTA",
+      concurrentPositionCap: "NONE",
+      dailyRealizedLossGate: "NONE",
+      emailCapAffectsTradeSelection: false,
+      qualifiedCandidateCount: null,
+      claimedSignalCount: null,
+      paperTradeCount: null,
+      emailAllowedCount: null,
+      emailDeliveredEquivalentCount: null,
       universeMetadata: input.universeMetadata,
       candidatePool: input.symbols,
       window: {
@@ -1885,6 +1951,17 @@ main().catch(async (error) => {
         status: "NOT_COMPLETED",
         purpose: "Research-only validation of the unchanged HeYue PAPER policy",
         focus: "production-parity",
+        executionSemantics: "PRODUCTION_CLAIM_PARITY",
+        cooldownBasis: "SIGNAL_SOURCE_TIMESTAMP",
+        replacementRiskAccounting: "INCREMENTAL_DELTA",
+        concurrentPositionCap: "NONE",
+        dailyRealizedLossGate: "NONE",
+        emailCapAffectsTradeSelection: false,
+        qualifiedCandidateCount: null,
+        claimedSignalCount: null,
+        paperTradeCount: null,
+        emailAllowedCount: null,
+        emailDeliveredEquivalentCount: null,
         candidatePoolSize: null,
         dynamicUniverseSize: 10,
         lookbackHours: 24,

@@ -36,6 +36,13 @@ export const rejectionStageValues = [
 export type RejectionStage = typeof rejectionStageValues[number];
 export type DiagnosticFinalStatus = "REJECTED" | "QUALIFIED" | "CLAIMED" | "EMAILED";
 export type MarketDataFailureReason = "FETCH_ERROR" | "INSUFFICIENT_HISTORY";
+export type DeliveryStatus =
+  | "NOT_APPLICABLE"
+  | "NOT_ALLOWED"
+  | "DUPLICATE_NOTIFICATION"
+  | "SKIPPED_DRY_RUN"
+  | "SENT"
+  | "FAILED";
 
 export interface PerSymbolDiagnostics {
   symbol: string;
@@ -63,6 +70,7 @@ export interface PerSymbolDiagnostics {
   cooldownPass: boolean | null;
   claimed: boolean | null;
   emailed: boolean | null;
+  deliveryStatus: DeliveryStatus;
   finalStatus: DiagnosticFinalStatus;
   rejectionStage: RejectionStage;
 }
@@ -376,6 +384,7 @@ function baseDiagnostics(
     cooldownPass: null,
     claimed: null,
     emailed: null,
+    deliveryStatus: "NOT_APPLICABLE",
     finalStatus: "REJECTED",
     rejectionStage: "MARKET_DATA",
   };

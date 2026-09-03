@@ -78,6 +78,20 @@ describe("HeYue project isolation", () => {
     expect(migration).not.toMatch(/create table public\.(?:cs|bca)_/i);
     expect(migration).not.toMatch(/create (?:or replace )?function public\.(?:cs|bca)_/i);
   });
+
+  it("rejects both canonical and legacy exchange credentials in deployment readiness", () => {
+    const readiness = readFileSync(resolve(root, "scripts/check-deployment-readiness.ts"), "utf8");
+    for (const name of [
+      "HY_BINANCE_API_KEY",
+      "HY_BINANCE_API_SECRET",
+      "HY_BINANCE_SECRET_KEY",
+      "BINANCE_API_KEY",
+      "BINANCE_API_SECRET",
+      "BINANCE_SECRET_KEY",
+    ]) {
+      expect(readiness).toContain(`"${name}"`);
+    }
+  });
 });
 
 function filesUnder(directory: string): string[] {

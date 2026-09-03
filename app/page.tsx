@@ -67,8 +67,8 @@ interface DashboardData {
   deploymentStage: string;
   exchangeOrdersEnabled: boolean;
   paperTrades: PaperTrade[];
-  hasQualifiedSignal: boolean;
-  hasForwardSample: boolean;
+  latestQualifiedSignalAt: string | null;
+  latestPaperTradeAt: string | null;
   latestDiagnostics: LatestDiagnostics | null;
   starvationHours: number;
   timezone: string;
@@ -79,8 +79,8 @@ export default async function HomePage() {
   const scannerHealth = getScannerHealth(dashboard.latestScan);
   const observationHealth = getStrategyObservationHealth({
     createdAt: dashboard.strategy?.created_at ?? null,
-    hasQualifiedSignal: dashboard.hasQualifiedSignal,
-    hasForwardSample: dashboard.hasForwardSample,
+    latestQualifiedSignalAt: dashboard.latestQualifiedSignalAt,
+    latestPaperTradeAt: dashboard.latestPaperTradeAt,
     starvationHours: dashboard.starvationHours,
     scannerHealthy: scannerHealth.status === "HEALTHY",
   });
@@ -144,7 +144,7 @@ export default async function HomePage() {
           <article className="metric-card">
             <span className="metric-label">策略观察健康</span>
             <strong>{observationHealth.label}</strong>
-            <small>{observationHealth.status === "STARVED" ? `${observationHealth.observedHours.toFixed(0)}h · 阈值 ${dashboard.starvationHours}h` : dashboard.strategy?.version ?? deploymentStage}</small>
+            <small>{observationHealth.status === "STARVED" ? `连续 ${formatObservationDuration(observationHealth.inactivityHours)}无新样本 · 阈值 ${dashboard.starvationHours}h` : dashboard.strategy?.version ?? deploymentStage}</small>
           </article>
         </div>
         <div className="diagnostic-strip">
@@ -282,25 +282,28 @@ async function getDashboardData(): Promise<DashboardData> {
 
     const setting = settingsResult.data?.setting_value as { stage?: string; exchange_orders_enabled?: boolean } | undefined;
     const strategy = strategyResult.data as StrategySnapshot | null;
-    let hasQualifiedSignal = false;
-    let hasForwardSample = false;
+    let latestQualifiedSignalAt: string | null = null;
+    let latestPaperTradeAt: string | null = null;
     if (strategy?.version) {
       const [qualifiedResult, forwardResult] = await Promise.all([
         supabase
           .from("hy_signals")
-          .select("id")
+          .select("source_data_timestamp")
           .eq("strategy_version", strategy.version)
+          .neq("status", "BUDGET_BLOCKED")
+          .order("source_data_timestamp", { ascending: false })
           .limit(1),
         supabase
           .from("hy_paper_trades")
-          .select("id")
+          .select("created_at")
           .eq("strategy_version", strategy.version)
+          .order("created_at", { ascending: false })
           .limit(1),
       ]);
       if (qualifiedResult.error) throw qualifiedResult.error;
       if (forwardResult.error) throw forwardResult.error;
-      hasQualifiedSignal = (qualifiedResult.data?.length ?? 0) > 0;
-      hasForwardSample = (forwardResult.data?.length ?? 0) > 0;
+      latestQualifiedSignalAt = qualifiedResult.data?.[0]?.source_data_timestamp ?? null;
+      latestPaperTradeAt = forwardResult.data?.[0]?.created_at ?? null;
     }
 
     let latestDiagnostics: LatestDiagnostics | null = null;
@@ -324,8 +327,8 @@ async function getDashboardData(): Promise<DashboardData> {
       deploymentStage: setting?.stage ?? "PAPER",
       exchangeOrdersEnabled: setting?.exchange_orders_enabled === true,
       paperTrades: (paperResult.data ?? []) as PaperTrade[],
-      hasQualifiedSignal,
-      hasForwardSample,
+      latestQualifiedSignalAt,
+      latestPaperTradeAt,
       latestDiagnostics,
       starvationHours,
       timezone,
@@ -339,8 +342,8 @@ async function getDashboardData(): Promise<DashboardData> {
       deploymentStage: "PAPER",
       exchangeOrdersEnabled: false,
       paperTrades: [],
-      hasQualifiedSignal: false,
-      hasForwardSample: false,
+      latestQualifiedSignalAt: null,
+      latestPaperTradeAt: null,
       latestDiagnostics: null,
       starvationHours,
       timezone,
@@ -368,6 +371,10 @@ function formatPrice(value: number): string {
 function formatPnl(value: number): string {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(2)} USDT`;
+}
+
+function formatObservationDuration(hours: number): string {
+  return hours >= 24 ? `${(hours / 24).toFixed(1)}天` : `${hours.toFixed(0)}小时`;
 }
 
 function formatDate(value: string, timezone: string): string {

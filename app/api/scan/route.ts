@@ -231,7 +231,10 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
         }
       }
       if (!claim.email_allowed || !runtimeConfig.HY_GMAIL_RECIPIENT) {
-        if (diagnostic) diagnostic.emailed = false;
+        if (diagnostic) {
+          diagnostic.emailed = false;
+          diagnostic.deliveryStatus = "NOT_ALLOWED";
+        }
         continue;
       }
 
@@ -243,7 +246,13 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
         recipient: runtimeConfig.HY_GMAIL_RECIPIENT,
         subject,
       });
-      if (!created) continue;
+      if (!created) {
+        if (diagnostic) {
+          diagnostic.emailed = false;
+          diagnostic.deliveryStatus = "DUPLICATE_NOTIFICATION";
+        }
+        continue;
+      }
 
       try {
         const sent = await sendSignalEmail({
@@ -262,14 +271,20 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
           filterFunnel.emailed += 1;
           if (diagnostic) {
             diagnostic.emailed = true;
+            diagnostic.deliveryStatus = "SENT";
             diagnostic.finalStatus = "EMAILED";
           }
         } else if (diagnostic) {
           diagnostic.emailed = false;
+          diagnostic.deliveryStatus = "SKIPPED_DRY_RUN";
         }
       } catch (error) {
         errors.push({ symbol: opportunity.snapshot.instrument.symbol, stage: "email", message: errorMessage(error) });
         await finishNotification(supabase, idempotencyKey, { status: "FAILED", error: errorMessage(error) });
+        if (diagnostic) {
+          diagnostic.emailed = false;
+          diagnostic.deliveryStatus = "FAILED";
+        }
       }
     }
 

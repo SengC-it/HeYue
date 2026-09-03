@@ -102,27 +102,72 @@ describe("dashboard health split", () => {
     expect(getScannerHealth({ status: "FAILED", started_at: new Date(now - 10 * 60_000).toISOString() }, now).status).toBe("FAILED");
   });
 
-  it("marks a healthy scanner with no week-old samples as STARVED", () => {
+  it("marks an old paper sample as STARVED from the last forward activity", () => {
     const health = getStrategyObservationHealth({
-      createdAt: new Date(now - 8 * 24 * 3_600_000).toISOString(),
-      hasQualifiedSignal: false,
-      hasForwardSample: false,
+      createdAt: new Date(now - 30 * 24 * 3_600_000).toISOString(),
+      latestQualifiedSignalAt: null,
+      latestPaperTradeAt: new Date(now - 20 * 24 * 3_600_000).toISOString(),
       starvationHours: 168,
     }, now);
 
     expect(health.status).toBe("STARVED");
     expect(health.tone).toBe("warning");
+    expect(health.inactivityHours).toBeCloseTo(20 * 24, 5);
     expect(emptySignalMessage(getScannerHealth({ status: "COMPLETED", started_at: new Date(now - 10 * 60_000).toISOString() }, now), health).title)
-      .toContain("尚未积累新的前向信号样本");
+      .toContain("连续 20.0 天无新前向样本");
   });
 
-  it("keeps forward samples separate from signal starvation", () => {
+  it("keeps a recent paper sample as HAS_FORWARD_SAMPLE", () => {
     expect(getStrategyObservationHealth({
       createdAt: new Date(now - 30 * 24 * 3_600_000).toISOString(),
-      hasQualifiedSignal: false,
-      hasForwardSample: true,
+      latestQualifiedSignalAt: null,
+      latestPaperTradeAt: new Date(now - 48 * 3_600_000).toISOString(),
       starvationHours: 168,
     }, now).status).toBe("HAS_FORWARD_SAMPLE");
+  });
+
+  it("marks an old qualified signal without a paper sample as STARVED", () => {
+    expect(getStrategyObservationHealth({
+      createdAt: new Date(now - 30 * 24 * 3_600_000).toISOString(),
+      latestQualifiedSignalAt: new Date(now - 20 * 24 * 3_600_000).toISOString(),
+      latestPaperTradeAt: null,
+      starvationHours: 168,
+    }, now).status).toBe("STARVED");
+  });
+
+  it("keeps a recent qualified signal without a paper sample as OBSERVING", () => {
+    expect(getStrategyObservationHealth({
+      createdAt: new Date(now - 30 * 24 * 3_600_000).toISOString(),
+      latestQualifiedSignalAt: new Date(now - 24 * 3_600_000).toISOString(),
+      latestPaperTradeAt: null,
+      starvationHours: 168,
+    }, now).status).toBe("OBSERVING");
+  });
+
+  it("uses strategy creation as the last activity when no historical sample exists", () => {
+    const health = getStrategyObservationHealth({
+      createdAt: new Date(now - 8 * 24 * 3_600_000).toISOString(),
+      latestQualifiedSignalAt: null,
+      latestPaperTradeAt: null,
+      starvationHours: 168,
+    }, now);
+
+    expect(health.status).toBe("STARVED");
+    expect(health.lastForwardActivityAt).toBe(new Date(now - 8 * 24 * 3_600_000).toISOString());
+  });
+
+  it("does not turn an unhealthy scanner into strategy STARVED", () => {
+    const health = getStrategyObservationHealth({
+      createdAt: new Date(now - 30 * 24 * 3_600_000).toISOString(),
+      latestQualifiedSignalAt: null,
+      latestPaperTradeAt: new Date(now - 20 * 24 * 3_600_000).toISOString(),
+      starvationHours: 168,
+      scannerHealthy: false,
+    }, now);
+
+    expect(health.status).toBe("OBSERVING");
+    expect(health.tone).toBe("warning");
+    expect(health.label).toBe("等待扫描数据");
   });
 });
 

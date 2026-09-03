@@ -13,7 +13,7 @@
 - 同一个币种只有一个 `ACTIVE` 信号；新信号评分不高于旧信号时拒绝替换，替换时只按风险增量计入每日预算。
 - 每个 15 分钟扫描组最多预留 6 封邮件，每日最多 10 封；Gmail SMTP 使用 App Password。
 - Supabase 写入或扫描主流程失败时，尝试绕过 Supabase 直接通过 Gmail SMTP 发送严重故障告警。
-- 每个扫描批次把 market-data、候选、评分、方向、策略族、本地/全局状态、风险、成本、冷却、claim 和邮件结果写入 `hy_scan_diagnostics`；Dashboard 将 Scanner Health 与 Strategy Observation Health 分开显示，连续 168 小时无前向样本时标记为 STARVED。
+- 每个扫描批次把 market-data、候选、评分、方向、策略族、本地/全局状态、风险、成本、冷却、claim 和邮件结果写入 `hy_scan_diagnostics`；候选资格、claim 与 email delivery 是独立维度。Dashboard 将 Scanner Health 与 Strategy Observation Health 分开显示，按最后一次 signal/paper 活动计算连续无新前向样本时长。
 - 扫描运行时的策略版本、入场模式、止损倍数、止盈倍数、方向/策略族过滤、市场状态约束、冷却时间和执行成本上限由 `.env.local` 集中配置；默认值保持提醒模式的原有行为。
 - 策略生命周期为 `DRAFT → PAPER → ACTIVE → RETIRED`。当前候选只允许 `PAPER` 观察；未达到 200 笔前向 OOS 信号前不能切换为 `ACTIVE`。
 - Supabase 只保存 `hy_` 前缀的最新结果、信号事件、扫描状态和优化结果；原始历史行情放在本地 `data/raw/`，不会提交到公开仓库。
@@ -75,7 +75,7 @@ GitHub Actions 月度优化需要配置仓库 Secrets：`HY_SUPABASE_URL`、`HY_
 
 当前纸面候选使用评分 80、24 小时冷却、2R 止盈和 48 小时最长持有。参数只按前九个月训练结果排序，最后三个月仅用于报告；回测在下一根 15 分钟 K 线开盘成交，并对跳空止损按更差开盘价处理。最新基础成本、高成本和前后对比见 `reports/optimization-comparison-20260809.json`。该候选尚未达到 200 笔 OOS 信号门槛，因此默认策略来源为 DB 且必须显式审批，当前只允许纸面前向验证。
 
-研究用的 `HY_VALIDATION_FOCUS=production-parity` 会在可获得的历史候选池中按每个时间点的 trailing 24 小时 quote volume 选 dynamic top 10，并保留 `universePolicy`、`candidatePoolSize`、`volumeSource`、`productionParityLevel` 和 `survivorshipBiasLimitation` 元数据。显式 `HY_VALIDATION_SYMBOLS` 只能标记为 `FIXED_COHORT_DYNAMIC_TOP10` / `BOUNDED_COHORT`，不会冒充完整历史 Binance universe。新下载的 Binance Kline 使用真实 quote asset volume；旧 cache 缺少该字段时使用 `close * baseVolume`，报告会标记 `ESTIMATED_CLOSE_X_BASE_VOLUME` 或 `MIXED_WITH_FALLBACK`。
+研究用的 `HY_VALIDATION_FOCUS=production-parity` 会在可获得的历史候选池中按每个时间点的 trailing 24 小时 quote volume 选 dynamic top 10，并使用独立的 `PRODUCTION_CLAIM_PARITY` 模拟：cooldown 以 signal source timestamp 为基准，同 symbol replacement 只计增量风险，不应用并发仓位或 realized-loss gate，email cap 只影响 delivery 指标。报告保留 `universePolicy`、`candidatePoolSize`、`volumeSource`、`productionParityLevel` 和 `survivorshipBiasLimitation` 元数据。显式 `HY_VALIDATION_SYMBOLS` 只能标记为 `FIXED_COHORT_DYNAMIC_TOP10` / `BOUNDED_COHORT`，不会冒充完整历史 Binance universe。新下载的 Binance Kline 使用真实 quote asset volume；旧 cache 缺少该字段时使用 `close * baseVolume`，报告会标记 `ESTIMATED_CLOSE_X_BASE_VOLUME` 或 `MIXED_WITH_FALLBACK`。
 
 ## 风险边界
 

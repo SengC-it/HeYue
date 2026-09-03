@@ -10,7 +10,8 @@ export interface StrategyObservationHealth {
   status: "NO_STRATEGY" | "OBSERVING" | "HAS_FORWARD_SAMPLE" | "STARVED";
   label: string;
   tone: HealthTone;
-  observedHours: number;
+  lastForwardActivityAt: string | null;
+  inactivityHours: number;
 }
 
 export interface ScannerHealthInput {
@@ -20,8 +21,8 @@ export interface ScannerHealthInput {
 
 export interface StrategyObservationHealthInput {
   createdAt: string | null;
-  hasQualifiedSignal: boolean;
-  hasForwardSample: boolean;
+  latestQualifiedSignalAt: string | null;
+  latestPaperTradeAt: string | null;
   starvationHours: number;
   scannerHealthy?: boolean;
 }
@@ -45,26 +46,35 @@ export function getStrategyObservationHealth(
   now = Date.now(),
 ): StrategyObservationHealth {
   if (!input.createdAt) {
-    return { status: "NO_STRATEGY", label: "等待策略", tone: "warning", observedHours: 0 };
+    return {
+      status: "NO_STRATEGY",
+      label: "等待策略",
+      tone: "warning",
+      lastForwardActivityAt: null,
+      inactivityHours: 0,
+    };
   }
 
   const createdAt = new Date(input.createdAt).getTime();
-  const observedHours = Number.isFinite(createdAt)
-    ? Math.max(0, (now - createdAt) / 3_600_000)
-    : 0;
-  if (input.hasForwardSample) {
-    return { status: "HAS_FORWARD_SAMPLE", label: "已有前向样本", tone: "healthy", observedHours };
-  }
-  if (input.hasQualifiedSignal) {
-    return { status: "OBSERVING", label: "观察中", tone: "healthy", observedHours };
-  }
+  const qualifiedSignalAt = parseTimestamp(input.latestQualifiedSignalAt);
+  const paperTradeAt = parseTimestamp(input.latestPaperTradeAt);
+  const activityTimes = [createdAt, qualifiedSignalAt, paperTradeAt].filter((value): value is number => Number.isFinite(value));
+  const lastActivity = activityTimes.length > 0 ? Math.max(...activityTimes) : now;
+  const lastForwardActivityAt = Number.isFinite(lastActivity) ? new Date(lastActivity).toISOString() : null;
+  const inactivityHours = Math.max(0, (now - lastActivity) / 3_600_000);
+  const thresholdHours = Math.max(1, Number.isFinite(input.starvationHours) ? input.starvationHours : 168);
+
   if (input.scannerHealthy === false) {
-    return { status: "OBSERVING", label: "等待扫描数据", tone: "warning", observedHours };
+    return { status: "OBSERVING", label: "等待扫描数据", tone: "warning", lastForwardActivityAt, inactivityHours };
   }
-  if (observedHours >= Math.max(1, input.starvationHours)) {
-    return { status: "STARVED", label: "信号饥饿", tone: "warning", observedHours };
+
+  if (paperTradeAt !== null && (now - paperTradeAt) / 3_600_000 < thresholdHours) {
+    return { status: "HAS_FORWARD_SAMPLE", label: "已有前向样本", tone: "healthy", lastForwardActivityAt, inactivityHours };
   }
-  return { status: "OBSERVING", label: "观察中", tone: "healthy", observedHours };
+  if (inactivityHours >= thresholdHours) {
+    return { status: "STARVED", label: "信号饥饿", tone: "warning", lastForwardActivityAt, inactivityHours };
+  }
+  return { status: "OBSERVING", label: "观察中", tone: "healthy", lastForwardActivityAt, inactivityHours };
 }
 
 export function emptySignalMessage(
@@ -78,8 +88,11 @@ export function emptySignalMessage(
     };
   }
   if (observation.status === "STARVED") {
+    const inactivity = observation.inactivityHours >= 24
+      ? `${(observation.inactivityHours / 24).toFixed(1)} 天`
+      : `${observation.inactivityHours.toFixed(0)} 小时`;
     return {
-      title: "扫描服务运行正常，但当前策略尚未积累新的前向信号样本。",
+      title: `扫描服务运行正常，但当前策略已连续 ${inactivity}无新前向样本。`,
       body: "策略观察已超过信号饥饿阈值；请结合诊断漏斗检查阻断阶段，不要把空列表解读为市场结论。",
     };
   }
@@ -93,4 +106,10 @@ export function emptySignalMessage(
     title: "当前没有可展示的合格信号。",
     body: "请结合 Scanner Health、策略观察状态和最新诊断漏斗判断原因；系统不会为了增加邮件数量而降低门槛。",
   };
+}
+
+function parseTimestamp(value: string | null): number | null {
+  if (!value) return null;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : null;
 }

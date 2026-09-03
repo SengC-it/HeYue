@@ -21,7 +21,14 @@ check(Boolean(readHyEnv("HY_GMAIL_SMTP_USER")), "HY_GMAIL_SMTP_USER is required 
 check(Boolean(readHyEnv("HY_GMAIL_SMTP_APP_PASSWORD")), "HY_GMAIL_SMTP_APP_PASSWORD is required for observation email");
 check(Boolean(readHyEnv("HY_GMAIL_RECIPIENT")), "HY_GMAIL_RECIPIENT is required for observation email");
 
-for (const forbidden of ["HY_BINANCE_API_KEY", "HY_BINANCE_API_SECRET", "HY_BINANCE_SECRET_KEY"]) {
+for (const forbidden of [
+  "HY_BINANCE_API_KEY",
+  "HY_BINANCE_API_SECRET",
+  "HY_BINANCE_SECRET_KEY",
+  "BINANCE_API_KEY",
+  "BINANCE_API_SECRET",
+  "BINANCE_SECRET_KEY",
+]) {
   check(!process.env[forbidden], `${forbidden} must not be configured in the alert-only deployment`);
 }
 

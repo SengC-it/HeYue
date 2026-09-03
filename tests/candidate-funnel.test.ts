@@ -108,6 +108,7 @@ describe("candidate filter funnel", () => {
     const telemetry = createEmptyFilterFunnel();
 
     expect(result.diagnostics.rejectionStage).toBe("QUALIFIED");
+    expect(result.diagnostics.deliveryStatus).toBe("NOT_APPLICABLE");
     expect(result.counts.preCooldownCandidate).toBe(1);
     recordCooldownResult(telemetry, result.diagnostics, false);
 
