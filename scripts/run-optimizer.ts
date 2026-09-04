@@ -1,13 +1,14 @@
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { getServerConfig } from "@/lib/config";
+import { getServerConfig, readHyEnv } from "@/lib/config";
+import { assertHistoricalDatasetIntegrity } from "@/lib/backtest/data-integrity";
 import { createParameterGrid, optimizeDatasets } from "@/lib/backtest/optimizer";
 import type { HistoricalDataset } from "@/lib/backtest/types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 async function main() {
   const config = getServerConfig();
-  const dataDirectory = resolve(process.env.CS_OPTIMIZER_DATA_DIR ?? "data/raw");
+  const dataDirectory = resolve(readHyEnv("HY_OPTIMIZER_DATA_DIR") ?? "data/raw");
   const datasets = await loadDatasets(dataDirectory);
   if (datasets.length === 0) {
     throw new Error(`No optimizer datasets found in ${dataDirectory}`);
@@ -15,35 +16,53 @@ async function main() {
 
   const variants = createParameterGrid();
   const results = optimizeDatasets(datasets, variants);
-  const best = results[0];
+  // Ranking is based only on training performance. The selected variant's OOS
+  // result is evidence for or against it, never an input to the selection.
+  const best = results.find((result) => result.selectionEligible) ?? results[0];
   if (!best) throw new Error("Optimizer produced no result");
 
   const supabase = getSupabaseAdmin();
   const version = `grid-${new Date().toISOString().slice(0, 10)}-${hashParams(best.params)}`;
-  const { error: versionError } = await supabase.from("bca_strategy_versions").upsert({
+  const runtimePolicy = {
+    ...config.strategy,
+    version,
+    params: best.params,
+  };
+  const { error: versionError } = await supabase.from("hy_strategy_versions").upsert({
     version,
     strategy_family: "ENSEMBLE_RULES",
-    parameters: best.params,
+    parameters: {
+      strategyParams: best.params,
+      runtime: runtimePolicy,
+    },
     metrics: {
       train: best.train,
       out_of_sample: best.outOfSample,
       dataset_count: best.datasetCount,
       variant_count: variants.length,
+      selection_basis: "train_only",
       minimum_sample_days: 365,
       max_drawdown_cap_percent: 30,
     },
-    status: best.eligible ? "ACTIVE" : "DRAFT",
+    // Optimizer output is evidence, not operator approval. Activation is an
+    // explicit, separately authenticated action after the approval gate passes.
+    status: "DRAFT",
   }, { onConflict: "version" });
   if (versionError) throw new Error(`Strategy version write failed: ${versionError.message}`);
 
-  const { error: runError } = await supabase.from("bca_backtest_runs").insert({
+  const { error: runError } = await supabase.from("hy_backtest_runs").insert({
     strategy_version: version,
     universe_definition: { symbols: datasets.map((dataset) => dataset.symbol), source: "local_raw" },
     parameter_set: best.params,
     train_window: { months: 9 },
     validation_window: {},
     out_of_sample_window: { months: 3 },
-    metrics: { train: best.train, out_of_sample: best.outOfSample, eligible: best.eligible },
+    metrics: {
+      train: best.train,
+      out_of_sample: best.outOfSample,
+      selection_eligible: best.selectionEligible,
+      eligible: best.eligible,
+    },
     status: "COMPLETED",
     finished_at: new Date().toISOString(),
   });
@@ -58,7 +77,7 @@ async function main() {
     eligible: best.eligible,
     train: best.train,
     outOfSample: best.outOfSample,
-    dryRun: config.CS_DRY_RUN,
+    dryRun: config.HY_DRY_RUN,
   }, null, 2));
 }
 
@@ -69,6 +88,7 @@ async function loadDatasets(directory: string): Promise<HistoricalDataset[]> {
     if (!raw.symbol || !raw.instrument || !raw.candles?.["15m"]) {
       throw new Error(`Invalid optimizer dataset: ${file}`);
     }
+    assertHistoricalDatasetIntegrity(raw);
     return raw;
   }));
 }

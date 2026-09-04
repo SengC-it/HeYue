@@ -9,12 +9,36 @@ export interface Candle {
   low: number;
   close: number;
   volume: number;
+  /** Binance quote-asset volume; absent only in legacy local caches. */
+  quoteVolume?: number;
   closeTime: number;
 }
 
 export interface FundingRatePoint {
   fundingTime: number;
   fundingRate: number;
+}
+
+export interface MarketMicrostructure {
+  depthUpdateId: number;
+  depthTimestamp: number | null;
+  bestBidPrice: number | null;
+  bestAskPrice: number | null;
+  bidAskSpreadBps: number | null;
+  topBidNotional: number;
+  topAskNotional: number;
+  orderBookImbalance: number | null;
+  aggregateTradeCount: number;
+  aggregateTradeQuoteVolume: number;
+  aggressiveBuyQuoteVolume: number;
+  aggressiveBuyRatio: number | null;
+  markPrice: number;
+  indexPrice: number;
+  markIndexBasisBps: number | null;
+  fundingRate: number;
+  nextFundingTime: number;
+  openInterest: number;
+  sourceTimestamp: number;
 }
 
 export interface Instrument {
@@ -36,6 +60,7 @@ export interface MarketSnapshot {
   tickerPrice: number;
   candles: Partial<Record<Timeframe, Candle[]>>;
   sourceTimestamp: number;
+  microstructure?: MarketMicrostructure;
 }
 
 export interface ScoreComponents {
@@ -60,6 +85,7 @@ export interface StrategyCandidate {
   marketRegime: MarketRegime;
   regimeDependency: "LOW" | "MEDIUM" | "HIGH";
   rationale: string[];
+  microstructure?: MarketMicrostructure;
 }
 
 export interface ScoredCandidate extends StrategyCandidate {
@@ -73,6 +99,7 @@ export interface RiskPolicy {
   singleSignalRiskCapUsdt: number;
   dailyRiskBudgetUsdt: number;
   maxHoldHours: number;
+  rewardRisk?: number;
   riskPerTradeUsdt?: number;
   maxPositionNotionalUsdt?: number;
 }

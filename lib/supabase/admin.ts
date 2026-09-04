@@ -6,7 +6,7 @@ let cachedClient: SupabaseClient | undefined;
 export function getSupabaseAdmin(): SupabaseClient {
   if (cachedClient) return cachedClient;
   const config = getServerConfig();
-  cachedClient = createClient(config.SUPABASE_URL, config.supabaseServiceKey, {
+  cachedClient = createClient(config.HY_SUPABASE_URL, config.supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
