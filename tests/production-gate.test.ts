@@ -20,7 +20,7 @@ const productionEnvironment = {
 } as const;
 
 describe("Vercel build gate", () => {
-  it("runs deploy:check before build in Production", () => {
+  it("runs deploy:check before build for VERCEL_ENV=production", () => {
     const calls: Array<{ command: string; args: readonly string[] }> = [];
 
     const exitCode = runVercelBuild(
@@ -38,19 +38,40 @@ describe("Vercel build gate", () => {
     ]);
   });
 
-  it("stops before build when deploy:check fails", () => {
+  it("runs deploy:check before build for VERCEL_TARGET_ENV=production", () => {
     const calls: Array<{ command: string; args: readonly string[] }> = [];
 
     const exitCode = runVercelBuild(
       { VERCEL_TARGET_ENV: "production" },
       (command, args) => {
         calls.push({ command, args });
-        return 17;
+        return 0;
       },
     );
 
-    expect(exitCode).toBe(17);
-    expect(calls).toEqual([{ command: pnpmCommand, args: ["deploy:check"] }]);
+    expect(exitCode).toBe(0);
+    expect(calls).toEqual([
+      { command: pnpmCommand, args: ["deploy:check"] },
+      { command: pnpmCommand, args: ["build"] },
+    ]);
+  });
+
+  it("runs deploy:check before build for HY_DEPLOY_TARGET=production", () => {
+    const calls: Array<{ command: string; args: readonly string[] }> = [];
+
+    const exitCode = runVercelBuild(
+      { HY_DEPLOY_TARGET: "production" },
+      (command, args) => {
+        calls.push({ command, args });
+        return 0;
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(calls).toEqual([
+      { command: pnpmCommand, args: ["deploy:check"] },
+      { command: pnpmCommand, args: ["build"] },
+    ]);
   });
 
   it("runs only build for Preview", () => {
@@ -66,6 +87,81 @@ describe("Vercel build gate", () => {
 
     expect(exitCode).toBe(0);
     expect(calls).toEqual([{ command: pnpmCommand, args: ["build"] }]);
+  });
+
+  it("runs only build for Development", () => {
+    const calls: Array<{ command: string; args: readonly string[] }> = [];
+
+    const exitCode = runVercelBuild(
+      { VERCEL_ENV: "development" },
+      (command, args) => {
+        calls.push({ command, args });
+        return 0;
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(calls).toEqual([{ command: pnpmCommand, args: ["build"] }]);
+  });
+
+  it("fails closed when deployment environment markers are missing", () => {
+    const calls: Array<{ command: string; args: readonly string[] }> = [];
+
+    const exitCode = runVercelBuild({}, (command, args) => {
+      calls.push({ command, args });
+      return 0;
+    });
+
+    expect(exitCode).not.toBe(0);
+    expect(calls).toEqual([]);
+  });
+
+  it("fails closed when deployment environment markers are unknown", () => {
+    const calls: Array<{ command: string; args: readonly string[] }> = [];
+
+    const exitCode = runVercelBuild(
+      { VERCEL_ENV: "unknown" },
+      (command, args) => {
+        calls.push({ command, args });
+        return 0;
+      },
+    );
+
+    expect(exitCode).not.toBe(0);
+    expect(calls).toEqual([]);
+  });
+
+  it("lets Production win over a conflicting deployment sentinel", () => {
+    const calls: Array<{ command: string; args: readonly string[] }> = [];
+
+    const exitCode = runVercelBuild(
+      { VERCEL_ENV: "production", HY_DEPLOY_TARGET: "preview" },
+      (command, args) => {
+        calls.push({ command, args });
+        return 0;
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(calls).toEqual([
+      { command: pnpmCommand, args: ["deploy:check"] },
+      { command: pnpmCommand, args: ["build"] },
+    ]);
+  });
+
+  it("stops before build when deploy:check fails", () => {
+    const calls: Array<{ command: string; args: readonly string[] }> = [];
+
+    const exitCode = runVercelBuild(
+      { VERCEL_ENV: "production" },
+      (command, args) => {
+        calls.push({ command, args });
+        return 17;
+      },
+    );
+
+    expect(exitCode).toBe(17);
+    expect(calls).toEqual([{ command: pnpmCommand, args: ["deploy:check"] }]);
   });
 });
 
