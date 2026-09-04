@@ -15,7 +15,8 @@
     "optimizer": "tsx scripts/run-optimizer.ts",
     "validate": "tsx scripts/run-validation.ts",
     "backtest": "tsx scripts/run-backtest.ts",
-    "deploy:check": "tsx scripts/check-deployment-readiness.ts"
+    "deploy:check": "tsx scripts/check-deployment-readiness.ts",
+    "vercel:build": "tsx scripts/vercel-build.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2",
