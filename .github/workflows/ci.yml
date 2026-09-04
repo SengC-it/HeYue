@@ -43,3 +43,25 @@ jobs:
           BINANCE_API_SECRET: ""
           BINANCE_SECRET_KEY: ""
         run: pnpm deploy:check
+      - name: Verify Vercel Production build gate with dummy observation values
+        env:
+          VERCEL_ENV: production
+          HY_SUPABASE_URL: https://jfvbikivtpfjgfsnggiz.supabase.co
+          HY_SUPABASE_SERVICE_ROLE_KEY: ci-dummy-service-role-key
+          HY_CRON_SECRET: ci-dummy-cron-secret
+          HY_STRATEGY_ADMIN_SECRET: ci-dummy-admin-secret
+          HY_STRATEGY_SOURCE: DB
+          HY_STRATEGY_STAGE: PAPER
+          HY_STRATEGY_VERSION: hy-paper-candidate-v2
+          HY_PAPER_TRADING_ENABLED: "true"
+          HY_DRY_RUN: "false"
+          HY_GMAIL_SMTP_USER: ci-dummy@example.com
+          HY_GMAIL_SMTP_APP_PASSWORD: ci-dummy-password
+          HY_GMAIL_RECIPIENT: ci-dummy@example.com
+          HY_BINANCE_API_KEY: ""
+          HY_BINANCE_API_SECRET: ""
+          HY_BINANCE_SECRET_KEY: ""
+          BINANCE_API_KEY: ""
+          BINANCE_API_SECRET: ""
+          BINANCE_SECRET_KEY: ""
+        run: pnpm vercel:build
