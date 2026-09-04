@@ -1,6 +1,6 @@
 import { basename, resolve } from "node:path";
 import { readFileSync, readdirSync } from "node:fs";
-import { readHyEnv } from "@/lib/config";
+import { isUsableRuntimeValue, readHyEnv } from "@/lib/config";
 
 const expectedProjectRef = "jfvbikivtpfjgfsnggiz";
 const expectedSupabaseUrl = `https://${expectedProjectRef}.supabase.co`;
@@ -8,18 +8,32 @@ const root = resolve(import.meta.dirname, "..");
 const failures: string[] = [];
 
 check(basename(root).toLowerCase() === "heyue", "working directory must be the HeYue project");
-check(readHyEnv("HY_SUPABASE_URL") === expectedSupabaseUrl, "HY_SUPABASE_URL must target the approved HeYue database project");
-check(Boolean(readHyEnv("HY_SUPABASE_SERVICE_ROLE_KEY") ?? readHyEnv("HY_SUPABASE_SECRET_KEY")), "a server-only Supabase service key is required");
-check(Boolean(readHyEnv("HY_CRON_SECRET")), "HY_CRON_SECRET is required");
-check(Boolean(readHyEnv("HY_STRATEGY_ADMIN_SECRET")), "HY_STRATEGY_ADMIN_SECRET is required");
-check(readHyEnv("HY_STRATEGY_SOURCE") === "DB", "HY_STRATEGY_SOURCE must be DB");
-check(readHyEnv("HY_STRATEGY_STAGE") === "PAPER", "observation deployment must remain in PAPER stage");
-check(readHyEnv("HY_STRATEGY_VERSION")?.startsWith("hy-") === true, "strategy version must use the hy- namespace");
-check(readHyEnv("HY_PAPER_TRADING_ENABLED") === "true", "paper ledger must be enabled");
-check(readHyEnv("HY_DRY_RUN") === "false", "email observation requires HY_DRY_RUN=false");
-check(Boolean(readHyEnv("HY_GMAIL_SMTP_USER")), "HY_GMAIL_SMTP_USER is required for observation email");
-check(Boolean(readHyEnv("HY_GMAIL_SMTP_APP_PASSWORD")), "HY_GMAIL_SMTP_APP_PASSWORD is required for observation email");
-check(Boolean(readHyEnv("HY_GMAIL_RECIPIENT")), "HY_GMAIL_RECIPIENT is required for observation email");
+const supabaseUrl = readHyEnv("HY_SUPABASE_URL");
+const serviceRoleKey = readHyEnv("HY_SUPABASE_SERVICE_ROLE_KEY");
+const secretKey = readHyEnv("HY_SUPABASE_SECRET_KEY");
+const cronSecret = readHyEnv("HY_CRON_SECRET");
+const strategyAdminSecret = readHyEnv("HY_STRATEGY_ADMIN_SECRET");
+const strategySource = readHyEnv("HY_STRATEGY_SOURCE");
+const strategyStage = readHyEnv("HY_STRATEGY_STAGE");
+const strategyVersion = readHyEnv("HY_STRATEGY_VERSION");
+const paperTradingEnabled = readHyEnv("HY_PAPER_TRADING_ENABLED");
+const dryRun = readHyEnv("HY_DRY_RUN");
+const smtpUser = readHyEnv("HY_GMAIL_SMTP_USER");
+const smtpPassword = readHyEnv("HY_GMAIL_SMTP_APP_PASSWORD");
+const recipient = readHyEnv("HY_GMAIL_RECIPIENT");
+
+check(isUsableRuntimeValue(supabaseUrl) && supabaseUrl === expectedSupabaseUrl, "HY_SUPABASE_URL must target the approved HeYue database project");
+check(isUsableRuntimeValue(serviceRoleKey) || isUsableRuntimeValue(secretKey), "a server-only Supabase service key is required");
+check(isUsableRuntimeValue(cronSecret), "HY_CRON_SECRET is required");
+check(isUsableRuntimeValue(strategyAdminSecret), "HY_STRATEGY_ADMIN_SECRET is required");
+check(isUsableRuntimeValue(strategySource) && strategySource === "DB", "HY_STRATEGY_SOURCE must be DB");
+check(isUsableRuntimeValue(strategyStage) && strategyStage === "PAPER", "observation deployment must remain in PAPER stage");
+check(isUsableRuntimeValue(strategyVersion) && strategyVersion.startsWith("hy-"), "strategy version must use the hy- namespace");
+check(isUsableRuntimeValue(paperTradingEnabled) && paperTradingEnabled === "true", "paper ledger must be enabled");
+check(isUsableRuntimeValue(dryRun) && dryRun === "false", "email observation requires HY_DRY_RUN=false");
+check(isUsableRuntimeValue(smtpUser), "HY_GMAIL_SMTP_USER is required for observation email");
+check(isUsableRuntimeValue(smtpPassword), "HY_GMAIL_SMTP_APP_PASSWORD is required for observation email");
+check(isUsableRuntimeValue(recipient), "HY_GMAIL_RECIPIENT is required for observation email");
 
 for (const forbidden of [
   "HY_BINANCE_API_KEY",
