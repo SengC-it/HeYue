@@ -289,3 +289,10 @@ function warnLegacyConfiguration(name: string): void {
   }
   console.warn("legacy unprefixed HeYue configuration detected");
 }
+
+
+export function isUsableRuntimeValue(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const normalized = value.trim().toUpperCase();
+  return normalized.length > 0 && normalized !== "[SENSITIVE]" && normalized !== "[REDACTED]";
+}
