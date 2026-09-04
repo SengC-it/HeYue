@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm vercel:build",
   "regions": ["sin1"],
   "functions": {
     "app/api/scan/route.ts": {
