@@ -1,4 +1,10 @@
+import { getHyEnvironment } from "@/lib/config";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import {
+  emptySignalMessage,
+  getScannerHealth,
+  getStrategyObservationHealth,
+} from "@/lib/dashboard/health";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +45,19 @@ interface LatestScan {
 interface StrategySnapshot {
   version: string;
   status: "DRAFT" | "PAPER" | "ACTIVE" | "RETIRED";
+  created_at: string;
 }
 
 interface PaperTrade {
   status: string;
   net_pnl_usdt: number | null;
+}
+
+interface LatestDiagnostics {
+  global_regime: string | null;
+  filter_funnel: unknown;
+  symbol_diagnostics: unknown;
+  created_at: string;
 }
 
 interface DashboardData {
@@ -53,11 +67,23 @@ interface DashboardData {
   deploymentStage: string;
   exchangeOrdersEnabled: boolean;
   paperTrades: PaperTrade[];
+  latestQualifiedSignalAt: string | null;
+  latestPaperTradeAt: string | null;
+  latestDiagnostics: LatestDiagnostics | null;
+  starvationHours: number;
+  timezone: string;
 }
 
 export default async function HomePage() {
   const dashboard = await getDashboardData();
-  const runtime = getRuntimeStatus(dashboard.latestScan);
+  const scannerHealth = getScannerHealth(dashboard.latestScan);
+  const observationHealth = getStrategyObservationHealth({
+    createdAt: dashboard.strategy?.created_at ?? null,
+    latestQualifiedSignalAt: dashboard.latestQualifiedSignalAt,
+    latestPaperTradeAt: dashboard.latestPaperTradeAt,
+    starvationHours: dashboard.starvationHours,
+    scannerHealthy: scannerHealth.status === "HEALTHY",
+  });
   const paperSummary = summarizePaperTrades(dashboard.paperTrades);
   const deploymentStage = dashboard.deploymentStage || dashboard.strategy?.status || "PAPER";
 
@@ -81,8 +107,10 @@ export default async function HomePage() {
         </div>
 
         <div className="runtime-strip" aria-label="部署安全状态">
-          <span className={`runtime-dot ${runtime.tone}`} aria-hidden="true" />
+          <span className={`runtime-dot ${scannerHealth.tone}`} aria-hidden="true" />
           <strong>{deploymentStage} 观察运行</strong>
+          <span>Scanner {scannerHealth.label}</span>
+          <span>策略观察 {observationHealth.label}</span>
           <span>邮件提醒</span>
           <span>{dashboard.exchangeOrdersEnabled ? "交易接口已启用" : "禁止自动下单"}</span>
         </div>
@@ -94,13 +122,13 @@ export default async function HomePage() {
             <p className="eyebrow">LIVE OPERATIONS</p>
             <h2 id="operations-title">系统运行状态</h2>
           </div>
-          <span className={`health-badge ${runtime.tone}`}>{runtime.label}</span>
+          <span className={`health-badge ${scannerHealth.tone}`}>Scanner Health · {scannerHealth.label}</span>
         </div>
 
         <div className="metric-grid">
           <article className="metric-card">
             <span className="metric-label">最近扫描</span>
-            <strong>{dashboard.latestScan ? formatDate(dashboard.latestScan.started_at) : "等待首次运行"}</strong>
+            <strong>{dashboard.latestScan ? formatDate(dashboard.latestScan.started_at, dashboard.timezone) : "等待首次运行"}</strong>
             <small>{dashboard.latestScan?.status ?? "NO DATA"}</small>
           </article>
           <article className="metric-card">
@@ -114,10 +142,15 @@ export default async function HomePage() {
             <small>{dashboard.latestScan?.emailed_count ?? 0} 封信号邮件</small>
           </article>
           <article className="metric-card">
-            <span className="metric-label">当前策略</span>
-            <strong>{dashboard.strategy?.version ?? "等待配置"}</strong>
-            <small>{dashboard.strategy?.status ?? deploymentStage}</small>
+            <span className="metric-label">策略观察健康</span>
+            <strong>{observationHealth.label}</strong>
+            <small>{observationHealth.status === "STARVED" ? `连续 ${formatObservationDuration(observationHealth.inactivityHours)}无新样本 · 阈值 ${dashboard.starvationHours}h` : dashboard.strategy?.version ?? deploymentStage}</small>
           </article>
+        </div>
+        <div className="diagnostic-strip">
+          <span>最新全局状态：<strong>{dashboard.latestDiagnostics?.global_regime ?? "诊断数据积累中"}</strong></span>
+          <span>主要阻断：<strong>{diagnosticRejectionStage(dashboard.latestDiagnostics?.symbol_diagnostics) ?? "诊断数据积累中"}</strong></span>
+          <span>诊断时间：<strong>{dashboard.latestDiagnostics ? formatDate(dashboard.latestDiagnostics.created_at, dashboard.timezone) : "—"}</strong></span>
         </div>
       </section>
 
@@ -142,8 +175,10 @@ export default async function HomePage() {
 
         {dashboard.signals.length === 0 ? (
           <div className="empty-state">
-            <strong>扫描正常，暂时没有符合条件的机会。</strong>
-            <p>HeYue 不会为了增加邮件数量而降低评分与风险门槛。市场条件满足时，信号会自动保存并发送提醒。</p>
+            {(() => {
+              const message = emptySignalMessage(scannerHealth, observationHealth);
+              return <><strong>{message.title}</strong><p>{message.body}</p></>;
+            })()}
           </div>
         ) : (
           <div className="signal-list">
@@ -155,7 +190,7 @@ export default async function HomePage() {
                     <span className={`side-badge ${signal.side.toLowerCase()}`}>{signal.side}</span>
                     <span className="muted-label">{signal.strategy_family}</span>
                   </div>
-                  <p>{signal.primary_timeframe} · {signal.market_regime} · {formatDate(signal.created_at)}</p>
+                  <p>{signal.primary_timeframe} · {signal.market_regime} · {formatDate(signal.created_at, dashboard.timezone)}</p>
                 </div>
                 <div className="signal-score">
                   <strong>{Number(signal.score).toFixed(1)}</strong>
@@ -202,6 +237,13 @@ export default async function HomePage() {
 }
 
 async function getDashboardData(): Promise<DashboardData> {
+  const environment = getHyEnvironment();
+  const configuredStarvationHours = Number(environment.HY_SIGNAL_STARVATION_HOURS ?? 168);
+  const starvationHours = Number.isFinite(configuredStarvationHours) && configuredStarvationHours > 0
+    ? configuredStarvationHours
+    : 168;
+  const timezone = environment.HY_DEFAULT_TIMEZONE ?? "Asia/Shanghai";
+
   try {
     const supabase = getSupabaseAdmin();
     const [signalsResult, scanResult, strategyResult, settingsResult, paperResult] = await Promise.all([
@@ -218,7 +260,7 @@ async function getDashboardData(): Promise<DashboardData> {
         .maybeSingle(),
       supabase
         .from("hy_strategy_versions")
-        .select("version,status")
+        .select("version,status,created_at")
         .in("status", ["PAPER", "ACTIVE"])
         .order("created_at", { ascending: false })
         .limit(1)
@@ -239,13 +281,57 @@ async function getDashboardData(): Promise<DashboardData> {
     if (error) throw error;
 
     const setting = settingsResult.data?.setting_value as { stage?: string; exchange_orders_enabled?: boolean } | undefined;
+    const strategy = strategyResult.data as StrategySnapshot | null;
+    let latestQualifiedSignalAt: string | null = null;
+    let latestPaperTradeAt: string | null = null;
+    if (strategy?.version) {
+      const [qualifiedResult, forwardResult] = await Promise.all([
+        supabase
+          .from("hy_signals")
+          .select("source_data_timestamp")
+          .eq("strategy_version", strategy.version)
+          .neq("status", "BUDGET_BLOCKED")
+          .order("source_data_timestamp", { ascending: false })
+          .limit(1),
+        supabase
+          .from("hy_paper_trades")
+          .select("created_at")
+          .eq("strategy_version", strategy.version)
+          .order("created_at", { ascending: false })
+          .limit(1),
+      ]);
+      if (qualifiedResult.error) throw qualifiedResult.error;
+      if (forwardResult.error) throw forwardResult.error;
+      latestQualifiedSignalAt = qualifiedResult.data?.[0]?.source_data_timestamp ?? null;
+      latestPaperTradeAt = forwardResult.data?.[0]?.created_at ?? null;
+    }
+
+    let latestDiagnostics: LatestDiagnostics | null = null;
+    const diagnosticsQuery = supabase
+      .from("hy_scan_diagnostics")
+      .select("global_regime,filter_funnel,symbol_diagnostics,created_at")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (strategy?.version) diagnosticsQuery.eq("strategy_version", strategy.version);
+    const diagnosticsResult = await diagnosticsQuery.maybeSingle();
+    if (diagnosticsResult.error) {
+      console.warn("HeYue scan diagnostics are not available yet; using the dashboard fallback.");
+    } else {
+      latestDiagnostics = diagnosticsResult.data as LatestDiagnostics | null;
+    }
+
     return {
       signals: (signalsResult.data ?? []) as RecentSignal[],
       latestScan: scanResult.data as LatestScan | null,
-      strategy: strategyResult.data as StrategySnapshot | null,
+      strategy,
       deploymentStage: setting?.stage ?? "PAPER",
       exchangeOrdersEnabled: setting?.exchange_orders_enabled === true,
       paperTrades: (paperResult.data ?? []) as PaperTrade[],
+      latestQualifiedSignalAt,
+      latestPaperTradeAt,
+      latestDiagnostics,
+      starvationHours,
+      timezone,
     };
   } catch (error) {
     console.warn("HeYue dashboard data is unavailable until Supabase is configured.", error);
@@ -256,17 +342,13 @@ async function getDashboardData(): Promise<DashboardData> {
       deploymentStage: "PAPER",
       exchangeOrdersEnabled: false,
       paperTrades: [],
+      latestQualifiedSignalAt: null,
+      latestPaperTradeAt: null,
+      latestDiagnostics: null,
+      starvationHours,
+      timezone,
     };
   }
-}
-
-function getRuntimeStatus(scan: LatestScan | null): { label: string; tone: "healthy" | "warning" | "danger" } {
-  if (!scan) return { label: "等待运行数据", tone: "warning" };
-  if (scan.status === "FAILED") return { label: "扫描异常", tone: "danger" };
-
-  const ageMinutes = (Date.now() - new Date(scan.started_at).getTime()) / 60_000;
-  if (ageMinutes > 35 || scan.status === "PARTIAL") return { label: "需要检查", tone: "warning" };
-  return { label: "运行正常", tone: "healthy" };
 }
 
 function summarizePaperTrades(trades: PaperTrade[]) {
@@ -291,12 +373,45 @@ function formatPnl(value: number): string {
   return `${sign}${value.toFixed(2)} USDT`;
 }
 
-function formatDate(value: string): string {
+function formatObservationDuration(hours: number): string {
+  return hours >= 24 ? `${(hours / 24).toFixed(1)}天` : `${hours.toFixed(0)}小时`;
+}
+
+function formatDate(value: string, timezone: string): string {
   return new Date(value).toLocaleString("zh-CN", {
-    timeZone: process.env.HY_DEFAULT_TIMEZONE ?? process.env.CS_DEFAULT_TIMEZONE ?? "Asia/Shanghai",
+    timeZone: timezone,
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function diagnosticRejectionStage(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  const counts = new Map<string, number>();
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const diagnostic = item as Record<string, unknown>;
+    if (diagnostic.finalStatus !== "REJECTED" || typeof diagnostic.rejectionStage !== "string") continue;
+    counts.set(diagnostic.rejectionStage, (counts.get(diagnostic.rejectionStage) ?? 0) + 1);
+  }
+  const stageOrder = [
+    "MARKET_DATA",
+    "NO_RAW_CANDIDATE",
+    "SCORE",
+    "SIDE",
+    "STRATEGY_FAMILY",
+    "LOCAL_REGIME",
+    "GLOBAL_REGIME",
+    "RISK_PLAN",
+    "SINGLE_RISK_CAP",
+    "EXECUTION_COST",
+    "COOLDOWN",
+    "CLAIM_REJECTED",
+    "EMAIL_NOT_ALLOWED",
+  ];
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || stageOrder.indexOf(left[0]) - stageOrder.indexOf(right[0]))
+    .at(0)?.[0] ?? null;
 }

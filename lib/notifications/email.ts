@@ -15,8 +15,8 @@ export async function sendSignalEmail(input: SignalEmailInput): Promise<{ messag
   const config = getServerConfig();
   return sendWithConfig(config, {
     subject: `[风险警告] ${input.symbol} ${sideLabel(input.candidate.side)} · ${input.candidate.score.toFixed(1)} 分`,
-    text: buildText(input),
-    html: buildHtml(input),
+    text: buildText(input, config.HY_DEFAULT_TIMEZONE),
+    html: buildHtml(input, config.HY_DEFAULT_TIMEZONE),
   });
 }
 
@@ -51,23 +51,23 @@ async function sendWithConfig(
   config: ServerConfig,
   message: { subject: string; text: string; html: string },
 ): Promise<{ messageId?: string; skipped: boolean }> {
-  const user = config.GMAIL_SMTP_USER;
-  const password = config.GMAIL_SMTP_APP_PASSWORD;
-  const recipient = config.GMAIL_RECIPIENT;
+  const user = config.HY_GMAIL_SMTP_USER;
+  const password = config.HY_GMAIL_SMTP_APP_PASSWORD;
+  const recipient = config.HY_GMAIL_RECIPIENT;
 
   if (!user || !password || !recipient) {
     throw new Error("Gmail SMTP configuration is incomplete");
   }
 
-  if (config.CS_DRY_RUN) {
+  if (config.HY_DRY_RUN) {
     console.info(`[dry-run] would send email: ${message.subject}`);
     return { skipped: true };
   }
 
   const transporter = nodemailer.createTransport({
-    host: config.GMAIL_SMTP_HOST,
-    port: config.GMAIL_SMTP_PORT,
-    secure: config.GMAIL_SMTP_PORT === 465,
+    host: config.HY_GMAIL_SMTP_HOST,
+    port: config.HY_GMAIL_SMTP_PORT,
+    secure: config.HY_GMAIL_SMTP_PORT === 465,
     auth: { user, pass: password.replace(/\s+/g, "") },
   });
 
@@ -82,7 +82,7 @@ async function sendWithConfig(
   return { messageId: result.messageId, skipped: false };
 }
 
-function buildText(input: SignalEmailInput): string {
+function buildText(input: SignalEmailInput, timezone: string): string {
   const warning = input.plan.riskOverSingleCap
     ? "⚠️ 醒目风险警告：按当前假设计算，本信号止损对应的理论亏损超过单笔风险上限；这不是建议扩大风险。"
     : "⚠️ 风险警告：以下理论亏损按假设保证金、杠杆和止损价估算，不代表实际成交损失上限。";
@@ -103,8 +103,8 @@ function buildText(input: SignalEmailInput): string {
     `假设杠杆：${input.plan.assumedLeverage}倍`,
     `理论亏损：${input.plan.theoreticalRiskUsdt.toFixed(4)}U`,
     `评分拆解：${formatScoreComponents(input.candidate)}`,
-    `信号有效截止：${new Date(input.plan.validUntil).toLocaleString("zh-CN", { timeZone: configTimeZone() })}`,
-    `数据时间：${new Date(input.sourceTimestamp).toLocaleString("zh-CN", { timeZone: configTimeZone() })}`,
+    `信号有效截止：${new Date(input.plan.validUntil).toLocaleString("zh-CN", { timeZone: timezone })}`,
+    `数据时间：${new Date(input.sourceTimestamp).toLocaleString("zh-CN", { timeZone: timezone })}`,
     `策略版本：${input.strategyVersion}`,
     "",
     "触发依据：",
@@ -114,7 +114,7 @@ function buildText(input: SignalEmailInput): string {
   ].join("\n");
 }
 
-function buildHtml(input: SignalEmailInput): string {
+function buildHtml(input: SignalEmailInput, timezone: string): string {
   const riskWarning = input.plan.riskOverSingleCap
     ? "background:#8b1e1e;color:#fff;"
     : "background:#fff0d6;color:#7b3f00;";
@@ -125,7 +125,7 @@ function buildHtml(input: SignalEmailInput): string {
     ["止损价", String(input.plan.stopPrice)],
     ["止盈价", `${input.plan.takeProfitPrice}（${input.plan.rewardRisk}R）`],
     ["理论亏损", `${input.plan.theoreticalRiskUsdt.toFixed(4)}U`],
-    ["有效截止", new Date(input.plan.validUntil).toLocaleString("zh-CN", { timeZone: configTimeZone() })],
+    ["有效截止", new Date(input.plan.validUntil).toLocaleString("zh-CN", { timeZone: timezone })],
     ["策略 / 周期", `${input.candidate.strategyFamily} / ${input.candidate.primaryTimeframe}`],
     ["市场状态", `${input.candidate.marketRegime}（依赖 ${input.candidate.regimeDependency}）`],
   ];
@@ -145,10 +145,6 @@ function buildHtml(input: SignalEmailInput): string {
       <p style="color:#7b3f00"><strong>本系统只发送信号，不自动下单、不跟踪真实账户。</strong>请人工核对盘口、滑点、手续费、资金费率、标记价格、强平距离和仓位风险。</p>
       <p style="color:#61716b;font-size:12px">策略版本：${escapeHtml(input.strategyVersion)}；数据时间：${escapeHtml(new Date(input.sourceTimestamp).toISOString())}</p>
     </div>`;
-}
-
-function configTimeZone(): string {
-  return process.env.CS_DEFAULT_TIMEZONE ?? "Asia/Shanghai";
 }
 
 function formatScoreComponents(candidate: ScoredCandidate): string {

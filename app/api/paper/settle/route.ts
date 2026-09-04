@@ -19,10 +19,10 @@ async function settle(request: NextRequest): Promise<NextResponse> {
 
   try {
     config = getServerConfig();
-    if (!isAuthorized(request, config.CRON_SECRET)) {
+    if (!isAuthorized(request, config.HY_CRON_SECRET)) {
       return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
     }
-    if (!config.CS_PAPER_TRADING_ENABLED) {
+    if (!config.HY_PAPER_TRADING_ENABLED) {
       return NextResponse.json({ ok: true, skipped: true, reason: "paper_trading_disabled" });
     }
 
@@ -30,12 +30,12 @@ async function settle(request: NextRequest): Promise<NextResponse> {
     const expiredSignalCount = await expireSignals(supabase);
     const summary = await settleOpenPaperTrades(
       supabase,
-      new BinancePublicClient(config.BINANCE_API_BASE_URL),
+      new BinancePublicClient(config.HY_BINANCE_API_BASE_URL, undefined, config.HY_BINANCE_REQUEST_DELAY_MS),
       {
-        takerFeeRate: config.CS_PAPER_TAKER_FEE_RATE,
-        slippageBps: config.CS_PAPER_SLIPPAGE_BPS,
-        requestConcurrency: config.CS_REQUEST_CONCURRENCY,
-        batchSize: config.CS_PAPER_SETTLEMENT_BATCH_SIZE,
+        takerFeeRate: config.HY_PAPER_TAKER_FEE_RATE,
+        slippageBps: config.HY_PAPER_SLIPPAGE_BPS,
+        requestConcurrency: config.HY_REQUEST_CONCURRENCY,
+        batchSize: config.HY_PAPER_SETTLEMENT_BATCH_SIZE,
       },
     );
 

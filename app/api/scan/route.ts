@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BinancePublicClient, mapWithConcurrency, selectDeepUniverse } from "@/lib/binance/public-client";
 import { getServerConfig, type ServerConfig } from "@/lib/config";
-import { buildTradePlan, estimateExecutionCostRisk } from "@/lib/core/risk";
-import { rankCandidates } from "@/lib/core/scoring";
-import { generateCandidates } from "@/lib/core/strategies";
-import { passesGlobalRegimeFilter, passesRuntimeCandidateFilter } from "@/lib/core/runtime-strategy";
+import {
+  addFilterFunnel,
+  createEmptyFilterFunnel,
+  createMarketDataFailureDiagnostics,
+  evaluateCandidateFunnel,
+  findTopRejectionStage,
+  recordCooldownResult,
+  type PerSymbolDiagnostics,
+} from "@/lib/core/candidate-funnel";
 import { classifyRegime } from "@/lib/core/market-regime";
 import { fifteenMinuteGroupKey, signalKey, zonedDateString } from "@/lib/core/time";
 import type { Instrument, MarketRegime, MarketSnapshot, Timeframe } from "@/lib/core/types";
@@ -19,6 +24,7 @@ import {
   finishNotification,
   hasRecentSignal,
   recordSystemEvent,
+  upsertScanDiagnostics,
   upsertInstruments,
 } from "@/lib/services/signal-repository";
 import { createPaperTrade } from "@/lib/services/paper-trading";
@@ -39,15 +45,19 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
   try {
     const runtimeConfig = getServerConfig();
     config = runtimeConfig;
-    if (!isAuthorized(request, runtimeConfig.CRON_SECRET)) {
+    if (!isAuthorized(request, runtimeConfig.HY_CRON_SECRET)) {
       return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
     }
 
     const batchNumber = parseBatchNumber(request.nextUrl.searchParams.get("batch"));
-    const client = new BinancePublicClient(runtimeConfig.BINANCE_API_BASE_URL);
+    const client = new BinancePublicClient(
+      runtimeConfig.HY_BINANCE_API_BASE_URL,
+      undefined,
+      runtimeConfig.HY_BINANCE_REQUEST_DELAY_MS,
+    );
     const universe = await client.getUniverse();
-    const deepUniverse = selectDeepUniverse(universe, runtimeConfig.CS_TOP_SYMBOLS);
-    const batchCount = Math.max(1, Math.ceil(deepUniverse.length / runtimeConfig.CS_SCAN_BATCH_SIZE));
+    const deepUniverse = selectDeepUniverse(universe, runtimeConfig.HY_TOP_SYMBOLS);
+    const batchCount = Math.max(1, Math.ceil(deepUniverse.length / runtimeConfig.HY_SCAN_BATCH_SIZE));
     if (batchNumber >= batchCount) {
       return NextResponse.json({ ok: false, error: "batch_out_of_range", batchNumber, batchCount }, { status: 400 });
     }
@@ -55,18 +65,18 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
     const scanGroupKey = fifteenMinuteGroupKey(Date.now());
     const runKey = `${scanGroupKey}:batch:${batchNumber}`;
     const batch = deepUniverse.slice(
-      batchNumber * runtimeConfig.CS_SCAN_BATCH_SIZE,
-      (batchNumber + 1) * runtimeConfig.CS_SCAN_BATCH_SIZE,
+      batchNumber * runtimeConfig.HY_SCAN_BATCH_SIZE,
+      (batchNumber + 1) * runtimeConfig.HY_SCAN_BATCH_SIZE,
     );
     supabase = getSupabaseAdmin();
-    const strategy = runtimeConfig.CS_STRATEGY_SOURCE === "DB"
+    const strategy = runtimeConfig.HY_STRATEGY_SOURCE === "DB"
       ? await loadApprovedStrategyPolicy(supabase, runtimeConfig.strategy, {
-        minProfitFactor: runtimeConfig.CS_STRATEGY_APPROVAL_MIN_PF,
-        minOutOfSampleSignals: runtimeConfig.CS_STRATEGY_STAGE === "PAPER"
-          ? runtimeConfig.CS_PAPER_APPROVAL_MIN_OOS_SIGNALS
-          : runtimeConfig.CS_STRATEGY_APPROVAL_MIN_OOS_SIGNALS,
-        maxDrawdownPercent: runtimeConfig.CS_STRATEGY_APPROVAL_MAX_DRAWDOWN_PERCENT,
-      }, runtimeConfig.CS_STRATEGY_STAGE)
+        minProfitFactor: runtimeConfig.HY_STRATEGY_APPROVAL_MIN_PF,
+        minOutOfSampleSignals: runtimeConfig.HY_STRATEGY_STAGE === "PAPER"
+          ? runtimeConfig.HY_PAPER_APPROVAL_MIN_OOS_SIGNALS
+          : runtimeConfig.HY_STRATEGY_APPROVAL_MIN_OOS_SIGNALS,
+        maxDrawdownPercent: runtimeConfig.HY_STRATEGY_APPROVAL_MAX_DRAWDOWN_PERCENT,
+      }, runtimeConfig.HY_STRATEGY_STAGE)
       : runtimeConfig.strategy;
     const globalRegime = await loadGlobalRegime(client, universe, strategy);
     const expiredSignalCount = await expireSignals(supabase);
@@ -81,13 +91,13 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
     });
 
     const errors: Array<{ symbol?: string; stage: string; message: string }> = [];
-    const snapshots = await mapWithConcurrency(batch, runtimeConfig.CS_REQUEST_CONCURRENCY, async (instrument) => {
+    const snapshots = await mapWithConcurrency(batch, runtimeConfig.HY_REQUEST_CONCURRENCY, async (instrument) => {
       try {
         const timeframes = normalizedTimeframes(runtimeConfig.scanTimeframes);
         return await client.getSnapshot(instrument, timeframes, 250, {
-          includeMicrostructure: runtimeConfig.CS_MICROSTRUCTURE_ENABLED,
-          microstructureDepthLimit: runtimeConfig.CS_MICROSTRUCTURE_DEPTH_LIMIT,
-          microstructureTradeLimit: runtimeConfig.CS_MICROSTRUCTURE_TRADE_LIMIT,
+          includeMicrostructure: runtimeConfig.HY_MICROSTRUCTURE_ENABLED,
+          microstructureDepthLimit: runtimeConfig.HY_MICROSTRUCTURE_DEPTH_LIMIT,
+          microstructureTradeLimit: runtimeConfig.HY_MICROSTRUCTURE_TRADE_LIMIT,
         }) as MarketSnapshot;
       } catch (error) {
         errors.push({ symbol: instrument.symbol, stage: "market_data", message: errorMessage(error) });
@@ -95,44 +105,48 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
       }
     });
 
+    const filterFunnel = createEmptyFilterFunnel();
+    const symbolDiagnostics = new Map<string, PerSymbolDiagnostics>();
     const candidates = snapshots
-      .filter((snapshot): snapshot is MarketSnapshot => snapshot !== null)
-      .flatMap((snapshot) => {
-        try {
-          const selected = rankCandidates(generateCandidates(snapshot, strategy.params), {
-            minimumScore: strategy.minScore,
-            sideFilter: strategy.sideFilter,
-            strategyFamily: strategy.strategyFamily,
-          }).find((candidate) => passesRuntimeCandidateFilter(candidate, strategy)
-            && passesGlobalRegimeFilter(candidate, strategy, globalRegime));
-          if (!selected) return [];
-          const repriced = { ...selected, entryPrice: snapshot.tickerPrice };
-          const candidate = snapshot.microstructure
-            ? { ...repriced, microstructure: snapshot.microstructure }
-            : repriced;
-          const plan = buildTradePlan(candidate, snapshot.instrument, strategy.riskPolicy, snapshot.sourceTimestamp);
-          if (plan.riskOverSingleCap) return [];
-          if (
-            strategy.maxExecutionCostRiskFraction !== undefined
-            && estimateExecutionCostRisk(plan, strategy.takerFeeRate, strategy.slippageBps) > strategy.maxExecutionCostRiskFraction
-          ) return [];
-          return [{ snapshot, candidate, plan }];
-        } catch (error) {
-          errors.push({ symbol: snapshot.instrument.symbol, stage: "risk_plan", message: errorMessage(error) });
-          return [];
+      .map((snapshot, index) => {
+        const instrument = batch[index];
+        if (!snapshot) {
+          symbolDiagnostics.set(
+            instrument.symbol,
+            createMarketDataFailureDiagnostics(instrument, "FETCH_ERROR", errors.find((error) => error.symbol === instrument.symbol)?.message ?? null),
+          );
+          return null;
         }
+
+        const evaluation = evaluateCandidateFunnel({ snapshot, strategy, globalRegime });
+        if (evaluation.evaluationError) {
+          errors.push({ symbol: instrument.symbol, stage: "risk_plan", message: evaluation.evaluationError });
+        }
+        addFilterFunnel(filterFunnel, evaluation.counts);
+        symbolDiagnostics.set(snapshot.instrument.symbol, evaluation.diagnostics);
+        if (!evaluation.candidate || !evaluation.plan) return null;
+        const candidate = snapshot.microstructure
+          ? { ...evaluation.candidate, microstructure: snapshot.microstructure }
+          : evaluation.candidate;
+        return { snapshot, candidate, plan: evaluation.plan };
       })
+      .filter((opportunity): opportunity is { snapshot: MarketSnapshot; candidate: NonNullable<ReturnType<typeof evaluateCandidateFunnel>["candidate"]>; plan: NonNullable<ReturnType<typeof evaluateCandidateFunnel>["plan"]> } => opportunity !== null)
       .sort((left, right) => right.candidate.score - left.candidate.score);
 
     let emailedCount = 0;
     let claimedCount = 0;
     for (const opportunity of candidates) {
-      const occurrenceDate = zonedDateString(opportunity.snapshot.sourceTimestamp, runtimeConfig.CS_DEFAULT_TIMEZONE);
+      const diagnostic = symbolDiagnostics.get(opportunity.snapshot.instrument.symbol);
+      const occurrenceDate = zonedDateString(opportunity.snapshot.sourceTimestamp, runtimeConfig.HY_DEFAULT_TIMEZONE);
       if (await hasRecentSignal(supabase, {
         symbol: opportunity.snapshot.instrument.symbol,
         sourceTimestamp: opportunity.snapshot.sourceTimestamp,
         cooldownHours: strategy.cooldownHours,
-      })) continue;
+      })) {
+        if (diagnostic) recordCooldownResult(filterFunnel, diagnostic, false);
+        continue;
+      }
+      if (diagnostic) recordCooldownResult(filterFunnel, diagnostic, true);
       const key = signalKey({
         symbol: opportunity.snapshot.instrument.symbol,
         side: opportunity.candidate.side,
@@ -140,7 +154,7 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
         strategyVersion: strategy.version,
         sourceTimestamp: opportunity.snapshot.sourceTimestamp,
       });
-      const hasEmailConfig = Boolean(runtimeConfig.GMAIL_SMTP_USER && runtimeConfig.GMAIL_SMTP_APP_PASSWORD && runtimeConfig.GMAIL_RECIPIENT);
+      const hasEmailConfig = Boolean(runtimeConfig.HY_GMAIL_SMTP_USER && runtimeConfig.HY_GMAIL_SMTP_APP_PASSWORD && runtimeConfig.HY_GMAIL_RECIPIENT);
       const claim = await claimSignal(
         supabase,
         {
@@ -156,16 +170,31 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
         },
         {
           dailyDate: occurrenceDate,
-          dailyLimitUsdt: runtimeConfig.CS_DAILY_RISK_BUDGET_USDT,
-          singleRiskCapUsdt: runtimeConfig.CS_PER_SIGNAL_RISK_CAP_USDT,
-          dailyEmailCap: runtimeConfig.CS_NEW_EMAIL_DAILY_CAP,
-          scanEmailCap: runtimeConfig.CS_MAX_EMAILS_PER_SCAN,
+          dailyLimitUsdt: runtimeConfig.HY_DAILY_RISK_BUDGET_USDT,
+          singleRiskCapUsdt: runtimeConfig.HY_PER_SIGNAL_RISK_CAP_USDT,
+          dailyEmailCap: runtimeConfig.HY_NEW_EMAIL_DAILY_CAP,
+          scanEmailCap: runtimeConfig.HY_MAX_EMAILS_PER_SCAN,
           shouldEmail: hasEmailConfig,
         },
       );
-      if (claim.status === "CREATED" || claim.status === "REPLACED") claimedCount += 1;
+      if (claim.status === "CREATED" || claim.status === "REPLACED") {
+        claimedCount += 1;
+        filterFunnel.claimed += 1;
+        if (diagnostic) {
+          diagnostic.claimed = true;
+          diagnostic.finalStatus = "CLAIMED";
+        }
+      } else if (claim.status === "BUDGET_BLOCKED" || claim.status === "REJECTED_LOWER_SCORE") {
+        if (diagnostic) {
+          diagnostic.claimed = false;
+          diagnostic.finalStatus = "REJECTED";
+          diagnostic.rejectionStage = "CLAIM_REJECTED";
+        }
+      } else if (diagnostic) {
+        diagnostic.claimed = false;
+      }
       if (
-        runtimeConfig.CS_PAPER_TRADING_ENABLED
+        runtimeConfig.HY_PAPER_TRADING_ENABLED
         && (claim.status === "CREATED" || claim.status === "REPLACED")
       ) {
         try {
@@ -177,9 +206,9 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
             instrument: opportunity.snapshot.instrument,
             strategyVersion: strategy.version,
             sourceTimestamp: opportunity.snapshot.sourceTimestamp,
-            slippageBps: runtimeConfig.CS_PAPER_SLIPPAGE_BPS,
+            slippageBps: runtimeConfig.HY_PAPER_SLIPPAGE_BPS,
           });
-          if (runtimeConfig.CS_PAPER_EXIT_AB_ENABLED && (primaryPaperTradeCreated || claim.status === "CREATED" || claim.status === "REPLACED")) {
+          if (runtimeConfig.HY_PAPER_EXIT_AB_ENABLED && (primaryPaperTradeCreated || claim.status === "CREATED" || claim.status === "REPLACED")) {
             await createPaperTrade(supabase, {
               signalId: claim.signal_id,
               symbol: opportunity.snapshot.instrument.symbol,
@@ -188,9 +217,9 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
               instrument: opportunity.snapshot.instrument,
               strategyVersion: strategy.version,
               sourceTimestamp: opportunity.snapshot.sourceTimestamp,
-              slippageBps: runtimeConfig.CS_PAPER_SLIPPAGE_BPS,
+              slippageBps: runtimeConfig.HY_PAPER_SLIPPAGE_BPS,
               exitProfile: "AB_2_5R",
-              rewardRiskOverride: runtimeConfig.CS_PAPER_EXIT_AB_REWARD_RISK,
+              rewardRiskOverride: runtimeConfig.HY_PAPER_EXIT_AB_REWARD_RISK,
             });
           }
         } catch (error) {
@@ -201,17 +230,29 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
           });
         }
       }
-      if (!claim.email_allowed || !runtimeConfig.GMAIL_RECIPIENT) continue;
+      if (!claim.email_allowed || !runtimeConfig.HY_GMAIL_RECIPIENT) {
+        if (diagnostic) {
+          diagnostic.emailed = false;
+          diagnostic.deliveryStatus = "NOT_ALLOWED";
+        }
+        continue;
+      }
 
       const idempotencyKey = `${claim.signal_id}:GMAIL_SMTP`;
       const subject = `[风险警告] ${opportunity.snapshot.instrument.symbol} ${opportunity.candidate.side} · ${opportunity.candidate.score.toFixed(1)} 分`;
       const created = await createNotification(supabase, {
         signalId: claim.signal_id,
         idempotencyKey,
-        recipient: runtimeConfig.GMAIL_RECIPIENT,
+        recipient: runtimeConfig.HY_GMAIL_RECIPIENT,
         subject,
       });
-      if (!created) continue;
+      if (!created) {
+        if (diagnostic) {
+          diagnostic.emailed = false;
+          diagnostic.deliveryStatus = "DUPLICATE_NOTIFICATION";
+        }
+        continue;
+      }
 
       try {
         const sent = await sendSignalEmail({
@@ -225,11 +266,41 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
           status: sent.skipped ? "SKIPPED" : "SENT",
           providerMessageId: sent.messageId,
         });
-        if (!sent.skipped) emailedCount += 1;
+        if (!sent.skipped) {
+          emailedCount += 1;
+          filterFunnel.emailed += 1;
+          if (diagnostic) {
+            diagnostic.emailed = true;
+            diagnostic.deliveryStatus = "SENT";
+            diagnostic.finalStatus = "EMAILED";
+          }
+        } else if (diagnostic) {
+          diagnostic.emailed = false;
+          diagnostic.deliveryStatus = "SKIPPED_DRY_RUN";
+        }
       } catch (error) {
         errors.push({ symbol: opportunity.snapshot.instrument.symbol, stage: "email", message: errorMessage(error) });
         await finishNotification(supabase, idempotencyKey, { status: "FAILED", error: errorMessage(error) });
+        if (diagnostic) {
+          diagnostic.emailed = false;
+          diagnostic.deliveryStatus = "FAILED";
+        }
       }
+    }
+
+    try {
+      await upsertScanDiagnostics(supabase, {
+        scanRunId,
+        strategyVersion: strategy.version,
+        globalRegime: globalRegime ?? null,
+        deepUniverseSize: deepUniverse.length,
+        deepUniverseSymbols: deepUniverse.map((instrument) => instrument.symbol),
+        filterFunnel,
+        symbolDiagnostics: batch.map((instrument) => symbolDiagnostics.get(instrument.symbol)).filter((diagnostic): diagnostic is PerSymbolDiagnostics => diagnostic !== undefined),
+      });
+    } catch (error) {
+      // Keep scans compatible with a deployment that precedes the additive migration.
+      console.warn(`HeYue scan diagnostics unavailable: ${errorMessage(error)}`);
     }
 
     await completeScanRun(supabase, scanRunId, {
@@ -253,10 +324,12 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
       emailedCount,
       errors,
       strategyVersion: strategy.version,
-      strategySource: runtimeConfig.CS_STRATEGY_SOURCE,
+      strategySource: runtimeConfig.HY_STRATEGY_SOURCE,
       globalRegime,
+      filterFunnel,
+      topRejectionStage: findTopRejectionStage([...symbolDiagnostics.values()]),
       expiredSignalCount,
-      dryRun: runtimeConfig.CS_DRY_RUN,
+      dryRun: runtimeConfig.HY_DRY_RUN,
     });
   } catch (error) {
     const message = errorMessage(error);

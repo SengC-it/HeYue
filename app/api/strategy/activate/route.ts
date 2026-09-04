@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const config = getServerConfig();
-    if (!isAuthorized(request, config.STRATEGY_ADMIN_SECRET)) {
+    if (!isAuthorized(request, config.HY_STRATEGY_ADMIN_SECRET)) {
       return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
     }
 
@@ -23,11 +23,11 @@ export async function POST(request: NextRequest) {
       version: body.version.trim(),
       targetStatus,
       gate: {
-        minProfitFactor: config.CS_STRATEGY_APPROVAL_MIN_PF,
+        minProfitFactor: config.HY_STRATEGY_APPROVAL_MIN_PF,
         minOutOfSampleSignals: targetStatus === "PAPER"
-          ? config.CS_PAPER_APPROVAL_MIN_OOS_SIGNALS
-          : config.CS_STRATEGY_APPROVAL_MIN_OOS_SIGNALS,
-        maxDrawdownPercent: config.CS_STRATEGY_APPROVAL_MAX_DRAWDOWN_PERCENT,
+          ? config.HY_PAPER_APPROVAL_MIN_OOS_SIGNALS
+          : config.HY_STRATEGY_APPROVAL_MIN_OOS_SIGNALS,
+        maxDrawdownPercent: config.HY_STRATEGY_APPROVAL_MAX_DRAWDOWN_PERCENT,
       },
     });
     return NextResponse.json({ ok: true, result });

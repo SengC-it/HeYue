@@ -10,6 +10,7 @@ import type {
   HistoricalDataset,
   PortfolioBacktestResult,
 } from "./types";
+import { quoteVolumeForCandle } from "./volume";
 
 const DEFAULT_TAKER_FEE_RATE = 0.0004;
 const DEFAULT_SLIPPAGE_BPS = 2;
@@ -189,7 +190,7 @@ export function runBacktest(
       continue;
     }
 
-    const trade = evaluateTrade(dataset, entryIndex, executionCandidate, plan, {
+    const trade = evaluateHistoricalTrade(dataset, entryIndex, executionCandidate, plan, {
       maxHoldHours,
       takerFeeRate,
       slippageBps,
@@ -310,7 +311,7 @@ function collectEntryTimes(
   return [...times].sort((left, right) => left - right);
 }
 
-function buildDynamicUniverseByTimestamp(
+export function buildDynamicUniverseByTimestamp(
   datasets: HistoricalDataset[],
   entryTimes: number[],
   requestedSize: number,
@@ -334,7 +335,7 @@ function buildDynamicUniverseByTimestamp(
   return result;
 }
 
-function buildGlobalRegimeByTimestamp(
+export function buildGlobalRegimeByTimestamp(
   datasets: HistoricalDataset[],
   entryTimes: number[],
   referenceSymbol: string,
@@ -354,7 +355,7 @@ function buildGlobalRegimeByTimestamp(
 function quoteVolumePrefix(candles: Candle[]): number[] {
   const prefix = [0];
   for (const candle of candles) {
-    const quoteVolume = Math.max(0, candle.close * candle.volume);
+    const quoteVolume = quoteVolumeForCandle(candle);
     prefix.push(prefix[prefix.length - 1] + quoteVolume);
   }
   return prefix;
@@ -499,7 +500,7 @@ function isAllowedCandidate(
     : candidate.marketRegime === "BEAR";
 }
 
-function snapshotAt(dataset: HistoricalDataset, index: number): MarketSnapshot {
+export function snapshotAt(dataset: HistoricalDataset, index: number): MarketSnapshot {
   const primary = dataset.candles["15m"];
   const sourceTimestamp = primary[index].closeTime;
   const asOf = (candles: Candle[] | undefined) => {
@@ -525,7 +526,7 @@ function snapshotAt(dataset: HistoricalDataset, index: number): MarketSnapshot {
   };
 }
 
-function evaluateTrade(
+export function evaluateHistoricalTrade(
   dataset: HistoricalDataset,
   entryIndex: number,
   candidate: ReturnType<typeof rankCandidates>[number],
@@ -644,7 +645,7 @@ function rollingQuoteVolumeAtIndex(candles: Candle[], index: number, periods: nu
   const start = Math.max(0, index - periods + 1);
   for (let candleIndex = start; candleIndex <= index; candleIndex += 1) {
     const candle = candles[candleIndex];
-    total += candle.close * candle.volume;
+    total += quoteVolumeForCandle(candle);
   }
   return total;
 }
