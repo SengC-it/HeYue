@@ -324,6 +324,11 @@ export function runProductionParityBacktest(
         strategy: options.policy,
         globalRegime: globalRegime?.get(candle.closeTime),
         rankedCandidates: candidateCache?.get(index),
+        // Candidate information is frozen at the signal candle; only the
+        // permitted next-open execution price crosses the execution boundary.
+        // The plan lifetime remains source-timestamp + maxHoldHours like
+        // production; the next open is at most one candle boundary later.
+        executionPrice: entryCandle.open,
       });
       if (!evaluation.candidate || !evaluation.plan) continue;
 

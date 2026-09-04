@@ -124,6 +124,8 @@ export interface CandidateFunnelInput {
   globalRegime?: MarketRegime;
   /** Test seam; production callers leave this unset so ranking stays centralized. */
   rankedCandidates?: ScoredCandidate[];
+  /** Parity-only execution seam; candidate information still comes from the snapshot. */
+  executionPrice?: number;
 }
 
 export function createEmptyFilterFunnel(): FilterFunnelTelemetry {
@@ -290,7 +292,7 @@ export function evaluateCandidateFunnel(input: CandidateFunnelInput): CandidateF
   // preserves the old selection expression instead of trying a lower-ranked
   // candidate after a risk or execution-cost rejection.
   const selected = globalRegimeCandidates[0];
-  const repriced = { ...selected, entryPrice: snapshot.tickerPrice };
+  const repriced = { ...selected, entryPrice: input.executionPrice ?? snapshot.tickerPrice };
   let plan: TradePlan;
   try {
     plan = buildTradePlan(repriced, snapshot.instrument, strategy.riskPolicy, snapshot.sourceTimestamp);
