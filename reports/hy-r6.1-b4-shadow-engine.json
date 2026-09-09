@@ -33,7 +33,7 @@
     "missing_data": "NO_SIGNAL / DATA_INCOMPLETE; no price, Funding, or Mark/Index fallback"
   },
   "storage": {
-    "migration": "supabase/migrations/20260909133000_hy_r61_b4_shadow_signal_engine.sql",
+    "migration": "supabase/migrations/20260909132405_hy_r61_b4_shadow_signal_engine.sql",
     "tables": ["hy_shadow_signal_events", "hy_shadow_signal_outcomes"],
     "events_immutable": true,
     "outcomes_separate": true,
