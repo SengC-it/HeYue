@@ -206,7 +206,7 @@ describe("HY-R6.1 B4 shadow engine", () => {
 
 describe("HY-R6.1 safety and storage contracts", () => {
   it("declares the two new HY namespace tables with RLS and immutable events", () => {
-    const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260909133000_hy_r61_b4_shadow_signal_engine.sql"), "utf8");
+    const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260909132405_hy_r61_b4_shadow_signal_engine.sql"), "utf8");
     const declaredTables = [...migration.matchAll(/create table public\.([a-z0-9_]+)/g)].map((match) => match[1]);
     expect(declaredTables).toEqual([...B4_SHADOW_TABLE_NAMES]);
     expect(declaredTables.every((name) => name.startsWith("hy_"))).toBe(true);
