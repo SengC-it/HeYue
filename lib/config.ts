@@ -74,6 +74,7 @@ const hyEnvironmentNames = [
   "HY_MICROSTRUCTURE_DEPTH_LIMIT",
   "HY_MICROSTRUCTURE_TRADE_LIMIT",
   "HY_DRY_RUN",
+  "HY_B4_SHADOW_ENABLED",
   "HY_OPTIMIZER_DATA_DIR",
   "HY_VALIDATION_SYMBOL_COUNT",
   "HY_VALIDATION_SYMBOLS",
@@ -229,6 +230,7 @@ const serverEnvSchema = z.object({
   ).default(20),
   HY_MICROSTRUCTURE_TRADE_LIMIT: z.coerce.number().int().min(1).max(1000).default(100),
   HY_DRY_RUN: booleanEnv("true"),
+  HY_B4_SHADOW_ENABLED: booleanEnv("false"),
 });
 
 export type ServerConfig = z.infer<typeof serverEnvSchema> & {

@@ -1,0 +1,108 @@
+{
+  "research": "HY-R6.2A B4 SHADOW RELEASE CANDIDATE + DEPLOYMENT PREFLIGHT",
+  "generated_at": "2026-09-09T16:14:59.6592486+08:00",
+  "branch": "feat/hy-r6-b4-shadow",
+  "candidate": "B4 PRICE_PREMIUM_DIVERGENCE",
+  "b4_version": "hy-b4-shadow-v1",
+  "classification": "SHADOW_RELEASE_CANDIDATE_READY",
+  "signal_semantics_unchanged": true,
+  "frozen_semantics": {
+    "long_watch": "price-change percentile <= 0.25 AND premium-change percentile >= 0.75",
+    "short_watch": "price-change percentile >= 0.75 AND premium-change percentile <= 0.25",
+    "event_formation": "FALSE_TO_TRUE_TRANSITION",
+    "dedup": "TRUE_TO_TRUE_NO_DUPLICATE; TRUE_TO_FALSE_RESET",
+    "hypothesis": "DIVERGENCE_REVERSAL"
+  },
+  "feature_flag": {
+    "name": "HY_B4_SHADOW_ENABLED",
+    "default": false,
+    "false_behavior": "zero evaluations, zero shadow DB writes, zero emails, zero PAPER behavior changes"
+  },
+  "scanner_sidecar": {
+    "status": "PASS",
+    "integration": "app/api/scan/route.ts -> runB4ShadowSidecar",
+    "production_strategy_unchanged": true,
+    "paper_candidate_selection_unchanged": true,
+    "email_path_unchanged": true,
+    "failure_isolation": "DEGRADED/FAILED telemetry is returned by the sidecar and is not thrown into the scanner"
+  },
+  "idempotency": {
+    "event": "PASS; deterministic event_id and unique episode_key",
+    "event_identity": "hy-b4-shadow-v1|symbol|market_timestamp|direction|FALSE_TO_TRUE",
+    "outcome": "PASS; unique event_id + horizon_hours and conflict read-back",
+    "direction_aware": "symbol|timestamp|direction|horizon"
+  },
+  "storage": {
+    "migration": "supabase/migrations/20260909133000_hy_r61_b4_shadow_signal_engine.sql",
+    "tables": ["hy_shadow_signal_events", "hy_shadow_signal_outcomes"],
+    "event_immutability": "PASS; update/delete trigger",
+    "outcome_separation": true,
+    "retention_cleanup": "NONE",
+    "migration_validation": "VALIDATED by static object/constraint/RLS audit; not applied"
+  },
+  "rls_privileges": {
+    "status": "PASS",
+    "anon": "NO ACCESS",
+    "authenticated": "NO ACCESS",
+    "service_role": "server-side repository only",
+    "service_role_client_exposure": false,
+    "next_public_service_key": false
+  },
+  "health_telemetry": {
+    "fields": ["enabled", "version", "status", "lastEvaluatedAt", "eligibleSymbols", "conditionsEvaluated", "eventsGenerated", "longWatch", "shortWatch", "duplicatesSuppressed", "dataIncomplete", "pitFailures", "emailSent"],
+    "emailSent": 0
+  },
+  "local_smoke": {
+    "long_event": true,
+    "short_event": true,
+    "dedup": true,
+    "one_hour_maturity": true,
+    "four_hour_maturity": true,
+    "control_unavailable_retained": true,
+    "emails": 0,
+    "private_api": 0,
+    "orders": 0
+  },
+  "hashes": {
+    "r61_engine_source": {
+      "path": "lib/signal-engine/b4-shadow.ts",
+      "sha256": "7c9ef10c38afc3fb228dfad095e0c785ba92168b02bf0c925b957ba4c9a93d0a",
+      "representation": "raw UTF-8 file bytes"
+    },
+    "migration": {
+      "path": "supabase/migrations/20260909133000_hy_r61_b4_shadow_signal_engine.sql",
+      "sha256": "4a86bb8faeaff1472c853ffa4f3a4b1b0d0589ae85e39c72beb6cd49783dc4e1",
+      "representation": "raw UTF-8 file bytes"
+    },
+    "r62a_integration_source": {
+      "paths": ["app/api/scan/route.ts", "lib/signal-engine/b4-shadow-sidecar.ts"],
+      "sha256": "5704296a20527e104d37beaa0eeb6a9920efe466d5dc44a62f53093e48dc0790",
+      "representation": "SHA-256 of path + NUL + raw UTF-8 bytes + NUL for each path, in listed order"
+    },
+    "schema_contract": {
+      "sha256": "1233b3cb94838eac3e47972574aaf2a81ada9f8e8f522c9283f3cb2d0573e9db",
+      "representation": "SHA-256 of canonical JSON: tables, unique keys, indexes, RLS and role access contract"
+    }
+  },
+  "verification": {
+    "tests": "PASS (326/326)",
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "build": "PASS",
+    "diff_check": "PASS",
+    "ci": "PENDING PR CI"
+  },
+  "safety": {
+    "production_modified": false,
+    "supabase_production_modified": false,
+    "vercel_production_modified": false,
+    "production_env_modified": false,
+    "scheduler_modified": false,
+    "emails_sent": 0,
+    "private_api_called": false,
+    "orders": 0,
+    "auto_trading": false,
+    "paper_strategy_modified": false,
+    "commit_created": false
+  }
+}
