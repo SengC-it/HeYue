@@ -3,6 +3,7 @@ node_modules/
 out/
 coverage/
 .vercel/
+.tmp-r6.2a-pr-hygiene/
 .env
 .env.local
 .env.*.local

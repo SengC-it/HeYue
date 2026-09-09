@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getHyEnvironment, getServerConfig, isUsableRuntimeValue } from "@/lib/config";
-import { getB4ShadowHealthDiagnostics } from "@/lib/signal-engine";
+import { getB4ShadowHealthDiagnostics } from "@/lib/signal-engine/b4-shadow-sidecar";
 
 export const runtime = "nodejs";
 

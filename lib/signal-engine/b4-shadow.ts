@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { b4DivergenceDirection } from "@/lib/basis-premium";
 import {
   B4_SHADOW_CANDIDATE,
   B4_SHADOW_CUTOFF_VERSION,
@@ -8,9 +7,11 @@ import {
   B4_SHADOW_FEATURE_VERSION,
   B4_SHADOW_HYPOTHESIS,
   B4_SHADOW_INTERVAL_MS,
+  B4_SHADOW_LOWER_PERCENTILE,
   B4_SHADOW_R57_FEATURE_SPECIFICATION_HASH,
   B4_SHADOW_R58A1_CUTOFF_HASH,
   B4_SHADOW_R58A_HYPOTHESIS_HASH,
+  B4_SHADOW_UPPER_PERCENTILE,
   B4_SHADOW_VERSION,
   type B4ShadowContextState,
   type B4ShadowControlObservation,
@@ -34,6 +35,23 @@ export const B4_SHADOW_MATCH_FIELDS = [
   "funding_state",
   "mark_index_basis_state",
 ] as const;
+
+function b4DivergenceDirection(input: {
+  priceChangePercentile: number | null;
+  premiumChangePercentile: number | null;
+  historyAvailable: boolean;
+}): B4ShadowDirection | null {
+  if (!input.historyAvailable
+    || input.priceChangePercentile === null
+    || input.premiumChangePercentile === null
+    || !Number.isFinite(input.priceChangePercentile)
+    || !Number.isFinite(input.premiumChangePercentile)) return null;
+  if (input.priceChangePercentile >= B4_SHADOW_UPPER_PERCENTILE
+    && input.premiumChangePercentile <= B4_SHADOW_LOWER_PERCENTILE) return "BEARISH";
+  if (input.priceChangePercentile <= B4_SHADOW_LOWER_PERCENTILE
+    && input.premiumChangePercentile >= B4_SHADOW_UPPER_PERCENTILE) return "BULLISH";
+  return null;
+}
 
 export interface B4ShadowEngineOptions {
   enabled?: boolean;

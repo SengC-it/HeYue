@@ -2,11 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   parseB4ShadowEvent,
   parseB4ShadowOutcome,
-} from "@/lib/signal-engine";
+} from "@/lib/signal-engine/b4-shadow-validation";
 import type {
   B4ShadowOutcome,
   B4ShadowSignalEvent,
-} from "@/lib/signal-engine";
+} from "@/lib/signal-engine/b4-shadow-types";
 
 /**
  * Shadow-only persistence. This repository has no delivery or execution

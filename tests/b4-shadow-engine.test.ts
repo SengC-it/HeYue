@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   B4_SHADOW_TABLE_NAMES,
   B4ShadowEngine,
+  b4FrozenContract,
   b4ShadowOutcomeCacheKey,
   calculateB4ShadowOutcome,
   isB4ShadowEnabled,
@@ -19,6 +20,14 @@ const ONE_HOUR = 3_600_000;
 const EVENT_ID = "11111111-1111-4111-8111-111111111111";
 
 describe("HY-R6.1 B4 shadow engine", () => {
+  it("matches the versioned immutable B4 contract fixture", () => {
+    const fixture = JSON.parse(readFileSync(
+      resolve(import.meta.dirname, "fixtures/hy-research-freezes/r6.1-b4-shadow-contract.json"),
+      "utf8",
+    )) as Record<string, unknown>;
+    expect(b4FrozenContract()).toMatchObject(fixture);
+  });
+
   it("maps frozen bullish B4 divergence to a LONG_WATCH shadow event", () => {
     const result = createEngine().evaluate(observation({ price_percentile: 0.25, premium_change_percentile: 0.75 }));
     expect(result.status).toBe("WOULD_HAVE_ALERTED");

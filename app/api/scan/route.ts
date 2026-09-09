@@ -33,7 +33,7 @@ import { loadApprovedStrategyPolicy } from "@/lib/services/strategy-repository";
 import {
   buildB4ShadowObservationFromSnapshot,
   runB4ShadowSidecar,
-} from "@/lib/signal-engine";
+} from "@/lib/signal-engine/b4-shadow-sidecar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
