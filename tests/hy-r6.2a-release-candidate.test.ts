@@ -154,7 +154,7 @@ describe("HY-R6.2A repository idempotency and migration audit", () => {
   });
 
   it("audits only new HY shadow tables, unique identities, RLS, and no client secret exposure", () => {
-    const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260909133000_hy_r61_b4_shadow_signal_engine.sql"), "utf8");
+    const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260909132405_hy_r61_b4_shadow_signal_engine.sql"), "utf8");
     expect(migration).toContain("unique (episode_key)");
     expect(migration).toContain("unique (event_id, horizon_hours)");
     expect(migration).toContain("alter table public.hy_shadow_signal_events enable row level security");

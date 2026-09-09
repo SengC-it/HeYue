@@ -33,7 +33,7 @@ Each event records immutable event-time evidence: symbol, direction, alert type,
 
 The local migration is:
 
-`supabase/migrations/20260909133000_hy_r61_b4_shadow_signal_engine.sql`
+`supabase/migrations/20260909132405_hy_r61_b4_shadow_signal_engine.sql`
 
 It creates only:
 

@@ -33,7 +33,7 @@ The event table has a unique `episode_key`, and the repository conflict path ret
 
 ## Migration and privileges
 
-`supabase/migrations/20260909133000_hy_r61_b4_shadow_signal_engine.sql` creates only:
+`supabase/migrations/20260909132405_hy_r61_b4_shadow_signal_engine.sql` creates only:
 
 - `hy_shadow_signal_events`
 - `hy_shadow_signal_outcomes`
@@ -53,7 +53,7 @@ The local tests prove LONG and SHORT event generation, FALSE→TRUE transitions,
 | Artifact | SHA-256 | Representation |
 |---|---|---|
 | `lib/signal-engine/b4-shadow.ts` | `7c9ef10c38afc3fb228dfad095e0c785ba92168b02bf0c925b957ba4c9a93d0a` | Raw UTF-8 bytes |
-| `supabase/migrations/20260909133000_hy_r61_b4_shadow_signal_engine.sql` | `4a86bb8faeaff1472c853ffa4f3a4b1b0d0589ae85e39c72beb6cd49783dc4e1` | Raw UTF-8 bytes |
+| `supabase/migrations/20260909132405_hy_r61_b4_shadow_signal_engine.sql` | `4a86bb8faeaff1472c853ffa4f3a4b1b0d0589ae85e39c72beb6cd49783dc4e1` | Raw UTF-8 bytes |
 | R6.2A integration (`app/api/scan/route.ts` + sidecar) | `5704296a20527e104d37beaa0eeb6a9920efe466d5dc44a62f53093e48dc0790` | Path + NUL + raw bytes + NUL, ordered |
 | Schema contract | `1233b3cb94838eac3e47972574aaf2a81ada9f8e8f522c9283f3cb2d0573e9db` | Canonical JSON contract |
 
