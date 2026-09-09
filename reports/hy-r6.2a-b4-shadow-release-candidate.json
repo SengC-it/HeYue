@@ -33,7 +33,7 @@
     "direction_aware": "symbol|timestamp|direction|horizon"
   },
   "storage": {
-    "migration": "supabase/migrations/20260909133000_hy_r61_b4_shadow_signal_engine.sql",
+    "migration": "supabase/migrations/20260909132405_hy_r61_b4_shadow_signal_engine.sql",
     "tables": ["hy_shadow_signal_events", "hy_shadow_signal_outcomes"],
     "event_immutability": "PASS; update/delete trigger",
     "outcome_separation": true,
@@ -70,7 +70,7 @@
       "representation": "raw UTF-8 file bytes"
     },
     "migration": {
-      "path": "supabase/migrations/20260909133000_hy_r61_b4_shadow_signal_engine.sql",
+      "path": "supabase/migrations/20260909132405_hy_r61_b4_shadow_signal_engine.sql",
       "sha256": "4a86bb8faeaff1472c853ffa4f3a4b1b0d0589ae85e39c72beb6cd49783dc4e1",
       "representation": "raw UTF-8 file bytes"
     },
