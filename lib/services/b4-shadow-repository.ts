@@ -8,6 +8,8 @@ import type {
   B4ShadowSignalEvent,
 } from "@/lib/signal-engine/b4-shadow-types";
 
+const B4_EVENT_TABLE = "hy_shadow_signal_events";
+
 /**
  * Shadow-only persistence. This repository has no delivery or execution
  * dependency; callers must explicitly choose the shadow tables.
@@ -57,4 +59,19 @@ export async function createB4ShadowSignalOutcome(
     if (!lookupError && existing) return existing as B4ShadowOutcome;
   }
   throw new Error(`Supabase B4 shadow signal outcome insert failed: ${error?.message ?? "empty response"}`);
+}
+
+export async function listB4ShadowSignalEventsForMaturity(
+  supabase: SupabaseClient,
+  evaluatedAt: string,
+  limit = 100,
+): Promise<B4ShadowSignalEvent[]> {
+  const { data, error } = await supabase
+    .from(B4_EVENT_TABLE)
+    .select("*")
+    .lte("market_timestamp", evaluatedAt)
+    .order("market_timestamp", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`Supabase B4 maturity event lookup failed: ${error.message}`);
+  return (data ?? []).map((row) => parseB4ShadowEvent(row));
 }

@@ -28,12 +28,24 @@ import {
   upsertInstruments,
 } from "@/lib/services/signal-repository";
 import { createPaperTrade } from "@/lib/services/paper-trading";
-import { createB4ShadowSignalEvent } from "@/lib/services/b4-shadow-repository";
+import {
+  createB4ShadowSignalEvent,
+  createB4ShadowSignalOutcome,
+  listB4ShadowSignalEventsForMaturity,
+} from "@/lib/services/b4-shadow-repository";
+import {
+  getB4ShadowFeatureStates,
+  type B4ShadowFeatureState,
+  transitionB4ShadowEpisode,
+  upsertB4ShadowFeatureState,
+  upsertB4ShadowRuntimeState,
+} from "@/lib/services/b4-shadow-runtime-repository";
+import type { B4LivePrimitive } from "@/lib/signal-engine/b4-live-features";
 import { loadApprovedStrategyPolicy } from "@/lib/services/strategy-repository";
 import {
-  buildB4ShadowObservationFromSnapshot,
   runB4ShadowSidecar,
 } from "@/lib/signal-engine/b4-shadow-sidecar";
+import { buildB4LiveObservation, matureB4ShadowOutcomes } from "@/lib/signal-engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,17 +122,132 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
       }
     });
 
+    const b4DecisionTime = Date.now();
+    let b4FeatureStates = new Map<string, B4ShadowFeatureState>();
+    if (runtimeConfig.HY_B4_SHADOW_ENABLED) {
+      try {
+        b4FeatureStates = await getB4ShadowFeatureStates(supabase, batch.map((instrument) => instrument.symbol));
+      } catch (error) {
+        errors.push({ symbol: undefined, stage: "b4_feature_state", message: errorMessage(error) });
+      }
+    }
+    const b4FeatureUpdates: Array<{
+      symbol: string;
+      lastEvaluatedClosedBar: string;
+      rollingPrimitives: readonly B4LivePrimitive[];
+    }> = [];
+    const b4Observations = runtimeConfig.HY_B4_SHADOW_ENABLED
+      ? (await mapWithConcurrency(batch, runtimeConfig.HY_REQUEST_CONCURRENCY, async (instrument, index) => {
+        try {
+          const state = b4FeatureStates.get(instrument.symbol);
+          const incremental = state !== undefined && state.rollingPrimitives.length >= 721;
+          let history = await client.getB4LiveHistory(instrument.symbol, b4DecisionTime, incremental ? 3 : 722);
+          const snapshot = snapshots[index];
+          let result = buildB4LiveObservation(
+            history,
+            b4DecisionTime,
+            {
+              marketRegime: snapshot ? classifyRegime(snapshot.candles["4h"] ?? snapshot.candles["1h"] ?? []) : "UNKNOWN",
+              // These are event-time context labels. They are deliberately not
+              // used as B4 feature strength or as an additional cutoff.
+              volatilityBucket: "UNKNOWN",
+              liquidityBucket: "UNKNOWN",
+            },
+          );
+          // A missed hourly tick cannot safely be bridged by a short fetch.
+          // Re-bootstrap the frozen window once, then resume incremental mode.
+          if (result.historyMode === "GAP") {
+            history = await client.getB4LiveHistory(instrument.symbol, b4DecisionTime, 722);
+            result = buildB4LiveObservation(
+              { ...history, storedPrimitiveHistory: undefined },
+              b4DecisionTime,
+              {
+                marketRegime: snapshot ? classifyRegime(snapshot.candles["4h"] ?? snapshot.candles["1h"] ?? []) : "UNKNOWN",
+                volatilityBucket: "UNKNOWN",
+                liquidityBucket: "UNKNOWN",
+              },
+            );
+          }
+          if (result.historyMode !== "UNCHANGED") {
+            b4FeatureUpdates.push({
+              symbol: instrument.symbol,
+              lastEvaluatedClosedBar: result.observation.market_timestamp,
+              rollingPrimitives: result.nextPrimitiveHistory,
+            });
+          }
+          return result.historyMode === "UNCHANGED" ? null : result.observation;
+        } catch (error) {
+          errors.push({ symbol: instrument.symbol, stage: "b4_live_features", message: errorMessage(error) });
+          return null;
+        }
+      })).filter((observation): observation is NonNullable<typeof observation> => observation !== null)
+      : [];
+
     const b4ShadowSidecar = await runB4ShadowSidecar({
       enabled: runtimeConfig.HY_B4_SHADOW_ENABLED,
-      observations: runtimeConfig.HY_B4_SHADOW_ENABLED
-        ? snapshots
-          .filter((snapshot): snapshot is MarketSnapshot => snapshot !== null)
-          .map((snapshot) => buildB4ShadowObservationFromSnapshot(snapshot))
-        : [],
+      observations: b4Observations,
       persistEvent: runtimeConfig.HY_B4_SHADOW_ENABLED
         ? (event) => createB4ShadowSignalEvent(supabase!, event)
         : undefined,
+      syncEpisodeState: runtimeConfig.HY_B4_SHADOW_ENABLED
+        ? (observation, direction, episodeKey) => transitionB4ShadowEpisode(supabase!, {
+          symbol: observation.symbol,
+          direction,
+          marketTimestamp: observation.market_timestamp,
+          episodeKey,
+        })
+        : undefined,
     });
+    const b4HealthDiagnostics = errors.some((error) => error.stage.startsWith("b4_"))
+      ? { ...b4ShadowSidecar.diagnostics, status: "DEGRADED" as const }
+      : b4ShadowSidecar.diagnostics;
+
+    if (runtimeConfig.HY_B4_SHADOW_ENABLED && (b4FeatureUpdates.length > 0 || errors.some((error) => error.stage.startsWith("b4_")))) {
+      try {
+        await Promise.all(b4FeatureUpdates.map((state) => upsertB4ShadowFeatureState(supabase!, state)));
+      } catch (error) {
+        errors.push({ symbol: undefined, stage: "b4_feature_state", message: errorMessage(error) });
+      }
+      try {
+        const priorClosedBars = [...b4FeatureStates.values()].flatMap((state) => state.lastEvaluatedClosedBar === null
+          ? []
+          : [state.lastEvaluatedClosedBar]);
+        const lastClosedBar = [
+          ...b4FeatureUpdates.map((state) => state.lastEvaluatedClosedBar),
+          ...priorClosedBars,
+        ]
+          .sort()
+          .at(-1) ?? null;
+        await upsertB4ShadowRuntimeState(supabase, b4HealthDiagnostics, {
+          lastClosedBarEvaluated: lastClosedBar,
+          lastError: b4ShadowSidecar.errors.at(-1)?.message ?? errors.at(-1)?.message ?? null,
+        });
+      } catch (error) {
+        // The additive R6.2C migration may not yet be applied to a preview
+        // database; never let this telemetry sidecar break the PAPER scan.
+        console.warn(`HeYue B4 runtime state unavailable: ${errorMessage(error)}`);
+      }
+    }
+
+    let b4OutcomeMaturity: Awaited<ReturnType<typeof matureB4ShadowOutcomes>> | null = null;
+    if (runtimeConfig.HY_B4_SHADOW_ENABLED) {
+      try {
+        const maturityTime = new Date().toISOString();
+        const eventsForMaturity = await listB4ShadowSignalEventsForMaturity(supabase, maturityTime);
+        b4OutcomeMaturity = await matureB4ShadowOutcomes({
+          events: eventsForMaturity,
+          evaluatedAt: maturityTime,
+          fetchFutureObservation: (event, horizonHours) => client.getClosedB4FutureObservation(
+            event.symbol,
+            Date.parse(event.market_timestamp) + horizonHours * 3_600_000,
+            Date.parse(maturityTime),
+          ),
+          persistOutcome: (outcome) => createB4ShadowSignalOutcome(supabase!, outcome),
+        });
+      } catch (error) {
+        errors.push({ symbol: undefined, stage: "b4_outcome_maturity", message: errorMessage(error) });
+      }
+    }
 
     const filterFunnel = createEmptyFilterFunnel();
     const symbolDiagnostics = new Map<string, PerSymbolDiagnostics>();
@@ -347,7 +474,8 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
       topRejectionStage: findTopRejectionStage([...symbolDiagnostics.values()]),
       expiredSignalCount,
       dryRun: runtimeConfig.HY_DRY_RUN,
-      b4Shadow: b4ShadowSidecar.diagnostics,
+      b4Shadow: b4HealthDiagnostics,
+      b4OutcomeMaturity,
     });
   } catch (error) {
     const message = errorMessage(error);

@@ -18,6 +18,11 @@ import type {
   BinancePremiumIndex,
   BinanceTicker24h,
 } from "./types";
+import type {
+  B4LiveBar,
+  B4LiveFundingPoint,
+  B4LiveHistory,
+} from "@/lib/signal-engine/b4-live-features";
 
 configureNodeProxy();
 
@@ -145,6 +150,65 @@ export class BinancePublicClient {
     }
 
     return [...rates.values()].sort((left, right) => left.fundingTime - right.fundingTime);
+  }
+
+  /**
+   * Fetch the public, closed 1h histories required by frozen B4. Each kline
+   * endpoint is bounded to the 1500-row Binance maximum; the B4 builder then
+   * applies its own PIT and contiguity checks.
+   */
+  async getB4LiveHistory(
+    symbol: string,
+    decisionTime = Date.now(),
+    limit = 722,
+  ): Promise<B4LiveHistory> {
+    const boundedLimit = Math.min(1500, Math.max(2, Math.floor(limit)));
+    const startTime = decisionTime - boundedLimit * INTERVAL_MS["1h"];
+    const [priceRaw, premiumRaw, markRaw, indexRaw, fundingRates] = await Promise.all([
+      this.get<unknown[][]>("/fapi/v1/klines", { symbol, interval: "1h", limit: String(boundedLimit) }),
+      this.get<unknown[][]>("/fapi/v1/premiumIndexKlines", { symbol, interval: "1h", limit: String(boundedLimit) }),
+      this.get<unknown[][]>("/fapi/v1/markPriceKlines", { symbol, interval: "1h", limit: String(boundedLimit) }),
+      this.get<unknown[][]>("/fapi/v1/indexPriceKlines", { pair: symbol, interval: "1h", limit: String(boundedLimit) }),
+      this.getFundingRatesRange(symbol, startTime, decisionTime),
+    ]);
+    return {
+      symbol,
+      priceBars: priceRaw.map((row) => parseB4Kline(row)),
+      premiumBars: premiumRaw.map((row) => parseB4Kline(row, false)),
+      markBars: markRaw.map((row) => parseB4Kline(row)),
+      indexBars: indexRaw.map((row) => parseB4Kline(row)),
+      fundingRates: fundingRates.map((point) => ({
+        fundingTime: point.fundingTime,
+        fundingRate: point.fundingRate,
+      } satisfies B4LiveFundingPoint)),
+    };
+  }
+
+  async getClosedB4FutureObservation(
+    symbol: string,
+    dueTime: number,
+    decisionTime = Date.now(),
+  ): Promise<{
+    timestamp: string;
+    pit_available_at: string;
+    close_price: number;
+    high_price: number;
+    low_price: number;
+    observation_closed: boolean;
+  } | null> {
+    const candles = await this.getCandles(symbol, "1h", 1000);
+    const candle = candles
+      .filter((item) => item.openTime >= dueTime && item.openTime + INTERVAL_MS["1h"] <= decisionTime)
+      .sort((left, right) => left.openTime - right.openTime)[0];
+    if (!candle) return null;
+    return {
+      timestamp: new Date(candle.openTime).toISOString(),
+      pit_available_at: new Date(candle.openTime + INTERVAL_MS["1h"]).toISOString(),
+      close_price: candle.close,
+      high_price: candle.high,
+      low_price: candle.low,
+      observation_closed: true,
+    };
   }
 
   async getTickerPrice(symbol: string): Promise<number> {
@@ -446,6 +510,23 @@ function roundMetric(value: number): number {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseB4Kline(raw: unknown[], requirePositive = true): B4LiveBar {
+  if (raw.length < 7) throw new Error("Malformed B4 Binance kline");
+  const openTime = Number(raw[0]);
+  const closeTime = Number(raw[6]);
+  const close = Number(raw[4]);
+  const high = Number(raw[2]);
+  const low = Number(raw[3]);
+  if (![openTime, closeTime, close, high, low].every(Number.isFinite)
+    || (requirePositive && (close <= 0 || high <= 0 || low <= 0))
+    || (!requirePositive && (high < low))
+    || (requirePositive && (low > close || high < close))
+    || closeTime <= openTime || closeTime >= openTime + INTERVAL_MS["1h"]) {
+    throw new Error("Malformed B4 Binance kline values");
+  }
+  return { openTime, closeTime, close, high, low };
 }
 
 function configureNodeProxy(): void {

@@ -8,7 +8,7 @@ import {
   type B4ShadowSignalEvent,
 } from "./b4-shadow-types";
 
-export type B4ShadowSidecarStatus = "DISABLED" | "READY" | "DEGRADED" | "FAILED";
+export type B4ShadowSidecarStatus = "DISABLED" | "WARMING_UP" | "READY" | "DEGRADED" | "FAILED";
 
 export interface B4ShadowHealthDiagnostics {
   enabled: boolean;
@@ -37,10 +37,17 @@ export interface B4ShadowSidecarOptions {
   enabled: boolean;
   observations: readonly B4ShadowObservation[];
   persistEvent?: (event: B4ShadowSignalEvent) => Promise<unknown>;
+  /** Durable compare-and-transition; the database is canonical across invocations. */
+  claimEpisode?: (event: B4ShadowSignalEvent) => Promise<boolean>;
+  /** Persist both TRUE and FALSE transitions so a later episode can re-arm. */
+  syncEpisodeState?: (
+    observation: B4ShadowObservation,
+    direction: B4ShadowDirection | null,
+    episodeKey: string | null,
+  ) => Promise<boolean>;
   episodeState?: Map<string, B4ShadowDirection | null>;
 }
 
-const warmEpisodeState = new Map<string, B4ShadowDirection | null>();
 let latestDiagnostics = disabledDiagnostics();
 
 /**
@@ -57,11 +64,12 @@ export async function runB4ShadowSidecar(
 
   const engine = new B4ShadowEngine({
     enabled: true,
-    episodeState: options.episodeState ?? warmEpisodeState,
+    episodeState: options.episodeState,
   });
   const events: B4ShadowSignalEvent[] = [];
   const errors: Array<{ symbol?: string; message: string }> = [];
   let persistenceFailure = false;
+  let durableDuplicateCount = 0;
   for (const observation of options.observations) {
     let evaluation;
     try {
@@ -70,18 +78,31 @@ export async function runB4ShadowSidecar(
       errors.push({ symbol: observation.symbol, message: errorMessage(error) });
       continue;
     }
-    if (evaluation.event === null) continue;
-    events.push(evaluation.event);
-    if (!options.persistEvent) continue;
-    try {
-      await options.persistEvent(evaluation.event);
-    } catch (error) {
-      persistenceFailure = true;
-      errors.push({ symbol: observation.symbol, message: errorMessage(error) });
+    if (evaluation.event !== null) {
+      try {
+        if (options.persistEvent) await options.persistEvent(evaluation.event);
+        const isNewEpisode = options.syncEpisodeState
+          ? await options.syncEpisodeState(observation, evaluation.direction, evaluation.event.episode_key)
+          : options.claimEpisode
+            ? await options.claimEpisode(evaluation.event)
+            : true;
+        if (isNewEpisode) events.push(evaluation.event);
+        else durableDuplicateCount += 1;
+      } catch (error) {
+        persistenceFailure = true;
+        errors.push({ symbol: observation.symbol, message: errorMessage(error) });
+      }
+    } else if (options.syncEpisodeState) {
+      try {
+        await options.syncEpisodeState(observation, evaluation.direction, null);
+      } catch (error) {
+        persistenceFailure = true;
+        errors.push({ symbol: observation.symbol, message: errorMessage(error) });
+      }
     }
   }
 
-  const diagnostics = healthDiagnostics(engine.diagnostics(), errors.length > 0, persistenceFailure);
+  const diagnostics = healthDiagnostics(engine.diagnostics(), errors.length > 0, persistenceFailure, durableDuplicateCount);
   latestDiagnostics = diagnostics;
   return {
     status: diagnostics.status,
@@ -93,7 +114,11 @@ export async function runB4ShadowSidecar(
 
 export function getB4ShadowHealthDiagnostics(enabled = false): B4ShadowHealthDiagnostics {
   if (!enabled) return disabledDiagnostics();
-  return { ...latestDiagnostics, enabled: true };
+  return {
+    ...latestDiagnostics,
+    enabled: true,
+    status: latestDiagnostics.status === "DISABLED" ? "WARMING_UP" : latestDiagnostics.status,
+  };
 }
 
 /**
@@ -148,18 +173,26 @@ function healthDiagnostics(
   diagnostics: B4ShadowDiagnostics,
   hasErrors: boolean,
   persistenceFailure: boolean,
+  durableDuplicateCount: number,
 ): B4ShadowHealthDiagnostics {
+  const status: B4ShadowSidecarStatus = persistenceFailure
+    ? "FAILED"
+    : hasErrors
+      ? "DEGRADED"
+      : !diagnostics.rolling_history_ready
+        ? "WARMING_UP"
+        : "READY";
   return {
     enabled: diagnostics.enabled,
     version: diagnostics.version,
-    status: persistenceFailure ? "FAILED" : hasErrors ? "DEGRADED" : "READY",
+    status,
     lastEvaluatedAt: diagnostics.last_evaluation_at,
     eligibleSymbols: diagnostics.eligible_symbols,
     conditionsEvaluated: diagnostics.b4_conditions_evaluated,
-    eventsGenerated: diagnostics.shadow_events_generated,
+    eventsGenerated: Math.max(0, diagnostics.shadow_events_generated - durableDuplicateCount),
     longWatch: diagnostics.long_watch_count,
     shortWatch: diagnostics.short_watch_count,
-    duplicatesSuppressed: diagnostics.duplicates_suppressed,
+    duplicatesSuppressed: diagnostics.duplicates_suppressed + durableDuplicateCount,
     dataIncomplete: diagnostics.data_incomplete_count,
     pitFailures: diagnostics.pit_failures,
     emailSent: 0,
