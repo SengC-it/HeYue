@@ -28,7 +28,12 @@ import {
   upsertInstruments,
 } from "@/lib/services/signal-repository";
 import { createPaperTrade } from "@/lib/services/paper-trading";
+import { createB4ShadowSignalEvent } from "@/lib/services/b4-shadow-repository";
 import { loadApprovedStrategyPolicy } from "@/lib/services/strategy-repository";
+import {
+  buildB4ShadowObservationFromSnapshot,
+  runB4ShadowSidecar,
+} from "@/lib/signal-engine/b4-shadow-sidecar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,7 +100,7 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
       try {
         const timeframes = normalizedTimeframes(runtimeConfig.scanTimeframes);
         return await client.getSnapshot(instrument, timeframes, 250, {
-          includeMicrostructure: runtimeConfig.HY_MICROSTRUCTURE_ENABLED,
+          includeMicrostructure: runtimeConfig.HY_MICROSTRUCTURE_ENABLED || runtimeConfig.HY_B4_SHADOW_ENABLED,
           microstructureDepthLimit: runtimeConfig.HY_MICROSTRUCTURE_DEPTH_LIMIT,
           microstructureTradeLimit: runtimeConfig.HY_MICROSTRUCTURE_TRADE_LIMIT,
         }) as MarketSnapshot;
@@ -103,6 +108,18 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
         errors.push({ symbol: instrument.symbol, stage: "market_data", message: errorMessage(error) });
         return null;
       }
+    });
+
+    const b4ShadowSidecar = await runB4ShadowSidecar({
+      enabled: runtimeConfig.HY_B4_SHADOW_ENABLED,
+      observations: runtimeConfig.HY_B4_SHADOW_ENABLED
+        ? snapshots
+          .filter((snapshot): snapshot is MarketSnapshot => snapshot !== null)
+          .map((snapshot) => buildB4ShadowObservationFromSnapshot(snapshot))
+        : [],
+      persistEvent: runtimeConfig.HY_B4_SHADOW_ENABLED
+        ? (event) => createB4ShadowSignalEvent(supabase!, event)
+        : undefined,
     });
 
     const filterFunnel = createEmptyFilterFunnel();
@@ -330,6 +347,7 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
       topRejectionStage: findTopRejectionStage([...symbolDiagnostics.values()]),
       expiredSignalCount,
       dryRun: runtimeConfig.HY_DRY_RUN,
+      b4Shadow: b4ShadowSidecar.diagnostics,
     });
   } catch (error) {
     const message = errorMessage(error);

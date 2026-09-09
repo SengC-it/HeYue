@@ -1,0 +1,14 @@
+{
+  "candidate": "B4 PRICE_PREMIUM_DIVERGENCE",
+  "version": "hy-b4-shadow-v1",
+  "hypothesis": "DIVERGENCE_REVERSAL",
+  "feature_version": "hy-r5.7-basis-premium-frozen-v1",
+  "cutoff_version": "hy-r5.8a1-basis-premium-event-cutoff-v1",
+  "hashes": {
+    "r57_feature_specification": "bbdaab9e4cba4c22e50471d538d808fca992e812aaff60a0fc3f70af6020cf51",
+    "r58a_hypothesis": "0b5a790a1783704fc5eb130c4d1fa65c865339e68232fa1b54af9012c58db0f3",
+    "r58a1_cutoff": "95fe1b5a20b0d4804e52dbc01c2f0e730a8f6b377e0c29ae2877875d8f06e800"
+  },
+  "bullish": "price-change percentile <= 0.25 AND premium-change percentile >= 0.75 -> LONG_WATCH",
+  "bearish": "price-change percentile >= 0.75 AND premium-change percentile <= 0.25 -> SHORT_WATCH"
+}

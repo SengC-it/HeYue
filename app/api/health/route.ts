@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getHyEnvironment, getServerConfig, isUsableRuntimeValue } from "@/lib/config";
+import { getB4ShadowHealthDiagnostics } from "@/lib/signal-engine/b4-shadow-sidecar";
 
 export const runtime = "nodejs";
 
@@ -71,6 +72,7 @@ export function getHealthAttestation(environment: RuntimeEnvironment = process.e
       canonicalEnvPrefix: "HY_",
       canonicalDbPrefix: "hy_",
     },
+    b4Shadow: getB4ShadowHealthDiagnostics(config.HY_B4_SHADOW_ENABLED),
     timestamp: new Date().toISOString(),
   };
 }
