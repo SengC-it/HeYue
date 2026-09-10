@@ -36,7 +36,8 @@ export async function matureB4ShadowOutcomes(
   for (const event of options.events) {
     const eventTime = Date.parse(event.market_timestamp);
     if (!Number.isFinite(eventTime) || !Number.isFinite(evaluatedAtMs)) continue;
-    for (const horizonHours of B4_SHADOW_OUTCOME_HORIZONS) {
+    const horizons = event.pending_horizons ?? B4_SHADOW_OUTCOME_HORIZONS;
+    for (const horizonHours of horizons) {
       const dueAt = eventTime + horizonHours * B4_SHADOW_INTERVAL_MS;
       if (dueAt > evaluatedAtMs) {
         result.notDue += 1;

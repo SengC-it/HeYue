@@ -16,6 +16,10 @@ import type {
 import type { B4ShadowObservation } from "../lib/signal-engine/b4-shadow-types";
 import { runB4ShadowSidecar } from "../lib/signal-engine/b4-shadow-sidecar";
 import { readHyEnv } from "../lib/config";
+import { computeResearchB4Features } from "../lib/backtest/b4-frozen-features";
+import { classifyB4BasisBucket, classifyB4FundingBucket, classifyB4Liquidity, classifyB4Volatility } from "../lib/signal-engine";
+import { getLastClosedB4BarCloseTime } from "../lib/binance/public-client";
+import { persistB4ShadowEventAndTransition } from "../lib/services/b4-shadow-repository";
 
 const HOUR = 3_600_000;
 const BASE_TIME = Date.parse("2025-01-01T00:00:00.000Z");
@@ -41,6 +45,36 @@ describe("HY-R6.2C B4 live feature foundation", () => {
     expect(result.historicalPrimitiveCount).toBe(B4_LIVE_ROLLING_LOOKBACK);
     expect(result.observation.funding_state).toMatchObject({ funding_rate: 0.0001 });
     expect(result.observation.mark_index_basis_state).toMatchObject({ mark_price: 102, index_price: 100 });
+  });
+
+  it("keeps a complete 722-bar bootstrap ready when Binance also returns the open bar", () => {
+    const history = createHistory(B4_LIVE_RAW_BAR_REQUIREMENT);
+    const openBar = {
+      openTime: BASE_TIME + B4_LIVE_RAW_BAR_REQUIREMENT * HOUR,
+      closeTime: BASE_TIME + (B4_LIVE_RAW_BAR_REQUIREMENT + 1) * HOUR,
+      close: 107,
+      high: 108,
+      low: 106,
+    } satisfies B4LiveBar;
+    const result = buildB4LiveObservation({
+      ...history,
+      priceBars: [...history.priceBars, openBar],
+      premiumBars: [...history.premiumBars, openBar],
+      markBars: [...history.markBars, openBar],
+      indexBars: [...history.indexBars, openBar],
+      fundingRates: [{ fundingTime: BASE_TIME + 720 * HOUR, fundingRate: 0.0001 }],
+    }, BASE_TIME + B4_LIVE_RAW_BAR_REQUIREMENT * HOUR + 1);
+    expect(result.status).toBe("READY");
+    expect(result.alignedBarCount).toBe(B4_LIVE_RAW_BAR_REQUIREMENT);
+    expect(result.historicalPrimitiveCount).toBe(B4_LIVE_ROLLING_LOOKBACK);
+  });
+
+  it("retains funding context when the latest valid event is older than three hours", () => {
+    const history = createHistory(B4_LIVE_RAW_BAR_REQUIREMENT);
+    history.fundingRates = [{ fundingTime: BASE_TIME + 716 * HOUR, fundingRate: 0.0002 }];
+    const result = buildB4LiveObservation(history, BASE_TIME + B4_LIVE_RAW_BAR_REQUIREMENT * HOUR);
+    expect(result.status).toBe("READY");
+    expect(result.observation.funding_state).toMatchObject({ funding_rate: 0.0002 });
   });
 
   it("stops at warmup and does not shorten history after a gap", () => {
@@ -103,6 +137,65 @@ describe("HY-R6.2C B4 live feature foundation", () => {
     expect(unchanged.historyMode).toBe("UNCHANGED");
     expect(unchanged.historicalPrimitiveCount).toBe(B4_LIVE_ROLLING_LOOKBACK);
   });
+
+  it("keeps a TRUE episode armed through incomplete data", () => {
+    const engine = new B4ShadowEngine({ enabled: true });
+    const bullish = completeObservation({ market_timestamp: "2026-09-09T00:00:00.000Z" });
+    expect(engine.evaluate(bullish).event).not.toBeNull();
+    expect(engine.evaluate({ ...bullish, market_data_complete: false }).status).toBe("DATA_INCOMPLETE");
+    expect(engine.evaluate(bullish).status).toBe("DUPLICATE_SUPPRESSED");
+  });
+
+  it("uses real deterministic context buckets without B4 strength", () => {
+    expect(classifyB4FundingBucket(-0.0002)).toBe("NEGATIVE");
+    expect(classifyB4BasisBucket(4)).toBe("PREMIUM");
+    expect(classifyB4Liquidity(150_000_000)).toBe("DEEP");
+    expect(classifyB4Volatility(Array.from({ length: 30 }, (_, index) => ({
+      openTime: index,
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100,
+      volume: 1,
+      closeTime: index + 1,
+    })))).toBe("LOW");
+  });
+
+  it("keeps research and live frozen arithmetic deterministic", () => {
+    const fixture = JSON.parse(readFileSync(resolve(import.meta.dirname, "fixtures/hy-research-freezes/r6.2c-b4-feature-parity.json"), "utf8")) as {
+      input: {
+        previousPrice: number;
+        currentPrice: number;
+        previousPremium: number;
+        currentPremium: number;
+        priorPriceChanges: { length: number; firstValue: number; firstValueCount: number; remainingValue: number };
+        priorPremiumChanges: { length: number; firstValue: number; firstValueCount: number; remainingValue: number };
+      };
+      expected: Record<string, number | string | null>;
+    };
+    const research = computeResearchB4Features({
+      ...fixture.input,
+      priorPriceChanges: Array.from({ length: fixture.input.priorPriceChanges.length }, (_, index) => index < fixture.input.priorPriceChanges.firstValueCount
+        ? fixture.input.priorPriceChanges.firstValue
+        : fixture.input.priorPriceChanges.remainingValue),
+      priorPremiumChanges: Array.from({ length: fixture.input.priorPremiumChanges.length }, (_, index) => index < fixture.input.priorPremiumChanges.firstValueCount
+        ? fixture.input.priorPremiumChanges.firstValue
+        : fixture.input.priorPremiumChanges.remainingValue),
+    });
+    expect(research.priceChange).toBeCloseTo(Number(fixture.expected.priceChange), 12);
+    expect(research.premiumChange).toBeCloseTo(Number(fixture.expected.premiumChange), 12);
+    expect(research.pricePercentile).toBe(fixture.expected.pricePercentile);
+    expect(research.premiumChangePercentile).toBe(fixture.expected.premiumChangePercentile);
+    expect(research.direction).toBe(fixture.expected.direction);
+  });
+
+  it("uses an explicit closed-bar boundary and independent funding window", () => {
+    const decisionTime = Date.parse("2026-09-10T10:30:00.000Z");
+    expect(new Date(getLastClosedB4BarCloseTime(decisionTime)).toISOString()).toBe("2026-09-10T09:59:59.999Z");
+    const clientSource = readFileSync(resolve(import.meta.dirname, "..", "lib/binance/public-client.ts"), "utf8");
+    expect(clientSource).toContain("endTime: String(lastClosedBarCloseTime)");
+    expect(clientSource).toContain("decisionTime - 24 * INTERVAL_MS[\"1h\"]");
+  });
 });
 
 describe("HY-R6.2C durable episode and maturity contracts", () => {
@@ -150,14 +243,53 @@ describe("HY-R6.2C durable episode and maturity contracts", () => {
     expect(readHyEnv("HY_B4_SHADOW_ENABLED", { CS_B4_SHADOW_ENABLED: "true" })).toBeUndefined();
     const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260909150000_hy_r62c_b4_live_shadow_foundation.sql"), "utf8");
     const tables = [...migration.matchAll(/create table public\.([a-z0-9_]+)/g)].map((match) => match[1]);
-    expect(tables).toEqual(["hy_b4_shadow_feature_state", "hy_b4_shadow_runtime_state"]);
+    expect(tables).toEqual([
+      "hy_b4_shadow_feature_state",
+      "hy_b4_shadow_runtime_state",
+      "hy_b4_shadow_control_candidates",
+    ]);
     expect(tables.every((table) => table.startsWith("hy_"))).toBe(true);
     expect(migration).toContain("hy_b4_shadow_transition_episode");
+    expect(migration).toContain("hy_b4_shadow_transition_and_insert");
+    expect(migration).toContain("hy_b4_shadow_upsert_feature_state");
+    expect(migration).toContain("hy_b4_shadow_control_candidates");
+    expect(migration).toContain("STALE_OBSERVATION");
+    expect(migration).toContain("B4 same-bar transition invariant failure");
+    expect(migration).toContain("set search_path = public, pg_temp");
+    expect(migration).toContain("from public, anon, authenticated");
     expect(migration).toContain("on conflict (symbol) do nothing");
     expect(migration).toContain("hy_b4_shadow_runtime_disabled_consistent");
     expect(migration).toContain("alter table public.hy_b4_shadow_feature_state enable row level security");
     expect(migration).toContain("revoke all on table");
     expect(migration).not.toContain("hy_signal_events");
+  });
+
+  it("wires durable history and atomic sidecar persistence in the scanner", () => {
+    const route = readFileSync(resolve(import.meta.dirname, "..", "app/api/scan/route.ts"), "utf8");
+    expect(route).toContain("storedPrimitiveHistory: state?.rollingPrimitives");
+    expect(route).toContain("persistB4ShadowEventAndTransition");
+    expect(route).toContain("listB4ShadowControlCandidates");
+    expect(route).not.toContain("persistEvent: runtimeConfig.HY_B4_SHADOW_ENABLED");
+  });
+
+  it("uses one RPC boundary for an atomic event transition", async () => {
+    const event = new B4ShadowEngine({ enabled: true }).evaluate(completeObservation()).event!;
+    let rpcCalls = 0;
+    let fromCalls = 0;
+    const client = {
+      rpc(name: string) {
+        rpcCalls += 1;
+        expect(name).toBe("hy_b4_shadow_transition_and_insert");
+        return Promise.resolve({ data: { result: "NEW_EVENT", event_id: event.event_id }, error: null });
+      },
+      from() {
+        fromCalls += 1;
+        throw new Error("atomic path must not use direct table ordering");
+      },
+    } as unknown as import("@supabase/supabase-js").SupabaseClient;
+    await expect(persistB4ShadowEventAndTransition(client, event)).resolves.toMatchObject({ result: "NEW_EVENT" });
+    expect(rpcCalls).toBe(1);
+    expect(fromCalls).toBe(0);
   });
 });
 

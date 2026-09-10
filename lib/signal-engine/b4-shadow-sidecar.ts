@@ -7,6 +7,7 @@ import {
   type B4ShadowObservation,
   type B4ShadowSignalEvent,
 } from "./b4-shadow-types";
+import type { B4ShadowControlObservation } from "./b4-shadow-types";
 
 export type B4ShadowSidecarStatus = "DISABLED" | "WARMING_UP" | "READY" | "DEGRADED" | "FAILED";
 
@@ -24,6 +25,9 @@ export interface B4ShadowHealthDiagnostics {
   dataIncomplete: number;
   pitFailures: number;
   emailSent: 0;
+  lastClosedBarEvaluated?: string | null;
+  warmupReady?: boolean;
+  lastError?: string | null;
 }
 
 export interface B4ShadowSidecarResult {
@@ -37,6 +41,11 @@ export interface B4ShadowSidecarOptions {
   enabled: boolean;
   observations: readonly B4ShadowObservation[];
   persistEvent?: (event: B4ShadowSignalEvent) => Promise<unknown>;
+  /** One server-side RPC owns the event insert and episode transition. */
+  persistAndTransition?: (event: B4ShadowSignalEvent) => Promise<{ result: B4ShadowAtomicResult }>;
+  /** Frozen non-event observations used as future Control-B candidates. */
+  controlCandidates?: readonly B4ShadowControlObservation[];
+  persistControlCandidate?: (observation: B4ShadowObservation) => Promise<unknown>;
   /** Durable compare-and-transition; the database is canonical across invocations. */
   claimEpisode?: (event: B4ShadowSignalEvent) => Promise<boolean>;
   /** Persist both TRUE and FALSE transitions so a later episode can re-arm. */
@@ -47,6 +56,14 @@ export interface B4ShadowSidecarOptions {
   ) => Promise<boolean>;
   episodeState?: Map<string, B4ShadowDirection | null>;
 }
+
+export type B4ShadowAtomicResult =
+  | "NEW_EVENT"
+  | "DUPLICATE_TRUE"
+  | "RESET_FALSE"
+  | "STALE_OBSERVATION"
+  | "SAME_BAR_RETRY"
+  | "INVARIANT_FAILURE";
 
 let latestDiagnostics = disabledDiagnostics();
 
@@ -65,6 +82,7 @@ export async function runB4ShadowSidecar(
   const engine = new B4ShadowEngine({
     enabled: true,
     episodeState: options.episodeState,
+    controlCandidates: options.controlCandidates,
   });
   const events: B4ShadowSignalEvent[] = [];
   const errors: Array<{ symbol?: string; message: string }> = [];
@@ -80,21 +98,28 @@ export async function runB4ShadowSidecar(
     }
     if (evaluation.event !== null) {
       try {
-        if (options.persistEvent) await options.persistEvent(evaluation.event);
-        const isNewEpisode = options.syncEpisodeState
-          ? await options.syncEpisodeState(observation, evaluation.direction, evaluation.event.episode_key)
-          : options.claimEpisode
-            ? await options.claimEpisode(evaluation.event)
-            : true;
+        let isNewEpisode: boolean;
+        if (options.persistAndTransition) {
+          const result = await options.persistAndTransition(evaluation.event);
+          isNewEpisode = result.result === "NEW_EVENT";
+        } else {
+          if (options.persistEvent) await options.persistEvent(evaluation.event);
+          isNewEpisode = options.syncEpisodeState
+            ? await options.syncEpisodeState(observation, evaluation.direction, evaluation.event.episode_key)
+            : options.claimEpisode
+              ? await options.claimEpisode(evaluation.event)
+              : true;
+        }
         if (isNewEpisode) events.push(evaluation.event);
         else durableDuplicateCount += 1;
       } catch (error) {
         persistenceFailure = true;
         errors.push({ symbol: observation.symbol, message: errorMessage(error) });
       }
-    } else if (options.syncEpisodeState) {
+    } else if (evaluation.status === "NO_SIGNAL" && (options.syncEpisodeState || options.persistControlCandidate)) {
       try {
-        await options.syncEpisodeState(observation, evaluation.direction, null);
+        if (options.syncEpisodeState) await options.syncEpisodeState(observation, null, null);
+        if (options.persistControlCandidate) await options.persistControlCandidate(observation);
       } catch (error) {
         persistenceFailure = true;
         errors.push({ symbol: observation.symbol, message: errorMessage(error) });

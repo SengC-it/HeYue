@@ -29,9 +29,11 @@ import {
 } from "@/lib/services/signal-repository";
 import { createPaperTrade } from "@/lib/services/paper-trading";
 import {
-  createB4ShadowSignalEvent,
   createB4ShadowSignalOutcome,
   listB4ShadowSignalEventsForMaturity,
+  listB4ShadowControlCandidates,
+  persistB4ShadowControlCandidate,
+  persistB4ShadowEventAndTransition,
 } from "@/lib/services/b4-shadow-repository";
 import {
   getB4ShadowFeatureStates,
@@ -45,7 +47,12 @@ import { loadApprovedStrategyPolicy } from "@/lib/services/strategy-repository";
 import {
   runB4ShadowSidecar,
 } from "@/lib/signal-engine/b4-shadow-sidecar";
-import { buildB4LiveObservation, matureB4ShadowOutcomes } from "@/lib/signal-engine";
+import {
+  buildB4LiveObservation,
+  classifyB4Liquidity,
+  classifyB4Volatility,
+  matureB4ShadowOutcomes,
+} from "@/lib/signal-engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,11 +131,21 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
 
     const b4DecisionTime = Date.now();
     let b4FeatureStates = new Map<string, B4ShadowFeatureState>();
+    let b4ControlCandidates = [] as Awaited<ReturnType<typeof listB4ShadowControlCandidates>>;
     if (runtimeConfig.HY_B4_SHADOW_ENABLED) {
       try {
         b4FeatureStates = await getB4ShadowFeatureStates(supabase, batch.map((instrument) => instrument.symbol));
       } catch (error) {
         errors.push({ symbol: undefined, stage: "b4_feature_state", message: errorMessage(error) });
+      }
+      try {
+        b4ControlCandidates = await listB4ShadowControlCandidates(
+          supabase,
+          batch.map((instrument) => instrument.symbol),
+          new Date(b4DecisionTime).toISOString(),
+        );
+      } catch (error) {
+        errors.push({ symbol: undefined, stage: "b4_control_candidates", message: errorMessage(error) });
       }
     }
     const b4FeatureUpdates: Array<{
@@ -142,6 +159,7 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
           const state = b4FeatureStates.get(instrument.symbol);
           const incremental = state !== undefined && state.rollingPrimitives.length >= 721;
           let history = await client.getB4LiveHistory(instrument.symbol, b4DecisionTime, incremental ? 3 : 722);
+          history = { ...history, storedPrimitiveHistory: state?.rollingPrimitives };
           const snapshot = snapshots[index];
           let result = buildB4LiveObservation(
             history,
@@ -150,8 +168,8 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
               marketRegime: snapshot ? classifyRegime(snapshot.candles["4h"] ?? snapshot.candles["1h"] ?? []) : "UNKNOWN",
               // These are event-time context labels. They are deliberately not
               // used as B4 feature strength or as an additional cutoff.
-              volatilityBucket: "UNKNOWN",
-              liquidityBucket: "UNKNOWN",
+              volatilityBucket: classifyB4Volatility(snapshot?.candles["1h"] ?? []),
+              liquidityBucket: classifyB4Liquidity(instrument.quoteVolume24h),
             },
           );
           // A missed hourly tick cannot safely be bridged by a short fetch.
@@ -163,8 +181,8 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
               b4DecisionTime,
               {
                 marketRegime: snapshot ? classifyRegime(snapshot.candles["4h"] ?? snapshot.candles["1h"] ?? []) : "UNKNOWN",
-                volatilityBucket: "UNKNOWN",
-                liquidityBucket: "UNKNOWN",
+                volatilityBucket: classifyB4Volatility(snapshot?.candles["1h"] ?? []),
+                liquidityBucket: classifyB4Liquidity(instrument.quoteVolume24h),
               },
             );
           }
@@ -186,8 +204,12 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
     const b4ShadowSidecar = await runB4ShadowSidecar({
       enabled: runtimeConfig.HY_B4_SHADOW_ENABLED,
       observations: b4Observations,
-      persistEvent: runtimeConfig.HY_B4_SHADOW_ENABLED
-        ? (event) => createB4ShadowSignalEvent(supabase!, event)
+      controlCandidates: b4ControlCandidates,
+      persistAndTransition: runtimeConfig.HY_B4_SHADOW_ENABLED
+        ? (event) => persistB4ShadowEventAndTransition(supabase!, event)
+        : undefined,
+      persistControlCandidate: runtimeConfig.HY_B4_SHADOW_ENABLED
+        ? (observation) => persistB4ShadowControlCandidate(supabase!, observation)
         : undefined,
       syncEpisodeState: runtimeConfig.HY_B4_SHADOW_ENABLED
         ? (observation, direction, episodeKey) => transitionB4ShadowEpisode(supabase!, {
@@ -198,15 +220,17 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
         })
         : undefined,
     });
-    const b4HealthDiagnostics = errors.some((error) => error.stage.startsWith("b4_"))
+    let b4HealthDiagnostics = errors.some((error) => error.stage.startsWith("b4_"))
       ? { ...b4ShadowSidecar.diagnostics, status: "DEGRADED" as const }
       : b4ShadowSidecar.diagnostics;
+    let b4LastClosedBar: string | null = null;
 
-    if (runtimeConfig.HY_B4_SHADOW_ENABLED && (b4FeatureUpdates.length > 0 || errors.some((error) => error.stage.startsWith("b4_")))) {
+    if (runtimeConfig.HY_B4_SHADOW_ENABLED) {
       try {
         await Promise.all(b4FeatureUpdates.map((state) => upsertB4ShadowFeatureState(supabase!, state)));
       } catch (error) {
         errors.push({ symbol: undefined, stage: "b4_feature_state", message: errorMessage(error) });
+        b4HealthDiagnostics = { ...b4HealthDiagnostics, status: "DEGRADED" as const };
       }
       try {
         const priorClosedBars = [...b4FeatureStates.values()].flatMap((state) => state.lastEvaluatedClosedBar === null
@@ -218,6 +242,7 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
         ]
           .sort()
           .at(-1) ?? null;
+        b4LastClosedBar = lastClosedBar;
         await upsertB4ShadowRuntimeState(supabase, b4HealthDiagnostics, {
           lastClosedBarEvaluated: lastClosedBar,
           lastError: b4ShadowSidecar.errors.at(-1)?.message ?? errors.at(-1)?.message ?? null,
@@ -246,6 +271,15 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
         });
       } catch (error) {
         errors.push({ symbol: undefined, stage: "b4_outcome_maturity", message: errorMessage(error) });
+        b4HealthDiagnostics = { ...b4HealthDiagnostics, status: "DEGRADED" as const };
+        try {
+          await upsertB4ShadowRuntimeState(supabase, b4HealthDiagnostics, {
+            lastClosedBarEvaluated: b4LastClosedBar,
+            lastError: errorMessage(error),
+          });
+        } catch {
+          // Keep the maturity error isolated from the PAPER scanner.
+        }
       }
     }
 

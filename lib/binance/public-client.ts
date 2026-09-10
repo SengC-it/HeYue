@@ -163,13 +163,43 @@ export class BinancePublicClient {
     limit = 722,
   ): Promise<B4LiveHistory> {
     const boundedLimit = Math.min(1500, Math.max(2, Math.floor(limit)));
-    const startTime = decisionTime - boundedLimit * INTERVAL_MS["1h"];
+    const lastClosedBarCloseTime = getLastClosedB4BarCloseTime(decisionTime);
+    const lastClosedBarOpenTime = lastClosedBarCloseTime - INTERVAL_MS["1h"] + 1;
+    const startTime = Math.max(0, lastClosedBarOpenTime - (boundedLimit - 1) * INTERVAL_MS["1h"]);
+    // Funding is independent from the 3-bar incremental kline fetch. The
+    // latest valid funding event may be several hours older than the current
+    // close and remains the only PIT-safe context to consume.
+    const fundingStartTime = Math.max(0, decisionTime - 24 * INTERVAL_MS["1h"]);
     const [priceRaw, premiumRaw, markRaw, indexRaw, fundingRates] = await Promise.all([
-      this.get<unknown[][]>("/fapi/v1/klines", { symbol, interval: "1h", limit: String(boundedLimit) }),
-      this.get<unknown[][]>("/fapi/v1/premiumIndexKlines", { symbol, interval: "1h", limit: String(boundedLimit) }),
-      this.get<unknown[][]>("/fapi/v1/markPriceKlines", { symbol, interval: "1h", limit: String(boundedLimit) }),
-      this.get<unknown[][]>("/fapi/v1/indexPriceKlines", { pair: symbol, interval: "1h", limit: String(boundedLimit) }),
-      this.getFundingRatesRange(symbol, startTime, decisionTime),
+      this.get<unknown[][]>("/fapi/v1/klines", {
+        symbol,
+        interval: "1h",
+        startTime: String(startTime),
+        endTime: String(lastClosedBarCloseTime),
+        limit: String(boundedLimit),
+      }),
+      this.get<unknown[][]>("/fapi/v1/premiumIndexKlines", {
+        symbol,
+        interval: "1h",
+        startTime: String(startTime),
+        endTime: String(lastClosedBarCloseTime),
+        limit: String(boundedLimit),
+      }),
+      this.get<unknown[][]>("/fapi/v1/markPriceKlines", {
+        symbol,
+        interval: "1h",
+        startTime: String(startTime),
+        endTime: String(lastClosedBarCloseTime),
+        limit: String(boundedLimit),
+      }),
+      this.get<unknown[][]>("/fapi/v1/indexPriceKlines", {
+        pair: symbol,
+        interval: "1h",
+        startTime: String(startTime),
+        endTime: String(lastClosedBarCloseTime),
+        limit: String(boundedLimit),
+      }),
+      this.getFundingRatesRange(symbol, fundingStartTime, decisionTime),
     ]);
     return {
       symbol,
@@ -348,6 +378,13 @@ export class BinancePublicClient {
       quoteVolume24h: ticker?.quoteVolume ? Number(ticker.quoteVolume) : undefined,
     };
   }
+}
+
+/** Millisecond close boundary of the last 1h bar available at decisionTime. */
+export function getLastClosedB4BarCloseTime(decisionTime: number): number {
+  if (!Number.isFinite(decisionTime)) throw new Error("decision time must be finite");
+  const hour = INTERVAL_MS["1h"];
+  return Math.floor(decisionTime / hour) * hour - 1;
 }
 
 export function buildMicrostructure(

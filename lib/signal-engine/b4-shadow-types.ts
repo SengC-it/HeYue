@@ -69,6 +69,8 @@ export interface B4ShadowObservation {
 export interface B4ShadowControlObservation {
   control_event_id: string;
   symbol: string;
+  market_timestamp?: string;
+  reference_price?: number;
   calendar_period: string;
   market_regime: string;
   volatility_bucket: string;
@@ -118,6 +120,8 @@ export interface B4ShadowSignalEvent {
   control_status: B4ShadowControlStatus;
   control_event_id: string | null;
   control_match_key: string;
+  /** Repository-populated pending horizons; not persisted in the event row. */
+  pending_horizons?: readonly (typeof B4_SHADOW_OUTCOME_HORIZONS)[number][];
 }
 
 export interface B4ShadowEvaluation {

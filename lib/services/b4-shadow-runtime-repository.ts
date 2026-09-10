@@ -58,15 +58,12 @@ export async function upsertB4ShadowFeatureState(
     rollingPrimitives: readonly B4LivePrimitive[];
   },
 ): Promise<void> {
-  const { error } = await supabase
-    .from(B4_SHADOW_FEATURE_STATE_TABLE)
-    .upsert({
-      symbol: state.symbol,
-      version: B4_SHADOW_VERSION,
-      last_evaluated_closed_bar: state.lastEvaluatedClosedBar,
-      rolling_primitives: state.rollingPrimitives,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "symbol" });
+  const { error } = await supabase.rpc("hy_b4_shadow_upsert_feature_state", {
+    p_symbol: state.symbol,
+    p_version: B4_SHADOW_VERSION,
+    p_last_evaluated_closed_bar: state.lastEvaluatedClosedBar,
+    p_rolling_primitives: state.rollingPrimitives,
+  });
   if (error) throw new Error(`Supabase B4 feature state upsert failed: ${error.message}`);
 }
 

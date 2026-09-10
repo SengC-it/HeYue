@@ -1,0 +1,29 @@
+{
+  "version": "hy-r6.2c-b4-feature-parity-v1",
+  "source": "R5.7 frozen price/premium arithmetic; no future outcomes",
+  "input": {
+    "previousPrice": 100,
+    "currentPrice": 99,
+    "previousPremium": 0.010,
+    "currentPremium": 0.030,
+    "priorPriceChanges": {
+      "length": 720,
+      "firstValue": -0.011,
+      "firstValueCount": 180,
+      "remainingValue": 0
+    },
+    "priorPremiumChanges": {
+      "length": 720,
+      "firstValue": 0.019,
+      "firstValueCount": 540,
+      "remainingValue": 0.03
+    }
+  },
+  "expected": {
+    "priceChange": -0.01,
+    "premiumChange": 0.02,
+    "pricePercentile": 0.25,
+    "premiumChangePercentile": 0.75,
+    "direction": "BULLISH"
+  }
+}

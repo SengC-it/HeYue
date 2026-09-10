@@ -3,6 +3,7 @@ export {
   B4ShadowEngine,
   b4FrozenContract,
   b4ShadowControlMatchKey,
+  b4ShadowContextValue,
   b4ShadowOutcomeCacheKey,
   calculateB4ShadowOutcome,
   isB4ShadowEnabled,
@@ -37,8 +38,15 @@ export {
   buildB4LiveObservation,
   empiricalPercentile,
 } from "./b4-live-features";
+export type { B4ShadowAtomicResult } from "./b4-shadow-sidecar";
 export { matureB4ShadowOutcomes } from "./b4-outcome-maturity";
 export type { B4OutcomeMaturityOptions, B4OutcomeMaturityResult } from "./b4-outcome-maturity";
+export {
+  classifyB4BasisBucket,
+  classifyB4FundingBucket,
+  classifyB4Liquidity,
+  classifyB4Volatility,
+} from "./b4-context";
 export type {
   B4LiveBar,
   B4LiveContext,

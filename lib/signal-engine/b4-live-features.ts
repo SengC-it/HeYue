@@ -4,6 +4,7 @@ import {
   type B4ShadowContextState,
   type B4ShadowObservation,
 } from "./b4-shadow-types";
+import { classifyB4BasisBucket, classifyB4FundingBucket } from "./b4-context";
 
 /** R5.7 frozen rolling history size for each B4 primitive. */
 export const B4_LIVE_ROLLING_LOOKBACK = 720 as const;
@@ -44,6 +45,8 @@ export interface B4LiveContext {
   marketRegime: string;
   volatilityBucket: string;
   liquidityBucket: string;
+  fundingBucket?: string;
+  markIndexBasisBucket?: string;
 }
 
 export type B4LiveFeatureStatus = "READY" | "WARMING_UP" | "DATA_INCOMPLETE" | "PIT_REJECTED";
@@ -124,7 +127,12 @@ export function buildB4LiveObservation(
       .flatMap((bars) => bars.map((bar) => bar.openTime)),
     0,
   );
-  const hasUnclosedRawBar = latestRawOpenTime + B4_SHADOW_INTERVAL_MS > decisionTime;
+  // Binance may include the currently open bar even when the requested window
+  // is bounded to the last closed boundary. It is intentionally ignored when
+  // the required closed bootstrap window is present. A short/incomplete window
+  // remains PIT-rejected so a premature response cannot be treated as ready.
+  const hasUnclosedRawBar = aligned.length < B4_LIVE_RAW_BAR_REQUIREMENT
+    && latestRawOpenTime + B4_SHADOW_INTERVAL_MS > decisionTime;
   const basisBps = markPrice !== null && indexPrice !== null && indexPrice > 0
     ? (markPrice / indexPrice - 1) * 10_000
     : null;
@@ -164,12 +172,19 @@ export function buildB4LiveObservation(
       ? empiricalPercentile(currentPrimitive.premiumChange, history.map((item) => item.premiumChange))
       : null,
     funding_state: funding === null ? null : {
+      bucket: context.fundingBucket ?? classifyB4FundingBucket(funding.fundingRate),
       funding_rate: funding.fundingRate,
       funding_time: funding.fundingTime,
     },
     mark_index_basis_state: markPrice === null || indexPrice === null
       ? null
-      : { mark_price: markPrice, index_price: indexPrice, basis_bps: basisBps },
+      : {
+        bucket: context.markIndexBasisBucket
+          ?? (basisBps === null ? "UNKNOWN" : classifyB4BasisBucket(basisBps)),
+        mark_price: markPrice,
+        index_price: indexPrice,
+        basis_bps: basisBps,
+      },
     mark_price: markPrice,
     index_price: indexPrice,
     market_regime: context.marketRegime,

@@ -107,8 +107,8 @@ export function b4ShadowControlMatchKey(observation: Pick<
     observation.market_regime,
     observation.volatility_bucket,
     observation.liquidity_bucket,
-    contextValue(observation.funding_state),
-    contextValue(observation.mark_index_basis_state),
+    b4ShadowContextValue(observation.funding_state),
+    b4ShadowContextValue(observation.mark_index_basis_state),
   ].join("|");
 }
 
@@ -121,10 +121,13 @@ export function selectPitSafeControlB(
     mark_index_basis_state: B4ShadowContextState;
   });
   const decisionTime = Date.parse(observation.decision_timestamp);
+  const marketTime = Date.parse(observation.market_timestamp);
   const selected = candidates
     .filter((candidate) => candidate.symbol === observation.symbol)
     .filter((candidate) => controlContextKey(candidate) === matchKey)
     .filter((candidate) => Date.parse(candidate.pit_available_at) <= decisionTime)
+    .filter((candidate) => candidate.market_timestamp === undefined
+      || Date.parse(candidate.market_timestamp) <= marketTime)
     .sort((left, right) => Date.parse(right.pit_available_at) - Date.parse(left.pit_available_at)
       || left.control_event_id.localeCompare(right.control_event_id))[0];
   return {
@@ -218,13 +221,11 @@ export class B4ShadowEngine {
     }
 
     if (!observation.market_data_complete) {
-      this.resetEpisode(observation.symbol);
       this.counters.data_incomplete_count += 1;
       this.marketDataStatus = "INCOMPLETE";
       return { status: "DATA_INCOMPLETE", event: null, direction: null, reason: "MARKET_DATA_INCOMPLETE" };
     }
     if (!this.isPitSafeObservation(observation)) {
-      this.resetEpisode(observation.symbol);
       this.counters.pit_failures += 1;
       this.marketDataStatus = "PIT_REJECTED";
       return { status: "PIT_REJECTED", event: null, direction: null, reason: "PIT_NOT_AVAILABLE" };
@@ -237,7 +238,6 @@ export class B4ShadowEngine {
       || observation.premium_change_percentile === null
       || observation.funding_state === null
       || observation.mark_index_basis_state === null) {
-      this.resetEpisode(observation.symbol);
       this.counters.data_incomplete_count += 1;
       this.marketDataStatus = "INCOMPLETE";
       return { status: "DATA_INCOMPLETE", event: null, direction: null, reason: "B4_INPUT_INCOMPLETE" };
@@ -316,10 +316,6 @@ export class B4ShadowEngine {
     };
   }
 
-  private resetEpisode(symbol: string): void {
-    this.episodeState.set(symbol, null);
-  }
-
   private isPitSafeObservation(observation: B4ShadowObservation): boolean {
     const marketTime = Date.parse(observation.market_timestamp);
     const decisionTime = Date.parse(observation.decision_timestamp);
@@ -368,7 +364,7 @@ function controlContextKey(candidate: B4ShadowControlObservation): string {
   ].join("|");
 }
 
-function contextValue(value: B4ShadowContextState): string {
+export function b4ShadowContextValue(value: B4ShadowContextState): string {
   return Object.keys(value).sort().map((key) => `${key}=${String(value[key])}`).join(",");
 }
 
