@@ -31,10 +31,13 @@ import { createPaperTrade } from "@/lib/services/paper-trading";
 import {
   createB4ShadowSignalOutcome,
   listB4ShadowSignalEventsForMaturity,
-  listB4ShadowControlCandidates,
   persistB4ShadowControlCandidate,
   persistB4ShadowEventAndTransition,
 } from "@/lib/services/b4-shadow-repository";
+import {
+  finalizeB4ShadowContext,
+  stageB4ShadowContext,
+} from "@/lib/services/b4-shadow-context-repository";
 import {
   getB4ShadowFeatureStates,
   type B4ShadowFeatureState,
@@ -49,8 +52,9 @@ import {
 } from "@/lib/signal-engine/b4-shadow-sidecar";
 import {
   buildB4LiveObservation,
-  classifyB4Liquidity,
-  classifyB4Volatility,
+  calculateB4FourHourReturn,
+  calculateB4Volatility,
+  meanB4QuoteVolume,
   matureB4ShadowOutcomes,
 } from "@/lib/signal-engine";
 
@@ -117,7 +121,9 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
     const errors: Array<{ symbol?: string; stage: string; message: string }> = [];
     const snapshots = await mapWithConcurrency(batch, runtimeConfig.HY_REQUEST_CONCURRENCY, async (instrument) => {
       try {
-        const timeframes = normalizedTimeframes(runtimeConfig.scanTimeframes);
+        const timeframes = normalizedTimeframes(runtimeConfig.HY_B4_SHADOW_ENABLED
+          ? [...runtimeConfig.scanTimeframes, "1h", "4h"]
+          : runtimeConfig.scanTimeframes);
         return await client.getSnapshot(instrument, timeframes, 250, {
           includeMicrostructure: runtimeConfig.HY_MICROSTRUCTURE_ENABLED || runtimeConfig.HY_B4_SHADOW_ENABLED,
           microstructureDepthLimit: runtimeConfig.HY_MICROSTRUCTURE_DEPTH_LIMIT,
@@ -131,21 +137,11 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
 
     const b4DecisionTime = Date.now();
     let b4FeatureStates = new Map<string, B4ShadowFeatureState>();
-    let b4ControlCandidates = [] as Awaited<ReturnType<typeof listB4ShadowControlCandidates>>;
     if (runtimeConfig.HY_B4_SHADOW_ENABLED) {
       try {
         b4FeatureStates = await getB4ShadowFeatureStates(supabase, batch.map((instrument) => instrument.symbol));
       } catch (error) {
         errors.push({ symbol: undefined, stage: "b4_feature_state", message: errorMessage(error) });
-      }
-      try {
-        b4ControlCandidates = await listB4ShadowControlCandidates(
-          supabase,
-          batch.map((instrument) => instrument.symbol),
-          new Date(b4DecisionTime).toISOString(),
-        );
-      } catch (error) {
-        errors.push({ symbol: undefined, stage: "b4_control_candidates", message: errorMessage(error) });
       }
     }
     const b4FeatureUpdates: Array<{
@@ -165,11 +161,10 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
             history,
             b4DecisionTime,
             {
-              marketRegime: snapshot ? classifyRegime(snapshot.candles["4h"] ?? snapshot.candles["1h"] ?? []) : "UNKNOWN",
-              // These are event-time context labels. They are deliberately not
-              // used as B4 feature strength or as an additional cutoff.
-              volatilityBucket: classifyB4Volatility(snapshot?.candles["1h"] ?? []),
-              liquidityBucket: classifyB4Liquidity(instrument.quoteVolume24h),
+              marketRegime: "UNKNOWN",
+              volatilityBucket: calculateB4Volatility(snapshot?.candles["1h"] ?? []).bucket,
+              liquidityBucket: "UNKNOWN",
+              volatilityValue: calculateB4Volatility(snapshot?.candles["1h"] ?? []).value,
             },
           );
           // A missed hourly tick cannot safely be bridged by a short fetch.
@@ -180,9 +175,10 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
               { ...history, storedPrimitiveHistory: undefined },
               b4DecisionTime,
               {
-                marketRegime: snapshot ? classifyRegime(snapshot.candles["4h"] ?? snapshot.candles["1h"] ?? []) : "UNKNOWN",
-                volatilityBucket: classifyB4Volatility(snapshot?.candles["1h"] ?? []),
-                liquidityBucket: classifyB4Liquidity(instrument.quoteVolume24h),
+                marketRegime: "UNKNOWN",
+                volatilityBucket: calculateB4Volatility(snapshot?.candles["1h"] ?? []).bucket,
+                liquidityBucket: "UNKNOWN",
+                volatilityValue: calculateB4Volatility(snapshot?.candles["1h"] ?? []).value,
               },
             );
           }
@@ -193,7 +189,20 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
               rollingPrimitives: result.nextPrimitiveHistory,
             });
           }
-          return result.historyMode === "UNCHANGED" ? null : result.observation;
+          if (result.status !== "READY") return null;
+          const quoteVolumeMean = meanB4QuoteVolume(snapshot?.candles["1h"] ?? []);
+          const fourHourReturn = calculateB4FourHourReturn(snapshot?.candles["4h"] ?? []);
+          if (quoteVolumeMean === null || fourHourReturn === null || result.observation.volatility_value === null) return null;
+          await stageB4ShadowContext(supabase!, {
+            contextGroupKey: scanGroupKey,
+            marketTimestamp: result.observation.market_timestamp,
+            expectedSymbols: deepUniverse.map((item) => item.symbol),
+            observation: result.observation,
+            fourHourReturn,
+            quoteVolumeMean,
+            volatilityValue: result.observation.volatility_value,
+          });
+          return result.observation;
         } catch (error) {
           errors.push({ symbol: instrument.symbol, stage: "b4_live_features", message: errorMessage(error) });
           return null;
@@ -201,10 +210,26 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
       })).filter((observation): observation is NonNullable<typeof observation> => observation !== null)
       : [];
 
+    let finalizedB4Observations: typeof b4Observations = [];
+    if (runtimeConfig.HY_B4_SHADOW_ENABLED) {
+      const timestamps = [...new Set(b4Observations.map((observation) => observation.market_timestamp))];
+      for (const marketTimestamp of timestamps) {
+        try {
+          const finalized = await finalizeB4ShadowContext(supabase, {
+            contextGroupKey: scanGroupKey,
+            marketTimestamp,
+            expectedSymbols: deepUniverse.map((item) => item.symbol),
+          });
+          if (finalized.status === "FINALIZED") finalizedB4Observations.push(...finalized.observations);
+        } catch (error) {
+          errors.push({ symbol: undefined, stage: "b4_context_finalize", message: errorMessage(error) });
+        }
+      }
+    }
+
     const b4ShadowSidecar = await runB4ShadowSidecar({
       enabled: runtimeConfig.HY_B4_SHADOW_ENABLED,
-      observations: b4Observations,
-      controlCandidates: b4ControlCandidates,
+      observations: finalizedB4Observations,
       persistAndTransition: runtimeConfig.HY_B4_SHADOW_ENABLED
         ? (event) => persistB4ShadowEventAndTransition(supabase!, event)
         : undefined,
@@ -264,6 +289,7 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
           evaluatedAt: maturityTime,
           fetchFutureObservation: (event, horizonHours) => client.getClosedB4FutureObservation(
             event.symbol,
+            Date.parse(event.market_timestamp),
             Date.parse(event.market_timestamp) + horizonHours * 3_600_000,
             Date.parse(maturityTime),
           ),

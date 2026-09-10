@@ -9,7 +9,6 @@ import {
   b4ShadowOutcomeCacheKey,
   calculateB4ShadowOutcome,
   isB4ShadowEnabled,
-  selectPitSafeControlB,
 } from "../lib/signal-engine";
 import { B4_SHADOW_VERSION } from "../lib/signal-engine/b4-shadow-types";
 import { createB4ShadowSignalEvent } from "../lib/services/b4-shadow-repository";
@@ -76,7 +75,7 @@ describe("HY-R6.1 B4 shadow engine", () => {
 
   it("retains immutable Funding and Mark/Index event-time context", () => {
     const funding = { bucket: "POSITIVE", rate: 0.0002 };
-    const basis = { bucket: "DISCOUNT", mark_price: 99, index_price: 100 };
+    const basis = { bucket: "NEGATIVE", mark_price: 99, index_price: 100 };
     const result = createEngine().evaluate(observation({
       funding_state: funding,
       mark_index_basis_state: basis,
@@ -97,6 +96,14 @@ describe("HY-R6.1 B4 shadow engine", () => {
       high_price: 102,
       low_price: 99,
       observation_closed: true,
+      path: [{
+        timestamp: "2026-09-09T01:00:00.000Z",
+        pit_available_at: "2026-09-09T02:00:00.000Z",
+        close_price: 101,
+        high_price: 102,
+        low_price: 99,
+        observation_closed: true,
+      }],
     }, evaluatedAt);
     const fourHour = calculateB4ShadowOutcome(event, 4, {
       timestamp: "2026-09-09T04:00:00.000Z",
@@ -105,6 +112,14 @@ describe("HY-R6.1 B4 shadow engine", () => {
       high_price: 104,
       low_price: 98,
       observation_closed: true,
+      path: [1, 2, 3, 4].map((hour) => ({
+        timestamp: `2026-09-09T0${hour}:00:00.000Z`,
+        pit_available_at: `2026-09-09T0${hour + 1}:00:00.000Z`,
+        close_price: 100 + hour,
+        high_price: 101 + hour,
+        low_price: 99 + hour,
+        observation_closed: true,
+      })),
     }, evaluatedAt);
     const early = calculateB4ShadowOutcome(event, 4, {
       timestamp: "2026-09-09T03:00:00.000Z",
@@ -113,6 +128,14 @@ describe("HY-R6.1 B4 shadow engine", () => {
       high_price: 104,
       low_price: 98,
       observation_closed: true,
+      path: [1, 2, 3].map((hour) => ({
+        timestamp: `2026-09-09T0${hour}:00:00.000Z`,
+        pit_available_at: `2026-09-09T0${hour + 1}:00:00.000Z`,
+        close_price: 100 + hour,
+        high_price: 101 + hour,
+        low_price: 99 + hour,
+        observation_closed: true,
+      })),
     }, evaluatedAt);
     expect(oneHour?.outcome_status).toBe("MATURED");
     expect(fourHour?.outcome_status).toBe("MATURED");
@@ -129,6 +152,14 @@ describe("HY-R6.1 B4 shadow engine", () => {
       high_price: 102,
       low_price: 99,
       observation_closed: true,
+      path: [{
+        timestamp: "2026-09-09T01:00:00.000Z",
+        pit_available_at: "2026-09-09T02:00:00.000Z",
+        close_price: 101,
+        high_price: 102,
+        low_price: 99,
+        observation_closed: true,
+      }],
     };
     const bullishOutcome = calculateB4ShadowOutcome(bullish, 1, future, "2026-09-09T03:00:00.000Z")!;
     const bearishOutcome = calculateB4ShadowOutcome(bearish, 1, { ...future, close_price: 99 }, "2026-09-09T03:00:00.000Z")!;
@@ -137,45 +168,10 @@ describe("HY-R6.1 B4 shadow engine", () => {
     expect(b4ShadowOutcomeCacheKey(bullish, 1)).not.toBe(b4ShadowOutcomeCacheKey(bearish, 1));
   });
 
-  it("selects only a PIT-safe Control B and excludes B4 feature strength", () => {
-    const input = observation({
-      funding_state: { bucket: "NEUTRAL" },
-      mark_index_basis_state: { bucket: "NEUTRAL" },
-    });
-    const selected = selectPitSafeControlB(input, [
-      {
-        control_event_id: "future-control",
-        symbol: "BTCUSDT",
-        calendar_period: "2026-Q3",
-        market_regime: "BULL",
-        volatility_bucket: "NORMAL",
-        liquidity_bucket: "LIQUID",
-        funding_state: "bucket=NEUTRAL",
-        mark_index_basis_state: "bucket=NEUTRAL",
-        pit_available_at: "2026-09-09T02:00:00.000Z",
-      },
-      {
-        control_event_id: "legal-control",
-        symbol: "BTCUSDT",
-        calendar_period: "2026-Q3",
-        market_regime: "BULL",
-        volatility_bucket: "NORMAL",
-        liquidity_bucket: "LIQUID",
-        funding_state: "bucket=NEUTRAL",
-        mark_index_basis_state: "bucket=NEUTRAL",
-        pit_available_at: "2026-09-09T01:00:00.000Z",
-      },
-    ]);
-    expect(selected.status).toBe("AVAILABLE");
-    expect(selected.control_event_id).toBe("legal-control");
-    expect(selected.match_key).not.toContain("percentile");
-  });
-
   it("reports CONTROL_UNAVAILABLE rather than deleting a signal", () => {
-    const input = observation();
-    const selected = selectPitSafeControlB(input, []);
-    expect(selected.status).toBe("CONTROL_UNAVAILABLE");
-    expect(selected.control_event_id).toBeNull();
+    const result = createEngine().evaluate(observation());
+    expect(result.event?.control_status).toBe("CONTROL_UNAVAILABLE");
+    expect(result.event?.control_event_id).toBeNull();
   });
 
   it("defaults the feature flag to disabled and writes only the shadow table", async () => {
@@ -257,9 +253,11 @@ function observation(overrides: Partial<B4ShadowObservation> = {}): B4ShadowObse
     mark_index_basis_state: { bucket: "NEUTRAL", basis: 0 },
     mark_price: 100,
     index_price: 100,
-    market_regime: "BULL",
+    market_regime: "UP",
     volatility_bucket: "NORMAL",
-    liquidity_bucket: "LIQUID",
+    liquidity_bucket: "HIGH",
+    volatility_value: 0.01,
+    liquidity_percentile: 0.75,
     calendar_period: "2026-Q3",
     observation_closed: true,
     market_data_complete: true,

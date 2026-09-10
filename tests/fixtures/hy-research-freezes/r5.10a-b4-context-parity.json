@@ -1,0 +1,26 @@
+{
+  "sourceExperiment": "HY-R5.10A B4 holdout protocol freeze",
+  "sourceArtifact": "reports/hy-r5.10a-b4-holdout-protocol-freeze.json",
+  "sourceCommit": "0d63821324f753bb5cce00a4849617cc6ece83c4",
+  "outcomeFree": true,
+  "sample": {
+    "symbol": "BTCUSDT",
+    "timestamp": "2026-07-31T05:00:00.000Z",
+    "fourHourReturns": [-0.006, 0.001, 0.007],
+    "volatilityValue": 0.01,
+    "quoteVolumePeers": [100, 200, 300],
+    "quoteVolumeMean": 200,
+    "fundingRate": -0.0001,
+    "basis": 0.0001,
+    "expected": {
+      "calendarPeriod": "2026-Q3",
+      "marketRegime": "RANGE",
+      "volatilityBucket": "NORMAL",
+      "liquidityPercentile": 0.6666666666666666,
+      "liquidityBucket": "HIGH",
+      "fundingBucket": "NEGATIVE",
+      "basisBucket": "POSITIVE",
+      "matchKey": "BTCUSDT|2026-Q3|RANGE|NORMAL|HIGH|NEGATIVE|POSITIVE"
+    }
+  }
+}

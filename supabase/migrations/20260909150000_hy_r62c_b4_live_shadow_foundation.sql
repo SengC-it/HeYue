@@ -55,20 +55,56 @@ create table public.hy_b4_shadow_control_candidates (
   market_regime text not null check (market_regime <> 'UNKNOWN'),
   volatility_bucket text not null check (volatility_bucket <> 'UNKNOWN'),
   liquidity_bucket text not null check (liquidity_bucket <> 'UNKNOWN'),
-  funding_state text not null,
-  mark_index_basis_state text not null,
+  funding_bucket text not null check (funding_bucket in ('NEGATIVE', 'NEUTRAL', 'POSITIVE')),
+  mark_index_basis_bucket text not null check (mark_index_basis_bucket in ('EXTREME_NEGATIVE', 'NEGATIVE', 'NEUTRAL', 'POSITIVE', 'EXTREME_POSITIVE')),
+  claimed_by_event_id uuid references public.hy_shadow_signal_events(event_id) on delete restrict,
+  claimed_at timestamptz,
   source text not null check (source = 'B4_NON_EVENT'),
   created_at timestamptz not null default now(),
   unique (symbol, market_timestamp),
+  unique (claimed_by_event_id),
   check (pit_available_at >= market_timestamp)
 );
 
 create index hy_b4_shadow_control_candidates_match_idx
   on public.hy_b4_shadow_control_candidates (
     symbol, calendar_period, market_regime, volatility_bucket,
-    liquidity_bucket, funding_state, mark_index_basis_state,
+    liquidity_bucket, funding_bucket, mark_index_basis_bucket,
     pit_available_at desc
   );
+
+create table public.hy_b4_shadow_context_staging (
+  context_group_key text not null,
+  market_timestamp timestamptz not null,
+  symbol text not null check (char_length(btrim(symbol)) between 1 and 32),
+  expected_symbols text[] not null check (cardinality(expected_symbols) > 0),
+  pit_available_at timestamptz not null,
+  reference_price numeric(30, 12) not null check (reference_price > 0),
+  quote_volume_mean numeric(30, 12) not null check (quote_volume_mean >= 0),
+  four_hour_return numeric(30, 18) not null,
+  volatility_value numeric(30, 18) not null check (volatility_value >= 0),
+  volatility_bucket text not null check (volatility_bucket in ('LOW', 'NORMAL', 'HIGH')),
+  funding_bucket text not null check (funding_bucket in ('NEGATIVE', 'NEUTRAL', 'POSITIVE')),
+  mark_index_basis_bucket text not null check (mark_index_basis_bucket in ('EXTREME_NEGATIVE', 'NEGATIVE', 'NEUTRAL', 'POSITIVE', 'EXTREME_POSITIVE')),
+  observation jsonb not null check (jsonb_typeof(observation) = 'object'),
+  created_at timestamptz not null default now(),
+  primary key (context_group_key, market_timestamp, symbol)
+);
+
+create table public.hy_b4_shadow_context_finalized (
+  context_group_key text not null,
+  market_timestamp timestamptz not null,
+  expected_symbols text[] not null,
+  market_regime text not null check (market_regime in ('UP', 'DOWN', 'RANGE')),
+  context_rows jsonb not null check (jsonb_typeof(context_rows) = 'array'),
+  finalized_at timestamptz not null default now(),
+  primary key (context_group_key, market_timestamp)
+);
+
+create index hy_b4_shadow_context_staging_timestamp_idx
+  on public.hy_b4_shadow_context_staging (context_group_key, market_timestamp, symbol);
+create index hy_b4_shadow_context_finalized_timestamp_idx
+  on public.hy_b4_shadow_context_finalized (market_timestamp desc);
 
 -- The row lock makes TRUE/FALSE transitions safe across Vercel invocations.
 -- The placeholder insert closes the first-observation race before the row lock
@@ -221,6 +257,9 @@ declare
   v_previous_closed_bar timestamptz;
   v_previous_episode_key text;
   v_inserted integer;
+  v_control_status text := 'CONTROL_UNAVAILABLE';
+  v_control_event_id uuid;
+  v_control_match_key text;
 begin
   if p_event is null or jsonb_typeof(p_event) <> 'object' then
     raise exception 'B4 event object is required';
@@ -244,6 +283,15 @@ begin
   end if;
   v_event_id := (p_event->>'event_id')::uuid;
   v_closed_bar := (p_event->>'market_timestamp')::timestamptz;
+  v_control_match_key := concat_ws('|',
+    v_symbol,
+    p_event->>'calendar_period',
+    p_event->>'market_regime',
+    p_event->>'volatility_bucket',
+    p_event->>'liquidity_bucket',
+    p_event->'funding_state'->>'bucket',
+    p_event->'mark_index_basis_state'->>'bucket'
+  );
 
   insert into public.hy_b4_shadow_feature_state (symbol, version)
   values (v_symbol, v_version)
@@ -256,11 +304,15 @@ begin
    for update;
 
   if v_previous_closed_bar is not null and v_closed_bar < v_previous_closed_bar then
-    return jsonb_build_object('result', 'STALE_OBSERVATION', 'event_id', null);
+    return jsonb_build_object('result', 'STALE_OBSERVATION', 'event_id', null,
+      'control_status', v_control_status, 'control_event_id', null,
+      'control_match_key', v_control_match_key);
   end if;
   if v_previous_closed_bar is not null and v_closed_bar = v_previous_closed_bar then
     if v_previous_direction = v_direction and v_previous_episode_key = v_episode_key then
-      return jsonb_build_object('result', 'SAME_BAR_RETRY', 'event_id', v_event_id);
+      return jsonb_build_object('result', 'SAME_BAR_RETRY', 'event_id', v_event_id,
+        'control_status', v_control_status, 'control_event_id', null,
+        'control_match_key', v_control_match_key);
     end if;
     raise exception 'B4 same-bar transition invariant failure';
   end if;
@@ -271,7 +323,29 @@ begin
            current_episode_key = v_episode_key,
            updated_at = now()
      where symbol = v_symbol;
-    return jsonb_build_object('result', 'DUPLICATE_TRUE', 'event_id', v_event_id);
+    return jsonb_build_object('result', 'DUPLICATE_TRUE', 'event_id', v_event_id,
+      'control_status', v_control_status, 'control_event_id', null,
+      'control_match_key', v_control_match_key);
+  end if;
+
+  select control_event_id
+    into v_control_event_id
+    from public.hy_b4_shadow_control_candidates
+   where symbol = v_symbol
+     and calendar_period = p_event->>'calendar_period'
+     and market_regime = p_event->>'market_regime'
+     and volatility_bucket = p_event->>'volatility_bucket'
+     and liquidity_bucket = p_event->>'liquidity_bucket'
+     and funding_bucket = p_event->'funding_state'->>'bucket'
+     and mark_index_basis_bucket = p_event->'mark_index_basis_state'->>'bucket'
+     and claimed_by_event_id is null
+     and pit_available_at <= (p_event->>'created_at')::timestamptz
+     and market_timestamp <= v_closed_bar
+   order by pit_available_at desc, market_timestamp desc, control_event_id
+   for update skip locked
+   limit 1;
+  if v_control_event_id is not null then
+    v_control_status := 'AVAILABLE';
   end if;
 
   insert into public.hy_shadow_signal_events (
@@ -314,16 +388,24 @@ begin
     p_event->>'pit_status',
     p_event->>'dedup_state',
     p_event->>'shadow_status',
-    p_event->>'control_status',
-    nullif(p_event->>'control_event_id', ''),
-    p_event->>'control_match_key'
+    v_control_status,
+    v_control_event_id,
+    v_control_match_key
   ) on conflict (episode_key) do nothing;
   get diagnostics v_inserted = row_count;
   if v_inserted = 0 then
     select event_id into v_event_id
       from public.hy_shadow_signal_events
      where episode_key = v_episode_key;
-    return jsonb_build_object('result', 'DUPLICATE_TRUE', 'event_id', v_event_id);
+    return jsonb_build_object('result', 'DUPLICATE_TRUE', 'event_id', v_event_id,
+      'control_status', v_control_status, 'control_event_id', v_control_event_id,
+      'control_match_key', v_control_match_key);
+  end if;
+
+  if v_control_event_id is not null then
+    update public.hy_b4_shadow_control_candidates
+       set claimed_by_event_id = v_event_id, claimed_at = now()
+     where control_event_id = v_control_event_id;
   end if;
 
   update public.hy_b4_shadow_feature_state
@@ -332,23 +414,188 @@ begin
          current_episode_key = v_episode_key,
          updated_at = now()
    where symbol = v_symbol;
-  return jsonb_build_object('result', 'NEW_EVENT', 'event_id', v_event_id);
+  return jsonb_build_object('result', 'NEW_EVENT', 'event_id', v_event_id,
+    'control_status', v_control_status, 'control_event_id', v_control_event_id,
+    'control_match_key', v_control_match_key);
+end;
+$$;
+
+-- Durable cross-sectional staging. A batch may only contribute PIT-safe
+-- primitives; the finalized rows are immutable evidence for one full universe.
+create or replace function public.hy_b4_shadow_stage_and_finalize(
+  p_context_group_key text,
+  p_market_timestamp timestamptz,
+  p_symbol text,
+  p_expected_symbols text[],
+  p_observation jsonb,
+  p_pit_available_at timestamptz,
+  p_reference_price numeric,
+  p_quote_volume_mean numeric,
+  p_four_hour_return numeric,
+  p_volatility_value numeric,
+  p_volatility_bucket text,
+  p_funding_bucket text,
+  p_mark_index_basis_bucket text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_expected text[];
+  v_rows jsonb;
+  v_median numeric;
+begin
+  if nullif(btrim(p_context_group_key), '') is null
+     or p_market_timestamp is null
+     or p_symbol is null
+     or p_expected_symbols is null
+     or cardinality(p_expected_symbols) = 0
+     or not (p_symbol = any(p_expected_symbols))
+     or jsonb_typeof(p_observation) <> 'object'
+     or p_pit_available_at < p_market_timestamp
+     or p_reference_price <= 0
+     or p_quote_volume_mean < 0
+     or p_volatility_value < 0
+     or p_volatility_bucket not in ('LOW', 'NORMAL', 'HIGH')
+     or p_funding_bucket not in ('NEGATIVE', 'NEUTRAL', 'POSITIVE')
+     or p_mark_index_basis_bucket not in ('EXTREME_NEGATIVE', 'NEGATIVE', 'NEUTRAL', 'POSITIVE', 'EXTREME_POSITIVE') then
+    raise exception 'invalid B4 context staging payload';
+  end if;
+
+  v_expected := array(select distinct value from unnest(p_expected_symbols) value order by value);
+  perform pg_advisory_xact_lock(hashtext(p_context_group_key || '|' || p_market_timestamp::text));
+
+  -- A context group is one frozen universe snapshot. If another batch arrives
+  -- with a different universe, retain the staged evidence but fail closed.
+  if exists (
+    select 1 from public.hy_b4_shadow_context_staging
+     where context_group_key = p_context_group_key
+       and market_timestamp = p_market_timestamp
+       and expected_symbols <> v_expected
+  ) then
+    return jsonb_build_object('status', 'WAITING', 'context_rows', '[]'::jsonb);
+  end if;
+
+  insert into public.hy_b4_shadow_context_staging (
+    context_group_key, market_timestamp, symbol, expected_symbols,
+    pit_available_at, reference_price, quote_volume_mean, four_hour_return,
+    volatility_value, volatility_bucket, funding_bucket,
+    mark_index_basis_bucket, observation
+  ) values (
+    p_context_group_key, p_market_timestamp, p_symbol, v_expected,
+    p_pit_available_at, p_reference_price, p_quote_volume_mean, p_four_hour_return,
+    p_volatility_value, p_volatility_bucket, p_funding_bucket,
+    p_mark_index_basis_bucket, p_observation
+  ) on conflict (context_group_key, market_timestamp, symbol) do update
+    set expected_symbols = excluded.expected_symbols,
+        pit_available_at = excluded.pit_available_at,
+        reference_price = excluded.reference_price,
+        quote_volume_mean = excluded.quote_volume_mean,
+        four_hour_return = excluded.four_hour_return,
+        volatility_value = excluded.volatility_value,
+        volatility_bucket = excluded.volatility_bucket,
+        funding_bucket = excluded.funding_bucket,
+        mark_index_basis_bucket = excluded.mark_index_basis_bucket,
+        observation = excluded.observation;
+
+  if exists (
+    select 1 from public.hy_b4_shadow_context_finalized
+     where context_group_key = p_context_group_key and market_timestamp = p_market_timestamp
+  ) then
+    if (select expected_symbols from public.hy_b4_shadow_context_finalized
+         where context_group_key = p_context_group_key and market_timestamp = p_market_timestamp) <> v_expected then
+      return jsonb_build_object('status', 'WAITING', 'context_rows', '[]'::jsonb);
+    end if;
+    select context_rows into v_rows
+      from public.hy_b4_shadow_context_finalized
+     where context_group_key = p_context_group_key and market_timestamp = p_market_timestamp;
+    return jsonb_build_object('status', 'FINALIZED', 'context_rows', v_rows);
+  end if;
+
+  if (select count(*) from public.hy_b4_shadow_context_staging
+       where context_group_key = p_context_group_key and market_timestamp = p_market_timestamp) <> cardinality(v_expected)
+      or exists (
+       select 1 from unnest(v_expected) expected(symbol)
+        where not exists (
+          select 1 from public.hy_b4_shadow_context_staging staged
+           where staged.context_group_key = p_context_group_key
+             and staged.market_timestamp = p_market_timestamp
+             and staged.symbol = expected.symbol
+         )
+      )
+      or exists (
+        select 1 from public.hy_b4_shadow_context_staging staged
+         where staged.context_group_key = p_context_group_key
+           and staged.market_timestamp = p_market_timestamp
+           and staged.expected_symbols <> v_expected
+      ) then
+    return jsonb_build_object('status', 'WAITING', 'context_rows', '[]'::jsonb);
+  end if;
+
+  select percentile_cont(0.5) within group (order by four_hour_return)
+    into v_median
+    from public.hy_b4_shadow_context_staging
+   where context_group_key = p_context_group_key and market_timestamp = p_market_timestamp;
+
+  select jsonb_agg(
+    jsonb_set(
+      jsonb_set(
+        jsonb_set(observation, '{market_regime}', to_jsonb(
+          case when v_median > 0.005 then 'UP' when v_median < -0.005 then 'DOWN' else 'RANGE' end
+        )),
+        '{liquidity_percentile}', to_jsonb((select count(*) from public.hy_b4_shadow_context_staging peer
+          where peer.context_group_key = staged.context_group_key
+            and peer.market_timestamp = staged.market_timestamp
+            and peer.quote_volume_mean <= staged.quote_volume_mean)::numeric / cardinality(v_expected))
+      ),
+      '{liquidity_bucket}', to_jsonb(case
+        when (select count(*) from public.hy_b4_shadow_context_staging peer
+          where peer.context_group_key = staged.context_group_key
+            and peer.market_timestamp = staged.market_timestamp
+            and peer.quote_volume_mean <= staged.quote_volume_mean)::numeric / cardinality(v_expected) <= 0.33 then 'LOW'
+        when (select count(*) from public.hy_b4_shadow_context_staging peer
+          where peer.context_group_key = staged.context_group_key
+            and peer.market_timestamp = staged.market_timestamp
+            and peer.quote_volume_mean <= staged.quote_volume_mean)::numeric / cardinality(v_expected) <= 0.66 then 'NORMAL'
+        else 'HIGH' end)
+    ) order by symbol
+  ) into v_rows
+    from public.hy_b4_shadow_context_staging staged
+   where context_group_key = p_context_group_key and market_timestamp = p_market_timestamp;
+
+  insert into public.hy_b4_shadow_context_finalized (
+    context_group_key, market_timestamp, expected_symbols, market_regime, context_rows
+  ) values (
+    p_context_group_key, p_market_timestamp, v_expected,
+    case when v_median > 0.005 then 'UP' when v_median < -0.005 then 'DOWN' else 'RANGE' end,
+    v_rows
+  ) on conflict (context_group_key, market_timestamp) do nothing;
+
+  return jsonb_build_object('status', 'FINALIZED', 'context_rows', v_rows);
 end;
 $$;
 
 alter table public.hy_b4_shadow_feature_state enable row level security;
 alter table public.hy_b4_shadow_runtime_state enable row level security;
 alter table public.hy_b4_shadow_control_candidates enable row level security;
+alter table public.hy_b4_shadow_context_staging enable row level security;
+alter table public.hy_b4_shadow_context_finalized enable row level security;
 
 revoke all on table
   public.hy_b4_shadow_feature_state,
   public.hy_b4_shadow_runtime_state,
-  public.hy_b4_shadow_control_candidates
+  public.hy_b4_shadow_control_candidates,
+  public.hy_b4_shadow_context_staging,
+  public.hy_b4_shadow_context_finalized
 from public, anon, authenticated;
 
 grant select, insert, update on table public.hy_b4_shadow_feature_state to service_role;
 grant select, insert, update on table public.hy_b4_shadow_runtime_state to service_role;
 grant select, insert, update on table public.hy_b4_shadow_control_candidates to service_role;
+grant select, insert, update on table public.hy_b4_shadow_context_staging to service_role;
+grant select on table public.hy_b4_shadow_context_finalized to service_role;
 
 revoke all on function public.hy_b4_shadow_transition_episode(text, text, timestamptz, text, text)
 from public, anon, authenticated;
@@ -363,4 +610,9 @@ to service_role;
 revoke all on function public.hy_b4_shadow_transition_and_insert(jsonb)
 from public, anon, authenticated;
 grant execute on function public.hy_b4_shadow_transition_and_insert(jsonb)
+to service_role;
+
+revoke all on function public.hy_b4_shadow_stage_and_finalize(text, timestamptz, text, text[], jsonb, timestamptz, numeric, numeric, numeric, numeric, text, text, text)
+from public, anon, authenticated;
+grant execute on function public.hy_b4_shadow_stage_and_finalize(text, timestamptz, text, text[], jsonb, timestamptz, numeric, numeric, numeric, numeric, text, text, text)
 to service_role;

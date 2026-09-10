@@ -38,6 +38,8 @@ export const b4ShadowObservationSchema = z.object({
   market_regime: z.string().trim().min(1).max(64),
   volatility_bucket: z.string().trim().min(1).max(64),
   liquidity_bucket: z.string().trim().min(1).max(64),
+  volatility_value: finiteNumber.nullable(),
+  liquidity_percentile: finiteNumber.min(0).max(1).nullable(),
   calendar_period: z.string().trim().min(1).max(64),
   observation_closed: z.boolean(),
   market_data_complete: z.boolean(),
@@ -52,6 +54,17 @@ export const b4ShadowFutureObservationSchema = z.object({
   high_price: positiveNumber,
   low_price: positiveNumber,
   observation_closed: z.boolean(),
+  path: z.array(z.object({
+    timestamp,
+    pit_available_at: timestamp,
+    close_price: positiveNumber,
+    high_price: positiveNumber,
+    low_price: positiveNumber,
+    observation_closed: z.boolean(),
+  }).strict().refine(
+    (value) => value.high_price >= value.low_price,
+    "path high_price must be greater than or equal to low_price",
+  )).optional(),
 }).strict().refine(
   (value) => value.high_price >= value.low_price,
   "high_price must be greater than or equal to low_price",

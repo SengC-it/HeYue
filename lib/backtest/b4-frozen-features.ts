@@ -1,5 +1,4 @@
 import { B4_SHADOW_LOWER_PERCENTILE, B4_SHADOW_UPPER_PERCENTILE } from "@/lib/signal-engine/b4-shadow-types";
-import { empiricalPercentile } from "@/lib/signal-engine/b4-live-features";
 
 export interface FrozenB4FeatureInput {
   previousPrice: number;
@@ -28,8 +27,8 @@ export function computeResearchB4Features(input: FrozenB4FeatureInput): FrozenB4
   }
   const priceChange = input.currentPrice / input.previousPrice - 1;
   const premiumChange = input.currentPremium - input.previousPremium;
-  const pricePercentile = empiricalPercentile(priceChange, input.priorPriceChanges);
-  const premiumChangePercentile = empiricalPercentile(premiumChange, input.priorPremiumChanges);
+  const pricePercentile = researchEmpiricalPercentile(priceChange, input.priorPriceChanges);
+  const premiumChangePercentile = researchEmpiricalPercentile(premiumChange, input.priorPremiumChanges);
   if (pricePercentile === null || premiumChangePercentile === null) throw new Error("B4 parity percentile unavailable");
   const direction = pricePercentile <= B4_SHADOW_LOWER_PERCENTILE
     && premiumChangePercentile >= B4_SHADOW_UPPER_PERCENTILE
@@ -39,4 +38,9 @@ export function computeResearchB4Features(input: FrozenB4FeatureInput): FrozenB4
       ? "BEARISH"
       : null;
   return { priceChange, premiumChange, pricePercentile, premiumChangePercentile, direction };
+}
+
+function researchEmpiricalPercentile(value: number, priorValues: readonly number[]): number | null {
+  if (!Number.isFinite(value) || priorValues.length === 0 || priorValues.some((item) => !Number.isFinite(item))) return null;
+  return priorValues.filter((item) => item <= value).length / priorValues.length;
 }

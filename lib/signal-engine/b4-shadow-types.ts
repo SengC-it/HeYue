@@ -59,31 +59,13 @@ export interface B4ShadowObservation {
   market_regime: string;
   volatility_bucket: string;
   liquidity_bucket: string;
+  volatility_value: number | null;
+  liquidity_percentile: number | null;
   calendar_period: string;
   observation_closed: boolean;
   market_data_complete: boolean;
   rolling_history_ready: boolean;
   pit_safe: boolean;
-}
-
-export interface B4ShadowControlObservation {
-  control_event_id: string;
-  symbol: string;
-  market_timestamp?: string;
-  reference_price?: number;
-  calendar_period: string;
-  market_regime: string;
-  volatility_bucket: string;
-  liquidity_bucket: string;
-  funding_state: string;
-  mark_index_basis_state: string;
-  pit_available_at: string;
-}
-
-export interface B4ShadowControlSelection {
-  status: B4ShadowControlStatus;
-  control_event_id: string | null;
-  match_key: string;
 }
 
 export interface B4ShadowSignalEvent {
@@ -149,6 +131,16 @@ export interface B4ShadowDiagnostics {
 }
 
 export interface B4ShadowFutureObservation {
+  timestamp: string;
+  pit_available_at: string;
+  close_price: number;
+  high_price: number;
+  low_price: number;
+  observation_closed: boolean;
+  path?: readonly B4ShadowPathObservation[];
+}
+
+export interface B4ShadowPathObservation {
   timestamp: string;
   pit_available_at: string;
   close_price: number;

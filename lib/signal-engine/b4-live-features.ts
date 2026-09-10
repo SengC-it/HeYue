@@ -17,6 +17,7 @@ export interface B4LiveBar {
   close: number;
   high: number;
   low: number;
+  quoteVolume?: number;
 }
 
 export interface B4LivePrimitive {
@@ -28,6 +29,7 @@ export interface B4LivePrimitive {
 export interface B4LiveFundingPoint {
   fundingTime: number;
   fundingRate: number;
+  pitAvailableAt?: number;
 }
 
 export interface B4LiveHistory {
@@ -47,6 +49,8 @@ export interface B4LiveContext {
   liquidityBucket: string;
   fundingBucket?: string;
   markIndexBasisBucket?: string;
+  volatilityValue?: number | null;
+  liquidityPercentile?: number | null;
 }
 
 export type B4LiveFeatureStatus = "READY" | "WARMING_UP" | "DATA_INCOMPLETE" | "PIT_REJECTED";
@@ -119,7 +123,7 @@ export function buildB4LiveObservation(
     ? new Date(current.price.openTime + B4_SHADOW_INTERVAL_MS).toISOString()
     : new Date(0).toISOString();
   const decisionTimestamp = new Date(decisionTime).toISOString();
-  const funding = latestFundingAt(input.fundingRates, current?.price.openTime ?? 0);
+  const funding = latestFundingAt(input.fundingRates, decisionTime);
   const markPrice = current?.mark.close ?? null;
   const indexPrice = current?.index.close ?? null;
   const latestRawOpenTime = Math.max(
@@ -133,8 +137,8 @@ export function buildB4LiveObservation(
   // remains PIT-rejected so a premature response cannot be treated as ready.
   const hasUnclosedRawBar = aligned.length < B4_LIVE_RAW_BAR_REQUIREMENT
     && latestRawOpenTime + B4_SHADOW_INTERVAL_MS > decisionTime;
-  const basisBps = markPrice !== null && indexPrice !== null && indexPrice > 0
-    ? (markPrice / indexPrice - 1) * 10_000
+  const basis = markPrice !== null && indexPrice !== null && indexPrice > 0
+    ? markPrice / indexPrice - 1
     : null;
   const complete = current !== undefined
     && previous !== undefined
@@ -154,7 +158,7 @@ export function buildB4LiveObservation(
     && Number.isFinite(Date.parse(pitAvailableAt));
   const calendar = current ? new Date(current.price.openTime) : new Date(0);
   const calendarPeriod = current
-    ? `${calendar.getUTCFullYear()}-${String(calendar.getUTCMonth() + 1).padStart(2, "0")}`
+    ? `${calendar.getUTCFullYear()}-Q${Math.floor(calendar.getUTCMonth() / 3) + 1}`
     : "UNKNOWN";
   const observation: B4ShadowObservation = {
     symbol: input.symbol,
@@ -175,15 +179,16 @@ export function buildB4LiveObservation(
       bucket: context.fundingBucket ?? classifyB4FundingBucket(funding.fundingRate),
       funding_rate: funding.fundingRate,
       funding_time: funding.fundingTime,
+      pit_available_at: funding.pitAvailableAt ?? funding.fundingTime,
     },
     mark_index_basis_state: markPrice === null || indexPrice === null
       ? null
       : {
         bucket: context.markIndexBasisBucket
-          ?? (basisBps === null ? "UNKNOWN" : classifyB4BasisBucket(basisBps)),
+          ?? (basis === null ? "UNKNOWN" : classifyB4BasisBucket(basis)),
         mark_price: markPrice,
         index_price: indexPrice,
-        basis_bps: basisBps,
+        basis_bps: basis === null ? null : basis * 10_000,
       },
     mark_price: markPrice,
     index_price: indexPrice,
@@ -191,6 +196,8 @@ export function buildB4LiveObservation(
     volatility_bucket: context.volatilityBucket,
     liquidity_bucket: context.liquidityBucket,
     calendar_period: calendarPeriod,
+    volatility_value: context.volatilityValue ?? null,
+    liquidity_percentile: context.liquidityPercentile ?? null,
     observation_closed: pitSafe,
     market_data_complete: complete,
     rolling_history_ready: history.length === B4_LIVE_ROLLING_LOOKBACK,
@@ -265,17 +272,24 @@ function usableBars(
 
 function latestFundingAt(
   points: readonly B4LiveFundingPoint[],
-  timestamp: number,
+  decisionTime: number,
 ): B4LiveFundingPoint | null {
   return points
-    .filter((point) => point.fundingTime <= timestamp && Number.isFinite(point.fundingRate))
+    .filter((point) => point.fundingTime <= decisionTime
+      && (point.pitAvailableAt ?? point.fundingTime) <= decisionTime
+      && Number.isFinite(point.fundingRate))
     .sort((left, right) => right.fundingTime - left.fundingTime)[0] ?? null;
 }
 
 export function b4LiveFundingContext(
   funding: B4LiveFundingPoint | null,
 ): B4ShadowContextState | null {
-  return funding === null ? null : { funding_rate: funding.fundingRate, funding_time: funding.fundingTime };
+  return funding === null ? null : {
+    bucket: classifyB4FundingBucket(funding.fundingRate),
+    funding_rate: funding.fundingRate,
+    funding_time: funding.fundingTime,
+    pit_available_at: funding.pitAvailableAt ?? funding.fundingTime,
+  };
 }
 
 export const B4_LIVE_CONTRACT = {

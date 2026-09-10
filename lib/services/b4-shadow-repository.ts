@@ -6,7 +6,6 @@ import {
 import type {
   B4ShadowOutcome,
   B4ShadowSignalEvent,
-  B4ShadowControlObservation,
 } from "@/lib/signal-engine/b4-shadow-types";
 import { b4ShadowContextValue } from "@/lib/signal-engine/b4-shadow";
 import type { B4ShadowAtomicResult } from "@/lib/signal-engine/b4-shadow-sidecar";
@@ -18,6 +17,9 @@ const B4_CONTROL_TABLE = "hy_b4_shadow_control_candidates";
 export interface B4ShadowAtomicTransitionResult {
   result: B4ShadowAtomicResult;
   event_id: string | null;
+  control_status: B4ShadowSignalEvent["control_status"];
+  control_event_id: string | null;
+  control_match_key: string;
 }
 
 /**
@@ -64,11 +66,26 @@ export async function persistB4ShadowEventAndTransition(
   if (!data || typeof data !== "object") throw new Error("Supabase B4 atomic transition returned no result");
   const result = (data as Record<string, unknown>).result;
   const eventId = (data as Record<string, unknown>).event_id;
+  const controlStatus = (data as Record<string, unknown>).control_status;
+  const controlEventId = (data as Record<string, unknown>).control_event_id;
+  const controlMatchKey = (data as Record<string, unknown>).control_match_key;
   if (result !== "NEW_EVENT" && result !== "DUPLICATE_TRUE" && result !== "RESET_FALSE"
     && result !== "STALE_OBSERVATION" && result !== "SAME_BAR_RETRY" && result !== "INVARIANT_FAILURE") {
     throw new Error("Supabase B4 atomic transition returned an invalid result");
   }
-  return { result, event_id: typeof eventId === "string" ? eventId : null };
+  if (controlStatus !== "AVAILABLE" && controlStatus !== "CONTROL_UNAVAILABLE") {
+    throw new Error("Supabase B4 atomic transition returned an invalid control status");
+  }
+  if (typeof controlMatchKey !== "string" || controlMatchKey.length === 0) {
+    throw new Error("Supabase B4 atomic transition returned no control match key");
+  }
+  return {
+    result,
+    event_id: typeof eventId === "string" ? eventId : null,
+    control_status: controlStatus,
+    control_event_id: typeof controlEventId === "string" ? controlEventId : null,
+    control_match_key: controlMatchKey,
+  };
 }
 
 export async function createB4ShadowSignalOutcome(
@@ -138,42 +155,6 @@ export async function listB4ShadowSignalEventsForMaturity(
   }));
 }
 
-export async function listB4ShadowControlCandidates(
-  supabase: SupabaseClient,
-  symbols: readonly string[],
-  decisionTime: string,
-): Promise<B4ShadowControlObservation[]> {
-  if (symbols.length === 0) return [];
-  const { data, error } = await supabase
-    .from(B4_CONTROL_TABLE)
-    .select("*")
-    .in("symbol", [...new Set(symbols)])
-    .lte("pit_available_at", decisionTime)
-    .order("pit_available_at", { ascending: false })
-    .limit(5_000);
-  if (error) throw new Error(`Supabase B4 control candidate lookup failed: ${error.message}`);
-  return (data ?? []).flatMap((row) => {
-    if (typeof row.control_event_id !== "string" || typeof row.symbol !== "string"
-      || typeof row.calendar_period !== "string" || typeof row.market_regime !== "string"
-      || typeof row.volatility_bucket !== "string" || typeof row.liquidity_bucket !== "string"
-      || typeof row.funding_state !== "string" || typeof row.mark_index_basis_state !== "string"
-      || typeof row.pit_available_at !== "string") return [];
-    return [{
-      control_event_id: row.control_event_id,
-      symbol: row.symbol,
-      calendar_period: row.calendar_period,
-      market_regime: row.market_regime,
-      volatility_bucket: row.volatility_bucket,
-      liquidity_bucket: row.liquidity_bucket,
-      funding_state: row.funding_state,
-      mark_index_basis_state: row.mark_index_basis_state,
-      pit_available_at: row.pit_available_at,
-      market_timestamp: typeof row.market_timestamp === "string" ? row.market_timestamp : undefined,
-      reference_price: typeof row.reference_price === "number" ? row.reference_price : Number(row.reference_price),
-    } satisfies B4ShadowControlObservation];
-  });
-}
-
 /** Persist only complete, non-event PIT observations for future Control-B. */
 export async function persistB4ShadowControlCandidate(
   supabase: SupabaseClient,
@@ -195,8 +176,8 @@ export async function persistB4ShadowControlCandidate(
       market_regime: observation.market_regime,
       volatility_bucket: observation.volatility_bucket,
       liquidity_bucket: observation.liquidity_bucket,
-      funding_state: b4ShadowContextValue(observation.funding_state),
-      mark_index_basis_state: b4ShadowContextValue(observation.mark_index_basis_state),
+      funding_bucket: b4ShadowContextValue(observation.funding_state),
+      mark_index_basis_bucket: b4ShadowContextValue(observation.mark_index_basis_state),
       source: "B4_NON_EVENT",
     }, { onConflict: "symbol,market_timestamp" });
   if (error) throw new Error(`Supabase B4 control candidate persistence failed: ${error.message}`);

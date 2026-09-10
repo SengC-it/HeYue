@@ -210,12 +210,14 @@ export class BinancePublicClient {
       fundingRates: fundingRates.map((point) => ({
         fundingTime: point.fundingTime,
         fundingRate: point.fundingRate,
+        pitAvailableAt: point.fundingTime,
       } satisfies B4LiveFundingPoint)),
     };
   }
 
   async getClosedB4FutureObservation(
     symbol: string,
+    eventTime: number,
     dueTime: number,
     decisionTime = Date.now(),
   ): Promise<{
@@ -225,12 +227,25 @@ export class BinancePublicClient {
     high_price: number;
     low_price: number;
     observation_closed: boolean;
+    path: Array<{
+      timestamp: string;
+      pit_available_at: string;
+      close_price: number;
+      high_price: number;
+      low_price: number;
+      observation_closed: boolean;
+    }>;
   } | null> {
     const candles = await this.getCandles(symbol, "1h", 1000);
-    const candle = candles
-      .filter((item) => item.openTime >= dueTime && item.openTime + INTERVAL_MS["1h"] <= decisionTime)
-      .sort((left, right) => left.openTime - right.openTime)[0];
+    const closed = candles
+      .filter((item) => item.openTime + INTERVAL_MS["1h"] <= decisionTime)
+      .sort((left, right) => left.openTime - right.openTime);
+    const candle = closed.find((item) => item.openTime === dueTime);
     if (!candle) return null;
+    const path = closed.filter((item) => item.openTime > eventTime && item.openTime <= dueTime);
+    if (path.length === 0 || path[0].openTime !== eventTime + INTERVAL_MS["1h"]
+      || path.at(-1)?.openTime !== dueTime
+      || path.some((item, index) => index > 0 && item.openTime !== path[index - 1].openTime + INTERVAL_MS["1h"])) return null;
     return {
       timestamp: new Date(candle.openTime).toISOString(),
       pit_available_at: new Date(candle.openTime + INTERVAL_MS["1h"]).toISOString(),
@@ -238,6 +253,14 @@ export class BinancePublicClient {
       high_price: candle.high,
       low_price: candle.low,
       observation_closed: true,
+      path: path.map((item) => ({
+        timestamp: new Date(item.openTime).toISOString(),
+        pit_available_at: new Date(item.openTime + INTERVAL_MS["1h"]).toISOString(),
+        close_price: item.close,
+        high_price: item.high,
+        low_price: item.low,
+        observation_closed: true,
+      })),
     };
   }
 
@@ -556,6 +579,7 @@ function parseB4Kline(raw: unknown[], requirePositive = true): B4LiveBar {
   const close = Number(raw[4]);
   const high = Number(raw[2]);
   const low = Number(raw[3]);
+  const quoteVolume = Number(raw[7]);
   if (![openTime, closeTime, close, high, low].every(Number.isFinite)
     || (requirePositive && (close <= 0 || high <= 0 || low <= 0))
     || (!requirePositive && (high < low))
@@ -563,7 +587,14 @@ function parseB4Kline(raw: unknown[], requirePositive = true): B4LiveBar {
     || closeTime <= openTime || closeTime >= openTime + INTERVAL_MS["1h"]) {
     throw new Error("Malformed B4 Binance kline values");
   }
-  return { openTime, closeTime, close, high, low };
+  return {
+    openTime,
+    closeTime,
+    close,
+    high,
+    low,
+    ...(Number.isFinite(quoteVolume) && quoteVolume >= 0 ? { quoteVolume } : {}),
+  };
 }
 
 function configureNodeProxy(): void {

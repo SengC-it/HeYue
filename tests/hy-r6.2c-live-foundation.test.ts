@@ -16,8 +16,15 @@ import type {
 import type { B4ShadowObservation } from "../lib/signal-engine/b4-shadow-types";
 import { runB4ShadowSidecar } from "../lib/signal-engine/b4-shadow-sidecar";
 import { readHyEnv } from "../lib/config";
-import { computeResearchB4Features } from "../lib/backtest/b4-frozen-features";
-import { classifyB4BasisBucket, classifyB4FundingBucket, classifyB4Liquidity, classifyB4Volatility } from "../lib/signal-engine";
+import {
+  b4CrossSectionalPercentile,
+  calculateB4FourHourReturn,
+  calculateB4Volatility,
+  classifyB4BasisBucket,
+  classifyB4FundingBucket,
+  classifyB4LiquidityPercentile,
+  classifyB4MarketRegime,
+} from "../lib/signal-engine";
 import { getLastClosedB4BarCloseTime } from "../lib/binance/public-client";
 import { persistB4ShadowEventAndTransition } from "../lib/services/b4-shadow-repository";
 
@@ -146,47 +153,58 @@ describe("HY-R6.2C B4 live feature foundation", () => {
     expect(engine.evaluate(bullish).status).toBe("DUPLICATE_SUPPRESSED");
   });
 
-  it("uses real deterministic context buckets without B4 strength", () => {
-    expect(classifyB4FundingBucket(-0.0002)).toBe("NEGATIVE");
-    expect(classifyB4BasisBucket(4)).toBe("PREMIUM");
-    expect(classifyB4Liquidity(150_000_000)).toBe("DEEP");
-    expect(classifyB4Volatility(Array.from({ length: 30 }, (_, index) => ({
-      openTime: index,
+  it("uses the exact frozen context boundaries without B4 strength", () => {
+    expect(classifyB4FundingBucket(-0.00005)).toBe("NEUTRAL");
+    expect(classifyB4FundingBucket(0.00005)).toBe("NEUTRAL");
+    expect(classifyB4FundingBucket(-0.00005001)).toBe("NEGATIVE");
+    expect(classifyB4FundingBucket(0.00005001)).toBe("POSITIVE");
+    expect(classifyB4BasisBucket(-0.0005)).toBe("EXTREME_NEGATIVE");
+    expect(classifyB4BasisBucket(-0.0001)).toBe("NEGATIVE");
+    expect(classifyB4BasisBucket(0)).toBe("NEUTRAL");
+    expect(classifyB4BasisBucket(0.0001)).toBe("POSITIVE");
+    expect(classifyB4BasisBucket(0.0005)).toBe("EXTREME_POSITIVE");
+    expect(classifyB4LiquidityPercentile(0.33)).toBe("LOW");
+    expect(classifyB4LiquidityPercentile(0.66)).toBe("NORMAL");
+    expect(classifyB4LiquidityPercentile(0.67)).toBe("HIGH");
+    expect(calculateB4Volatility(Array.from({ length: 25 }, (_, index) => ({
+      openTime: index * HOUR,
       open: 100,
       high: 101,
       low: 99,
       close: 100,
       volume: 1,
-      closeTime: index + 1,
-    })))).toBe("LOW");
+      closeTime: (index + 1) * HOUR - 1,
+    })))).toMatchObject({ bucket: "LOW", value: 0 });
+    expect(b4CrossSectionalPercentile(2, [1, 2, 3])).toBeCloseTo(2 / 3, 12);
+    expect(classifyB4MarketRegime([0.005, 0.005])).toBe("RANGE");
+    expect(classifyB4MarketRegime([-0.005, -0.005])).toBe("RANGE");
+    expect(calculateB4FourHourReturn([
+      { openTime: 0, closeTime: 4 * HOUR - 1, open: 100, high: 101, low: 99, close: 100, volume: 1 },
+      { openTime: 4 * HOUR, closeTime: 8 * HOUR - 1, open: 100, high: 106, low: 99, close: 106, volume: 1 },
+    ])).toBeCloseTo(0.06, 12);
   });
 
   it("keeps research and live frozen arithmetic deterministic", () => {
     const fixture = JSON.parse(readFileSync(resolve(import.meta.dirname, "fixtures/hy-research-freezes/r6.2c-b4-feature-parity.json"), "utf8")) as {
-      input: {
-        previousPrice: number;
-        currentPrice: number;
-        previousPremium: number;
-        currentPremium: number;
-        priorPriceChanges: { length: number; firstValue: number; firstValueCount: number; remainingValue: number };
-        priorPremiumChanges: { length: number; firstValue: number; firstValueCount: number; remainingValue: number };
-      };
-      expected: Record<string, number | string | null>;
+      samples: Array<{
+        symbol: string;
+        timestamp: string;
+        input: ParityInput;
+        expected: ParityExpected;
+      }>;
     };
-    const research = computeResearchB4Features({
-      ...fixture.input,
-      priorPriceChanges: Array.from({ length: fixture.input.priorPriceChanges.length }, (_, index) => index < fixture.input.priorPriceChanges.firstValueCount
-        ? fixture.input.priorPriceChanges.firstValue
-        : fixture.input.priorPriceChanges.remainingValue),
-      priorPremiumChanges: Array.from({ length: fixture.input.priorPremiumChanges.length }, (_, index) => index < fixture.input.priorPremiumChanges.firstValueCount
-        ? fixture.input.priorPremiumChanges.firstValue
-        : fixture.input.priorPremiumChanges.remainingValue),
-    });
-    expect(research.priceChange).toBeCloseTo(Number(fixture.expected.priceChange), 12);
-    expect(research.premiumChange).toBeCloseTo(Number(fixture.expected.premiumChange), 12);
-    expect(research.pricePercentile).toBe(fixture.expected.pricePercentile);
-    expect(research.premiumChangePercentile).toBe(fixture.expected.premiumChangePercentile);
-    expect(research.direction).toBe(fixture.expected.direction);
+    for (const sample of fixture.samples) {
+      const bars = reconstructParityBars(sample.input, Date.parse(sample.timestamp));
+      const live = buildB4LiveObservation({
+        symbol: sample.symbol,
+        ...bars,
+        fundingRates: [{ fundingTime: Date.parse(sample.timestamp), fundingRate: 0, pitAvailableAt: Date.parse(sample.timestamp) }],
+      }, Date.parse(sample.timestamp) + HOUR);
+      expect(live.observation.price_change_value).toBeCloseTo(sample.expected.priceChange, 12);
+      expect(live.observation.premium_change_value).toBeCloseTo(sample.expected.premiumChange, 12);
+      expect(live.observation.price_percentile).toBe(sample.expected.pricePercentile);
+      expect(live.observation.premium_change_percentile).toBe(sample.expected.premiumChangePercentile);
+    }
   });
 
   it("uses an explicit closed-bar boundary and independent funding window", () => {
@@ -231,6 +249,14 @@ describe("HY-R6.2C durable episode and maturity contracts", () => {
         high_price: 102,
         low_price: 99,
         observation_closed: true,
+        path: Array.from({ length: horizon }, (_, index) => ({
+          timestamp: `2026-09-09T${String(index + 1).padStart(2, "0")}:00:00.000Z`,
+          pit_available_at: `2026-09-09T${String(index + 2).padStart(2, "0")}:00:00.000Z`,
+          close_price: 101,
+          high_price: 102,
+          low_price: 99,
+          observation_closed: true,
+        })),
       } : null,
       persistOutcome: async (outcome) => { persisted.push(outcome.horizon_hours); },
     });
@@ -247,6 +273,8 @@ describe("HY-R6.2C durable episode and maturity contracts", () => {
       "hy_b4_shadow_feature_state",
       "hy_b4_shadow_runtime_state",
       "hy_b4_shadow_control_candidates",
+      "hy_b4_shadow_context_staging",
+      "hy_b4_shadow_context_finalized",
     ]);
     expect(tables.every((table) => table.startsWith("hy_"))).toBe(true);
     expect(migration).toContain("hy_b4_shadow_transition_episode");
@@ -268,7 +296,7 @@ describe("HY-R6.2C durable episode and maturity contracts", () => {
     const route = readFileSync(resolve(import.meta.dirname, "..", "app/api/scan/route.ts"), "utf8");
     expect(route).toContain("storedPrimitiveHistory: state?.rollingPrimitives");
     expect(route).toContain("persistB4ShadowEventAndTransition");
-    expect(route).toContain("listB4ShadowControlCandidates");
+    expect(route).toContain("finalizeB4ShadowContext");
     expect(route).not.toContain("persistEvent: runtimeConfig.HY_B4_SHADOW_ENABLED");
   });
 
@@ -280,7 +308,13 @@ describe("HY-R6.2C durable episode and maturity contracts", () => {
       rpc(name: string) {
         rpcCalls += 1;
         expect(name).toBe("hy_b4_shadow_transition_and_insert");
-        return Promise.resolve({ data: { result: "NEW_EVENT", event_id: event.event_id }, error: null });
+      return Promise.resolve({ data: {
+        result: "NEW_EVENT",
+        event_id: event.event_id,
+        control_status: "CONTROL_UNAVAILABLE",
+        control_event_id: null,
+        control_match_key: event.control_match_key,
+      }, error: null });
       },
       from() {
         fromCalls += 1;
@@ -302,6 +336,7 @@ function createHistory(count: number): B4LiveHistory {
       close: 100 + index * 0.01,
       high: 101 + index * 0.01,
       low: 99 + index * 0.01,
+      quoteVolume: 1_000_000,
     } satisfies B4LiveBar;
   });
   return {
@@ -310,8 +345,54 @@ function createHistory(count: number): B4LiveHistory {
     premiumBars: bars.map((bar) => ({ ...bar, close: bar.close / 100_000, high: bar.high / 100_000, low: bar.low / 100_000 })),
     markBars: bars.map((bar) => ({ ...bar, close: 102, high: 103, low: 101 })),
     indexBars: bars.map((bar) => ({ ...bar, close: 100, high: 101, low: 99 })),
-    fundingRates: [{ fundingTime: BASE_TIME + (count - 2) * HOUR, fundingRate: 0.0001 }],
+    fundingRates: [{ fundingTime: BASE_TIME + (count - 2) * HOUR, fundingRate: 0.0001, pitAvailableAt: BASE_TIME + (count - 2) * HOUR }],
   };
+}
+
+function reconstructParityBars(
+  input: ParityInput,
+  currentTimestamp: number,
+): Pick<B4LiveHistory, "priceBars" | "premiumBars" | "markBars" | "indexBars"> {
+  const priceValues = [100];
+  for (const change of input.priorPriceChanges) priceValues.push(priceValues.at(-1)! * (1 + change));
+  const priceScale = input.previousPrice / priceValues.at(-1)!;
+  const prices = priceValues.map((value) => value * priceScale).concat(input.currentPrice);
+  const premiumValues = [0];
+  for (const change of input.priorPremiumChanges) premiumValues.push(premiumValues.at(-1)! + change);
+  const premiumShift = input.previousPremium - premiumValues.at(-1)!;
+  const premiums = premiumValues.map((value) => value + premiumShift).concat(input.currentPremium);
+  const makeBars = (values: readonly number[], positive: boolean): B4LiveBar[] => values.map((close, index) => {
+    const openTime = currentTimestamp - (values.length - 1 - index) * HOUR;
+    return {
+      openTime,
+      closeTime: openTime + HOUR - 1,
+      close,
+      high: positive ? close * 1.001 : close,
+      low: positive ? close * 0.999 : close,
+    };
+  });
+  const priceBars = makeBars(prices, true);
+  const premiumBars = makeBars(premiums, false);
+  const markBars = makeBars(prices.map(() => 100), true);
+  const indexBars = makeBars(prices.map(() => 100), true);
+  return { priceBars, premiumBars, markBars, indexBars };
+}
+
+interface ParityInput {
+  previousPrice: number;
+  currentPrice: number;
+  previousPremium: number;
+  currentPremium: number;
+  priorPriceChanges: number[];
+  priorPremiumChanges: number[];
+}
+
+interface ParityExpected {
+  priceChange: number;
+  premiumChange: number;
+  pricePercentile: number;
+  premiumChangePercentile: number;
+  direction: "BULLISH" | "BEARISH" | null;
 }
 
 function completeObservation(overrides: Partial<B4ShadowObservation> = {}): B4ShadowObservation {
@@ -330,10 +411,12 @@ function completeObservation(overrides: Partial<B4ShadowObservation> = {}): B4Sh
     mark_index_basis_state: { bucket: "NEUTRAL", basis_bps: 0 },
     mark_price: 100,
     index_price: 100,
-    market_regime: "BULL",
-    volatility_bucket: "UNKNOWN",
-    liquidity_bucket: "UNKNOWN",
-    calendar_period: "2026-09",
+    market_regime: "UP",
+    volatility_bucket: "NORMAL",
+    liquidity_bucket: "HIGH",
+    volatility_value: 0.01,
+    liquidity_percentile: 0.75,
+    calendar_period: "2026-Q3",
     observation_closed: true,
     market_data_complete: true,
     rolling_history_ready: true,

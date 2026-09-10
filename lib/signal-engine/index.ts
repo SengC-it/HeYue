@@ -7,7 +7,6 @@ export {
   b4ShadowOutcomeCacheKey,
   calculateB4ShadowOutcome,
   isB4ShadowEnabled,
-  selectPitSafeControlB,
 } from "./b4-shadow";
 export {
   b4ShadowEventSchema,
@@ -44,8 +43,14 @@ export type { B4OutcomeMaturityOptions, B4OutcomeMaturityResult } from "./b4-out
 export {
   classifyB4BasisBucket,
   classifyB4FundingBucket,
-  classifyB4Liquidity,
+  classifyB4LiquidityPercentile,
+  calculateB4FourHourReturn,
+  calculateB4Volatility,
+  classifyB4VolatilityValue,
+  meanB4QuoteVolume,
+  b4CrossSectionalPercentile,
   classifyB4Volatility,
+  classifyB4MarketRegime,
 } from "./b4-context";
 export type {
   B4LiveBar,

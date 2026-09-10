@@ -7,7 +7,6 @@ import {
   type B4ShadowObservation,
   type B4ShadowSignalEvent,
 } from "./b4-shadow-types";
-import type { B4ShadowControlObservation } from "./b4-shadow-types";
 
 export type B4ShadowSidecarStatus = "DISABLED" | "WARMING_UP" | "READY" | "DEGRADED" | "FAILED";
 
@@ -42,9 +41,12 @@ export interface B4ShadowSidecarOptions {
   observations: readonly B4ShadowObservation[];
   persistEvent?: (event: B4ShadowSignalEvent) => Promise<unknown>;
   /** One server-side RPC owns the event insert and episode transition. */
-  persistAndTransition?: (event: B4ShadowSignalEvent) => Promise<{ result: B4ShadowAtomicResult }>;
-  /** Frozen non-event observations used as future Control-B candidates. */
-  controlCandidates?: readonly B4ShadowControlObservation[];
+  persistAndTransition?: (event: B4ShadowSignalEvent) => Promise<{
+    result: B4ShadowAtomicResult;
+    control_status?: B4ShadowSignalEvent["control_status"];
+    control_event_id?: string | null;
+    control_match_key?: string;
+  }>;
   persistControlCandidate?: (observation: B4ShadowObservation) => Promise<unknown>;
   /** Durable compare-and-transition; the database is canonical across invocations. */
   claimEpisode?: (event: B4ShadowSignalEvent) => Promise<boolean>;
@@ -82,7 +84,6 @@ export async function runB4ShadowSidecar(
   const engine = new B4ShadowEngine({
     enabled: true,
     episodeState: options.episodeState,
-    controlCandidates: options.controlCandidates,
   });
   const events: B4ShadowSignalEvent[] = [];
   const errors: Array<{ symbol?: string; message: string }> = [];
@@ -99,9 +100,15 @@ export async function runB4ShadowSidecar(
     if (evaluation.event !== null) {
       try {
         let isNewEpisode: boolean;
+        let persistedControl: {
+          control_status?: B4ShadowSignalEvent["control_status"];
+          control_event_id?: string | null;
+          control_match_key?: string;
+        } = {};
         if (options.persistAndTransition) {
           const result = await options.persistAndTransition(evaluation.event);
           isNewEpisode = result.result === "NEW_EVENT";
+          persistedControl = result;
         } else {
           if (options.persistEvent) await options.persistEvent(evaluation.event);
           isNewEpisode = options.syncEpisodeState
@@ -110,7 +117,14 @@ export async function runB4ShadowSidecar(
               ? await options.claimEpisode(evaluation.event)
               : true;
         }
-        if (isNewEpisode) events.push(evaluation.event);
+        if (isNewEpisode) {
+          events.push({
+            ...evaluation.event,
+            control_status: persistedControl.control_status ?? "CONTROL_UNAVAILABLE",
+            control_event_id: persistedControl.control_event_id ?? null,
+            control_match_key: persistedControl.control_match_key ?? evaluation.event.control_match_key,
+          });
+        }
         else durableDuplicateCount += 1;
       } catch (error) {
         persistenceFailure = true;
@@ -127,7 +141,7 @@ export async function runB4ShadowSidecar(
     }
   }
 
-  const diagnostics = healthDiagnostics(engine.diagnostics(), errors.length > 0, persistenceFailure, durableDuplicateCount);
+  const diagnostics = healthDiagnostics(engine.diagnostics(), events, errors.length > 0, persistenceFailure, durableDuplicateCount);
   latestDiagnostics = diagnostics;
   return {
     status: diagnostics.status,
@@ -159,7 +173,7 @@ export function buildB4ShadowObservationFromSnapshot(
   const microstructure = snapshot.microstructure;
   const marketTimestamp = new Date(snapshot.sourceTimestamp).toISOString();
   const calendar = new Date(snapshot.sourceTimestamp);
-  const calendarPeriod = `${calendar.getUTCFullYear()}-${String(calendar.getUTCMonth() + 1).padStart(2, "0")}`;
+  const calendarPeriod = `${calendar.getUTCFullYear()}-Q${Math.floor(calendar.getUTCMonth() / 3) + 1}`;
   return {
     symbol: snapshot.instrument.symbol,
     market_timestamp: marketTimestamp,
@@ -186,6 +200,8 @@ export function buildB4ShadowObservationFromSnapshot(
     market_regime: "UNKNOWN",
     volatility_bucket: "UNKNOWN",
     liquidity_bucket: "UNKNOWN",
+    volatility_value: null,
+    liquidity_percentile: null,
     calendar_period: calendarPeriod,
     observation_closed: Number.isFinite(snapshot.sourceTimestamp) && snapshot.sourceTimestamp <= decisionTime,
     market_data_complete: false,
@@ -196,6 +212,7 @@ export function buildB4ShadowObservationFromSnapshot(
 
 function healthDiagnostics(
   diagnostics: B4ShadowDiagnostics,
+  events: readonly B4ShadowSignalEvent[],
   hasErrors: boolean,
   persistenceFailure: boolean,
   durableDuplicateCount: number,
@@ -214,9 +231,9 @@ function healthDiagnostics(
     lastEvaluatedAt: diagnostics.last_evaluation_at,
     eligibleSymbols: diagnostics.eligible_symbols,
     conditionsEvaluated: diagnostics.b4_conditions_evaluated,
-    eventsGenerated: Math.max(0, diagnostics.shadow_events_generated - durableDuplicateCount),
-    longWatch: diagnostics.long_watch_count,
-    shortWatch: diagnostics.short_watch_count,
+    eventsGenerated: events.length,
+    longWatch: events.filter((event) => event.direction === "BULLISH").length,
+    shortWatch: events.filter((event) => event.direction === "BEARISH").length,
     duplicatesSuppressed: diagnostics.duplicates_suppressed + durableDuplicateCount,
     dataIncomplete: diagnostics.data_incomplete_count,
     pitFailures: diagnostics.pit_failures,
