@@ -8,7 +8,7 @@ import {
   type B4ShadowSignalEvent,
 } from "./b4-shadow-types";
 
-export type B4ShadowSidecarStatus = "DISABLED" | "READY" | "DEGRADED" | "FAILED";
+export type B4ShadowSidecarStatus = "DISABLED" | "WARMING_UP" | "READY" | "DEGRADED" | "FAILED";
 
 export interface B4ShadowHealthDiagnostics {
   enabled: boolean;
@@ -24,6 +24,9 @@ export interface B4ShadowHealthDiagnostics {
   dataIncomplete: number;
   pitFailures: number;
   emailSent: 0;
+  lastClosedBarEvaluated?: string | null;
+  warmupReady?: boolean;
+  lastError?: string | null;
 }
 
 export interface B4ShadowSidecarResult {
@@ -37,10 +40,33 @@ export interface B4ShadowSidecarOptions {
   enabled: boolean;
   observations: readonly B4ShadowObservation[];
   persistEvent?: (event: B4ShadowSignalEvent) => Promise<unknown>;
+  /** One server-side RPC owns the event insert and episode transition. */
+  persistAndTransition?: (event: B4ShadowSignalEvent) => Promise<{
+    result: B4ShadowAtomicResult;
+    control_status?: B4ShadowSignalEvent["control_status"];
+    control_event_id?: string | null;
+    control_match_key?: string;
+  }>;
+  persistControlCandidate?: (observation: B4ShadowObservation) => Promise<unknown>;
+  /** Durable compare-and-transition; the database is canonical across invocations. */
+  claimEpisode?: (event: B4ShadowSignalEvent) => Promise<boolean>;
+  /** Persist both TRUE and FALSE transitions so a later episode can re-arm. */
+  syncEpisodeState?: (
+    observation: B4ShadowObservation,
+    direction: B4ShadowDirection | null,
+    episodeKey: string | null,
+  ) => Promise<boolean>;
   episodeState?: Map<string, B4ShadowDirection | null>;
 }
 
-const warmEpisodeState = new Map<string, B4ShadowDirection | null>();
+export type B4ShadowAtomicResult =
+  | "NEW_EVENT"
+  | "DUPLICATE_TRUE"
+  | "RESET_FALSE"
+  | "STALE_OBSERVATION"
+  | "SAME_BAR_RETRY"
+  | "INVARIANT_FAILURE";
+
 let latestDiagnostics = disabledDiagnostics();
 
 /**
@@ -57,11 +83,12 @@ export async function runB4ShadowSidecar(
 
   const engine = new B4ShadowEngine({
     enabled: true,
-    episodeState: options.episodeState ?? warmEpisodeState,
+    episodeState: options.episodeState,
   });
   const events: B4ShadowSignalEvent[] = [];
   const errors: Array<{ symbol?: string; message: string }> = [];
   let persistenceFailure = false;
+  let durableDuplicateCount = 0;
   for (const observation of options.observations) {
     let evaluation;
     try {
@@ -70,18 +97,51 @@ export async function runB4ShadowSidecar(
       errors.push({ symbol: observation.symbol, message: errorMessage(error) });
       continue;
     }
-    if (evaluation.event === null) continue;
-    events.push(evaluation.event);
-    if (!options.persistEvent) continue;
-    try {
-      await options.persistEvent(evaluation.event);
-    } catch (error) {
-      persistenceFailure = true;
-      errors.push({ symbol: observation.symbol, message: errorMessage(error) });
+    if (evaluation.event !== null) {
+      try {
+        let isNewEpisode: boolean;
+        let persistedControl: {
+          control_status?: B4ShadowSignalEvent["control_status"];
+          control_event_id?: string | null;
+          control_match_key?: string;
+        } = {};
+        if (options.persistAndTransition) {
+          const result = await options.persistAndTransition(evaluation.event);
+          isNewEpisode = result.result === "NEW_EVENT";
+          persistedControl = result;
+        } else {
+          if (options.persistEvent) await options.persistEvent(evaluation.event);
+          isNewEpisode = options.syncEpisodeState
+            ? await options.syncEpisodeState(observation, evaluation.direction, evaluation.event.episode_key)
+            : options.claimEpisode
+              ? await options.claimEpisode(evaluation.event)
+              : true;
+        }
+        if (isNewEpisode) {
+          events.push({
+            ...evaluation.event,
+            control_status: persistedControl.control_status ?? "CONTROL_UNAVAILABLE",
+            control_event_id: persistedControl.control_event_id ?? null,
+            control_match_key: persistedControl.control_match_key ?? evaluation.event.control_match_key,
+          });
+        }
+        else durableDuplicateCount += 1;
+      } catch (error) {
+        persistenceFailure = true;
+        errors.push({ symbol: observation.symbol, message: errorMessage(error) });
+      }
+    } else if (evaluation.status === "NO_SIGNAL" && (options.syncEpisodeState || options.persistControlCandidate)) {
+      try {
+        if (options.syncEpisodeState) await options.syncEpisodeState(observation, null, null);
+        if (options.persistControlCandidate) await options.persistControlCandidate(observation);
+      } catch (error) {
+        persistenceFailure = true;
+        errors.push({ symbol: observation.symbol, message: errorMessage(error) });
+      }
     }
   }
 
-  const diagnostics = healthDiagnostics(engine.diagnostics(), errors.length > 0, persistenceFailure);
+  const diagnostics = healthDiagnostics(engine.diagnostics(), events, errors.length > 0, persistenceFailure, durableDuplicateCount);
   latestDiagnostics = diagnostics;
   return {
     status: diagnostics.status,
@@ -93,7 +153,11 @@ export async function runB4ShadowSidecar(
 
 export function getB4ShadowHealthDiagnostics(enabled = false): B4ShadowHealthDiagnostics {
   if (!enabled) return disabledDiagnostics();
-  return { ...latestDiagnostics, enabled: true };
+  return {
+    ...latestDiagnostics,
+    enabled: true,
+    status: latestDiagnostics.status === "DISABLED" ? "WARMING_UP" : latestDiagnostics.status,
+  };
 }
 
 /**
@@ -109,7 +173,7 @@ export function buildB4ShadowObservationFromSnapshot(
   const microstructure = snapshot.microstructure;
   const marketTimestamp = new Date(snapshot.sourceTimestamp).toISOString();
   const calendar = new Date(snapshot.sourceTimestamp);
-  const calendarPeriod = `${calendar.getUTCFullYear()}-${String(calendar.getUTCMonth() + 1).padStart(2, "0")}`;
+  const calendarPeriod = `${calendar.getUTCFullYear()}-Q${Math.floor(calendar.getUTCMonth() / 3) + 1}`;
   return {
     symbol: snapshot.instrument.symbol,
     market_timestamp: marketTimestamp,
@@ -136,6 +200,8 @@ export function buildB4ShadowObservationFromSnapshot(
     market_regime: "UNKNOWN",
     volatility_bucket: "UNKNOWN",
     liquidity_bucket: "UNKNOWN",
+    volatility_value: null,
+    liquidity_percentile: null,
     calendar_period: calendarPeriod,
     observation_closed: Number.isFinite(snapshot.sourceTimestamp) && snapshot.sourceTimestamp <= decisionTime,
     market_data_complete: false,
@@ -146,20 +212,29 @@ export function buildB4ShadowObservationFromSnapshot(
 
 function healthDiagnostics(
   diagnostics: B4ShadowDiagnostics,
+  events: readonly B4ShadowSignalEvent[],
   hasErrors: boolean,
   persistenceFailure: boolean,
+  durableDuplicateCount: number,
 ): B4ShadowHealthDiagnostics {
+  const status: B4ShadowSidecarStatus = persistenceFailure
+    ? "FAILED"
+    : hasErrors
+      ? "DEGRADED"
+      : !diagnostics.rolling_history_ready
+        ? "WARMING_UP"
+        : "READY";
   return {
     enabled: diagnostics.enabled,
     version: diagnostics.version,
-    status: persistenceFailure ? "FAILED" : hasErrors ? "DEGRADED" : "READY",
+    status,
     lastEvaluatedAt: diagnostics.last_evaluation_at,
     eligibleSymbols: diagnostics.eligible_symbols,
     conditionsEvaluated: diagnostics.b4_conditions_evaluated,
-    eventsGenerated: diagnostics.shadow_events_generated,
-    longWatch: diagnostics.long_watch_count,
-    shortWatch: diagnostics.short_watch_count,
-    duplicatesSuppressed: diagnostics.duplicates_suppressed,
+    eventsGenerated: events.length,
+    longWatch: events.filter((event) => event.direction === "BULLISH").length,
+    shortWatch: events.filter((event) => event.direction === "BEARISH").length,
+    duplicatesSuppressed: diagnostics.duplicates_suppressed + durableDuplicateCount,
     dataIncomplete: diagnostics.data_incomplete_count,
     pitFailures: diagnostics.pit_failures,
     emailSent: 0,

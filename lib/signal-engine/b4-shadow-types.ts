@@ -59,29 +59,13 @@ export interface B4ShadowObservation {
   market_regime: string;
   volatility_bucket: string;
   liquidity_bucket: string;
+  volatility_value: number | null;
+  liquidity_percentile: number | null;
   calendar_period: string;
   observation_closed: boolean;
   market_data_complete: boolean;
   rolling_history_ready: boolean;
   pit_safe: boolean;
-}
-
-export interface B4ShadowControlObservation {
-  control_event_id: string;
-  symbol: string;
-  calendar_period: string;
-  market_regime: string;
-  volatility_bucket: string;
-  liquidity_bucket: string;
-  funding_state: string;
-  mark_index_basis_state: string;
-  pit_available_at: string;
-}
-
-export interface B4ShadowControlSelection {
-  status: B4ShadowControlStatus;
-  control_event_id: string | null;
-  match_key: string;
 }
 
 export interface B4ShadowSignalEvent {
@@ -118,6 +102,8 @@ export interface B4ShadowSignalEvent {
   control_status: B4ShadowControlStatus;
   control_event_id: string | null;
   control_match_key: string;
+  /** Repository-populated pending horizons; not persisted in the event row. */
+  pending_horizons?: readonly (typeof B4_SHADOW_OUTCOME_HORIZONS)[number][];
 }
 
 export interface B4ShadowEvaluation {
@@ -151,6 +137,16 @@ export interface B4ShadowFutureObservation {
   high_price: number;
   low_price: number;
   observation_closed: boolean;
+  path?: readonly B4ShadowPathObservation[];
+}
+
+export interface B4ShadowPathObservation {
+  timestamp: string;
+  pit_available_at: string;
+  close_price: number;
+  high_price: number;
+  low_price: number;
+  observation_closed: boolean;
 }
 
 export interface B4ShadowOutcome {
@@ -159,6 +155,33 @@ export interface B4ShadowOutcome {
   horizon_hours: (typeof B4_SHADOW_OUTCOME_HORIZONS)[number];
   future_observation_timestamp: string;
   future_available_at: string;
+  future_price: number;
+  signed_return: number;
+  max_favorable_move: number;
+  max_adverse_move: number;
+  pit_safe: true;
+  outcome_status: "MATURED";
+  calculation_version: typeof B4_SHADOW_VERSION;
+}
+
+export interface B4ShadowControlEvent {
+  control_event_id: string;
+  direction: B4ShadowDirection;
+  event_id: string;
+  symbol: string;
+  market_timestamp: string;
+  pit_available_at: string;
+  reference_price: number;
+  pending_horizons?: readonly (typeof B4_SHADOW_OUTCOME_HORIZONS)[number][];
+}
+
+export interface B4ShadowControlOutcome {
+  control_event_id: string;
+  direction: B4ShadowDirection;
+  horizon_hours: (typeof B4_SHADOW_OUTCOME_HORIZONS)[number];
+  future_observation_timestamp: string;
+  future_available_at: string;
+  reference_price: number;
   future_price: number;
   signed_return: number;
   max_favorable_move: number;

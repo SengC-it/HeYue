@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getHyEnvironment, getServerConfig, isUsableRuntimeValue } from "@/lib/config";
 import { getB4ShadowHealthDiagnostics } from "@/lib/signal-engine/b4-shadow-sidecar";
+import { getB4ShadowRuntimeState } from "@/lib/services/b4-shadow-runtime-repository";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -77,9 +79,15 @@ export function getHealthAttestation(environment: RuntimeEnvironment = process.e
   };
 }
 
-export function GET() {
+export async function GET() {
   try {
-    return NextResponse.json(getHealthAttestation());
+    const attestation = getHealthAttestation();
+    if (!attestation.b4Shadow.enabled) return NextResponse.json(attestation);
+    const state = await getB4ShadowRuntimeState(getSupabaseAdmin());
+    return NextResponse.json({
+      ...attestation,
+      b4Shadow: state ? runtimeStateHealth(state) : attestation.b4Shadow,
+    });
   } catch {
     return NextResponse.json({
       ok: false,
@@ -89,6 +97,28 @@ export function GET() {
       timestamp: new Date().toISOString(),
     }, { status: 500 });
   }
+}
+
+function runtimeStateHealth(state: Awaited<ReturnType<typeof getB4ShadowRuntimeState>>) {
+  if (!state) return getB4ShadowHealthDiagnostics(true);
+  return {
+    enabled: state.enabled,
+    version: state.version,
+    status: state.status,
+    lastEvaluatedAt: state.lastEvaluationAt,
+    lastClosedBarEvaluated: state.lastClosedBarEvaluated,
+    warmupReady: state.warmupReady,
+    lastError: state.lastError,
+    eligibleSymbols: state.eligibleSymbols,
+    conditionsEvaluated: state.conditionsEvaluated,
+    eventsGenerated: state.eventsGenerated,
+    longWatch: state.longWatch,
+    shortWatch: state.shortWatch,
+    duplicatesSuppressed: state.duplicatesSuppressed,
+    dataIncomplete: state.dataIncomplete,
+    pitFailures: state.pitFailures,
+    emailSent: 0 as const,
+  };
 }
 
 function supabaseProjectRef(supabaseUrl: string): string {

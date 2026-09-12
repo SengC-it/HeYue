@@ -169,9 +169,9 @@ describe("HY-R6.2A repository idempotency and migration audit", () => {
 
   it("keeps the scanner route PAPER path and email path independent of the shadow sidecar", () => {
     const route = readFileSync(resolve(import.meta.dirname, "..", "app/api/scan/route.ts"), "utf8");
-    expect(route).toContain("HY_B4_SHADOW_ENABLED");
-    expect(route).toContain("runB4ShadowSidecar");
-    expect(route).toContain("runtimeConfig.HY_MICROSTRUCTURE_ENABLED || runtimeConfig.HY_B4_SHADOW_ENABLED");
+    expect(route).not.toContain("HY_B4_SHADOW_ENABLED");
+    expect(route).not.toContain("runB4ShadowSidecar");
+    expect(route).toContain("runtimeConfig.HY_MICROSTRUCTURE_ENABLED");
     expect(route).toContain("createPaperTrade");
     expect(route).toContain("sendSignalEmail");
     expect(route).not.toContain("hy-paper-candidate-v2");
@@ -194,9 +194,11 @@ function completeObservation(overrides: Partial<B4ShadowObservation> = {}): B4Sh
     mark_index_basis_state: { bucket: "NEUTRAL", basis_bps: 0 },
     mark_price: 100,
     index_price: 100,
-    market_regime: "BULL",
+    market_regime: "UP",
     volatility_bucket: "NORMAL",
-    liquidity_bucket: "LIQUID",
+    liquidity_bucket: "HIGH",
+    volatility_value: 0.01,
+    liquidity_percentile: 0.75,
     calendar_period: "2026-Q3",
     observation_closed: true,
     market_data_complete: true,

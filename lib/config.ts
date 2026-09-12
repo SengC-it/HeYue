@@ -149,6 +149,10 @@ export function readHyEnv(
   const canonicalValue = environment[name];
   if (canonicalValue !== undefined) return canonicalValue;
 
+  // The live B4 shadow flag is a containment control. A legacy flag must
+  // never be able to enable it accidentally during namespace migration.
+  if (name === "HY_B4_SHADOW_ENABLED") return undefined;
+
   const legacyNames = [
     `CS_${name.slice("HY_".length)}`,
     ...(unprefixedLegacyAliases[name] ?? []),

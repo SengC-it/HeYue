@@ -1,0 +1,19 @@
+-- HY-R6.2C.3 B4 shadow scheduler preparation only.
+-- DO NOT APPLY TO PRODUCTION IN THIS RELEASE.
+-- Keep the existing hy-scan-batch-0 scheduler unchanged. When B4 is
+-- separately approved, schedule one hourly closed-bar invocation per
+-- deterministic batch. The collector derives the closed hour itself, so all
+-- jobs below share B4's universe-version + closed-hour context key.
+--
+-- Example for HY_SCAN_BATCH_SIZE = 10 (49 frozen symbols => 5 batches):
+-- select cron.schedule(
+--   'hy-b4-shadow-collect-0',
+--   '5 * * * *',
+--   $$select net.http_get(
+--     url := 'https://<approved-alias>/api/b4-shadow/collect?batch=0',
+--     headers := jsonb_build_object('x-cron-secret', '<server-side-secret>')
+--   );$$
+-- );
+-- Repeat for batch=1..4 with the same hourly cadence and a separately
+-- approved secret mechanism. Do not copy this placeholder into Production
+-- environment variables, and do not call the endpoint before B4 enablement.

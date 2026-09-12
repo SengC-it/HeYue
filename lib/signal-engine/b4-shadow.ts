@@ -14,12 +14,12 @@ import {
   B4_SHADOW_UPPER_PERCENTILE,
   B4_SHADOW_VERSION,
   type B4ShadowContextState,
-  type B4ShadowControlObservation,
-  type B4ShadowControlSelection,
   type B4ShadowDiagnostics,
   type B4ShadowDirection,
   type B4ShadowEvaluation,
   type B4ShadowFutureObservation,
+  type B4ShadowControlEvent,
+  type B4ShadowControlOutcome,
   type B4ShadowObservation,
   type B4ShadowOutcome,
   type B4ShadowSignalEvent,
@@ -32,8 +32,8 @@ export const B4_SHADOW_MATCH_FIELDS = [
   "market_regime",
   "volatility_bucket",
   "liquidity_bucket",
-  "funding_state",
-  "mark_index_basis_state",
+  "funding_bucket",
+  "mark_index_basis_bucket",
 ] as const;
 
 function b4DivergenceDirection(input: {
@@ -56,7 +56,6 @@ function b4DivergenceDirection(input: {
 export interface B4ShadowEngineOptions {
   enabled?: boolean;
   idFactory?: () => string;
-  controlCandidates?: readonly B4ShadowControlObservation[];
   episodeState?: Map<string, B4ShadowDirection | null>;
 }
 
@@ -98,8 +97,8 @@ export function b4ShadowControlMatchKey(observation: Pick<
   B4ShadowObservation,
   "symbol" | "calendar_period" | "market_regime" | "volatility_bucket" | "liquidity_bucket"
 > & {
-  funding_state: B4ShadowContextState;
-  mark_index_basis_state: B4ShadowContextState;
+  funding_state: B4ShadowContextState | null;
+  mark_index_basis_state: B4ShadowContextState | null;
 }): string {
   return [
     observation.symbol,
@@ -107,31 +106,9 @@ export function b4ShadowControlMatchKey(observation: Pick<
     observation.market_regime,
     observation.volatility_bucket,
     observation.liquidity_bucket,
-    contextValue(observation.funding_state),
-    contextValue(observation.mark_index_basis_state),
+    b4ShadowContextValue(observation.funding_state ?? {}),
+    b4ShadowContextValue(observation.mark_index_basis_state ?? {}),
   ].join("|");
-}
-
-export function selectPitSafeControlB(
-  observation: B4ShadowObservation,
-  candidates: readonly B4ShadowControlObservation[],
-): B4ShadowControlSelection {
-  const matchKey = b4ShadowControlMatchKey(observation as B4ShadowObservation & {
-    funding_state: B4ShadowContextState;
-    mark_index_basis_state: B4ShadowContextState;
-  });
-  const decisionTime = Date.parse(observation.decision_timestamp);
-  const selected = candidates
-    .filter((candidate) => candidate.symbol === observation.symbol)
-    .filter((candidate) => controlContextKey(candidate) === matchKey)
-    .filter((candidate) => Date.parse(candidate.pit_available_at) <= decisionTime)
-    .sort((left, right) => Date.parse(right.pit_available_at) - Date.parse(left.pit_available_at)
-      || left.control_event_id.localeCompare(right.control_event_id))[0];
-  return {
-    status: selected ? "AVAILABLE" : "CONTROL_UNAVAILABLE",
-    control_event_id: selected?.control_event_id ?? null,
-    match_key: matchKey,
-  };
 }
 
 export function b4ShadowOutcomeCacheKey(
@@ -154,18 +131,31 @@ export function calculateB4ShadowOutcome(
   const evaluationTime = Date.parse(evaluatedAt);
   const dueTime = eventTime + horizonHours * B4_SHADOW_INTERVAL_MS;
   if (!Number.isFinite(eventTime) || !Number.isFinite(futureTime) || !Number.isFinite(availableAt)
-    || !Number.isFinite(evaluationTime) || futureTime < dueTime || availableAt > evaluationTime
-    || !parsedFuture.observation_closed) return null;
+    || !Number.isFinite(evaluationTime) || futureTime !== dueTime || availableAt > evaluationTime
+    || !parsedFuture.observation_closed || !parsedFuture.path?.length) return null;
+
+  const path = parsedFuture.path
+    .filter((item) => {
+      const timestamp = Date.parse(item.timestamp);
+      const available = Date.parse(item.pit_available_at);
+      return timestamp > eventTime && timestamp <= dueTime
+        && Number.isFinite(available) && available <= evaluationTime && item.observation_closed;
+    })
+    .sort((left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp));
+  if (path.length === 0 || Date.parse(path[0].timestamp) !== eventTime + B4_SHADOW_INTERVAL_MS
+    || Date.parse(path.at(-1)!.timestamp) !== dueTime
+    || path.some((item, index) => index > 0
+      && Date.parse(item.timestamp) !== Date.parse(path[index - 1].timestamp) + B4_SHADOW_INTERVAL_MS)) return null;
 
   const signedReturn = event.direction === "BULLISH"
     ? parsedFuture.close_price / event.perpetual_price - 1
     : event.perpetual_price / parsedFuture.close_price - 1;
   const maxFavorableMove = event.direction === "BULLISH"
-    ? parsedFuture.high_price / event.perpetual_price - 1
-    : event.perpetual_price / parsedFuture.low_price - 1;
+    ? Math.max(...path.map((item) => item.high_price / event.perpetual_price - 1))
+    : Math.max(...path.map((item) => event.perpetual_price / item.low_price - 1));
   const maxAdverseMove = event.direction === "BULLISH"
-    ? parsedFuture.low_price / event.perpetual_price - 1
-    : event.perpetual_price / parsedFuture.high_price - 1;
+    ? Math.min(...path.map((item) => item.low_price / event.perpetual_price - 1))
+    : Math.min(...path.map((item) => event.perpetual_price / item.high_price - 1));
   return {
     event_id: event.event_id,
     direction: event.direction,
@@ -182,10 +172,67 @@ export function calculateB4ShadowOutcome(
   };
 }
 
+/** Control-B uses the matched event direction but the control observation as
+ * the immutable price/time origin. The path checks intentionally mirror the
+ * signal outcome contract. */
+export function calculateB4ShadowControlOutcome(
+  control: Pick<B4ShadowControlEvent, "control_event_id" | "direction" | "reference_price" | "market_timestamp">,
+  horizonHours: (typeof import("./b4-shadow-types").B4_SHADOW_OUTCOME_HORIZONS)[number],
+  future: B4ShadowFutureObservation,
+  evaluatedAt: string,
+): B4ShadowControlOutcome | null {
+  const parsedFuture = parseB4ShadowFutureObservation(future);
+  const controlTime = Date.parse(control.market_timestamp);
+  const futureTime = Date.parse(parsedFuture.timestamp);
+  const availableAt = Date.parse(parsedFuture.pit_available_at);
+  const evaluationTime = Date.parse(evaluatedAt);
+  const dueTime = controlTime + horizonHours * B4_SHADOW_INTERVAL_MS;
+  if (!Number.isFinite(controlTime) || !Number.isFinite(futureTime) || !Number.isFinite(availableAt)
+    || !Number.isFinite(evaluationTime) || futureTime !== dueTime || availableAt > evaluationTime
+    || !parsedFuture.observation_closed || !parsedFuture.path?.length) return null;
+
+  const path = parsedFuture.path
+    .filter((item) => {
+      const timestamp = Date.parse(item.timestamp);
+      const available = Date.parse(item.pit_available_at);
+      return timestamp > controlTime && timestamp <= dueTime
+        && Number.isFinite(available) && available <= evaluationTime && item.observation_closed;
+    })
+    .sort((left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp));
+  if (path.length === 0 || Date.parse(path[0].timestamp) !== controlTime + B4_SHADOW_INTERVAL_MS
+    || Date.parse(path.at(-1)!.timestamp) !== dueTime
+    || path.some((item, index) => index > 0
+      && Date.parse(item.timestamp) !== Date.parse(path[index - 1].timestamp) + B4_SHADOW_INTERVAL_MS)) return null;
+
+  const signedReturn = control.direction === "BULLISH"
+    ? parsedFuture.close_price / control.reference_price - 1
+    : control.reference_price / parsedFuture.close_price - 1;
+  const maxFavorableMove = control.direction === "BULLISH"
+    ? Math.max(...path.map((item) => item.high_price / control.reference_price - 1))
+    : Math.max(...path.map((item) => control.reference_price / item.low_price - 1));
+  const maxAdverseMove = control.direction === "BULLISH"
+    ? Math.min(...path.map((item) => item.low_price / control.reference_price - 1))
+    : Math.min(...path.map((item) => control.reference_price / item.high_price - 1));
+  return {
+    control_event_id: control.control_event_id,
+    direction: control.direction,
+    horizon_hours: horizonHours,
+    future_observation_timestamp: parsedFuture.timestamp,
+    future_available_at: parsedFuture.pit_available_at,
+    reference_price: control.reference_price,
+    future_price: parsedFuture.close_price,
+    signed_return: signedReturn,
+    max_favorable_move: maxFavorableMove,
+    max_adverse_move: maxAdverseMove,
+    pit_safe: true,
+    outcome_status: "MATURED",
+    calculation_version: B4_SHADOW_VERSION,
+  };
+}
+
 export class B4ShadowEngine {
   private readonly enabled: boolean;
   private readonly idFactory: (() => string) | undefined;
-  private readonly controlCandidates: readonly B4ShadowControlObservation[];
   private readonly episodeState: Map<string, B4ShadowDirection | null>;
   private readonly counters = {
     b4_conditions_evaluated: 0,
@@ -204,7 +251,6 @@ export class B4ShadowEngine {
   constructor(options: B4ShadowEngineOptions = {}) {
     this.enabled = options.enabled ?? false;
     this.idFactory = options.idFactory;
-    this.controlCandidates = options.controlCandidates ?? [];
     this.episodeState = options.episodeState ?? new Map<string, B4ShadowDirection | null>();
   }
 
@@ -218,13 +264,11 @@ export class B4ShadowEngine {
     }
 
     if (!observation.market_data_complete) {
-      this.resetEpisode(observation.symbol);
       this.counters.data_incomplete_count += 1;
       this.marketDataStatus = "INCOMPLETE";
       return { status: "DATA_INCOMPLETE", event: null, direction: null, reason: "MARKET_DATA_INCOMPLETE" };
     }
     if (!this.isPitSafeObservation(observation)) {
-      this.resetEpisode(observation.symbol);
       this.counters.pit_failures += 1;
       this.marketDataStatus = "PIT_REJECTED";
       return { status: "PIT_REJECTED", event: null, direction: null, reason: "PIT_NOT_AVAILABLE" };
@@ -236,8 +280,12 @@ export class B4ShadowEngine {
       || observation.price_percentile === null
       || observation.premium_change_percentile === null
       || observation.funding_state === null
-      || observation.mark_index_basis_state === null) {
-      this.resetEpisode(observation.symbol);
+      || observation.mark_index_basis_state === null
+      || !isNormalBucket(observation.market_regime)
+      || !isNormalBucket(observation.volatility_bucket)
+      || !isNormalBucket(observation.liquidity_bucket)
+      || !isNormalBucket(b4ShadowContextValue(observation.funding_state))
+      || !isNormalBucket(b4ShadowContextValue(observation.mark_index_basis_state))) {
       this.counters.data_incomplete_count += 1;
       this.marketDataStatus = "INCOMPLETE";
       return { status: "DATA_INCOMPLETE", event: null, direction: null, reason: "B4_INPUT_INCOMPLETE" };
@@ -261,7 +309,11 @@ export class B4ShadowEngine {
       return { status: "DUPLICATE_SUPPRESSED", event: null, direction, reason: "TRUE_TO_TRUE" };
     }
 
-    const control = selectPitSafeControlB(observation, this.controlCandidates);
+    const control = {
+      status: "CONTROL_UNAVAILABLE" as const,
+      control_event_id: null,
+      match_key: b4ShadowControlMatchKey(observation),
+    };
     const event = freezeDeep({
       event_id: optionsEventId(this.idFactory, observation, direction),
       episode_key: episodeKey(observation, direction),
@@ -316,10 +368,6 @@ export class B4ShadowEngine {
     };
   }
 
-  private resetEpisode(symbol: string): void {
-    this.episodeState.set(symbol, null);
-  }
-
   private isPitSafeObservation(observation: B4ShadowObservation): boolean {
     const marketTime = Date.parse(observation.market_timestamp);
     const decisionTime = Date.parse(observation.decision_timestamp);
@@ -356,20 +404,13 @@ function episodeKey(observation: B4ShadowObservation, direction: B4ShadowDirecti
   return `${B4_SHADOW_VERSION}|${observation.symbol}|${observation.market_timestamp}|${direction}|FALSE_TO_TRUE`;
 }
 
-function controlContextKey(candidate: B4ShadowControlObservation): string {
-  return [
-    candidate.symbol,
-    candidate.calendar_period,
-    candidate.market_regime,
-    candidate.volatility_bucket,
-    candidate.liquidity_bucket,
-    candidate.funding_state,
-    candidate.mark_index_basis_state,
-  ].join("|");
+export function b4ShadowContextValue(value: B4ShadowContextState): string {
+  const bucket = value.bucket;
+  return typeof bucket === "string" ? bucket : "UNKNOWN";
 }
 
-function contextValue(value: B4ShadowContextState): string {
-  return Object.keys(value).sort().map((key) => `${key}=${String(value[key])}`).join(",");
+function isNormalBucket(value: string): boolean {
+  return value.trim().length > 0 && value !== "UNKNOWN";
 }
 
 function freezeDeep<T>(value: T): T {
