@@ -1,6 +1,7 @@
 import type { ScoredCandidate, TradePlan } from "@/lib/core/types";
 import type { FilterFunnelTelemetry, PerSymbolDiagnostics } from "@/lib/core/candidate-funnel";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { runQuery } from "@/lib/supabase/resilience";
 
 export interface ScanRunInput {
   runKey: string;
@@ -41,32 +42,45 @@ export interface ClaimResult {
 }
 
 export async function upsertInstruments(supabase: SupabaseClient, instruments: unknown[]) {
-  const { error } = await supabase.from("hy_instruments").upsert(instruments, { onConflict: "symbol" });
-  if (error) throw new Error(`Supabase instrument upsert failed: ${error.message}`);
+  await runQuery(
+    "instrument upsert",
+    () => supabase.from("hy_instruments").upsert(instruments, { onConflict: "symbol" }).select("symbol"),
+  ).catch((error) => {
+    throw new Error(`Supabase instrument upsert failed: ${errorMessage(error)}`);
+  });
 }
 
 export async function createScanRun(supabase: SupabaseClient, input: ScanRunInput): Promise<string> {
-  const { data: existing, error: existingError } = await supabase
-    .from("hy_scan_runs")
-    .select("id")
-    .eq("run_key", input.runKey)
-    .maybeSingle();
-  if (existingError) throw new Error(`Supabase scan lookup failed: ${existingError.message}`);
+  const existing = await runQuery(
+    "scan lookup",
+    () => supabase
+      .from("hy_scan_runs")
+      .select("id")
+      .eq("run_key", input.runKey)
+      .maybeSingle(),
+  ).catch((error) => {
+    throw new Error(`Supabase scan lookup failed: ${errorMessage(error)}`);
+  });
   if (existing?.id) return existing.id as string;
 
-  const { data, error } = await supabase
-    .from("hy_scan_runs")
-    .insert({
-      run_key: input.runKey,
-      scan_group_key: input.scanGroupKey,
-      timeframe: input.timeframe,
-      batch_number: input.batchNumber,
-      batch_count: input.batchCount,
-      universe_size: input.universeSize,
-    })
-    .select("id")
-    .single();
-  if (error || !data) throw new Error(`Supabase scan creation failed: ${error?.message ?? "empty response"}`);
+  const data = await runQuery(
+    "scan creation",
+    () => supabase
+      .from("hy_scan_runs")
+      .insert({
+        run_key: input.runKey,
+        scan_group_key: input.scanGroupKey,
+        timeframe: input.timeframe,
+        batch_number: input.batchNumber,
+        batch_count: input.batchCount,
+        universe_size: input.universeSize,
+      })
+      .select("id")
+      .single(),
+  ).catch((error) => {
+    throw new Error(`Supabase scan creation failed: ${errorMessage(error)}`);
+  });
+  if (!data) throw new Error("Supabase scan creation failed: empty response");
   return data.id as string;
 }
 
@@ -81,36 +95,46 @@ export async function completeScanRun(
     errorSummary: unknown[];
   },
 ) {
-  const { error } = await supabase
-    .from("hy_scan_runs")
-    .update({
-      scanned_symbols: patch.scannedSymbols,
-      candidate_count: patch.candidateCount,
-      emailed_count: patch.emailedCount,
-      status: patch.status,
-      error_summary: patch.errorSummary,
-      finished_at: new Date().toISOString(),
-    })
-    .eq("id", scanRunId);
-  if (error) throw new Error(`Supabase scan completion failed: ${error.message}`);
+  await runQuery(
+    "scan completion",
+    () => supabase
+      .from("hy_scan_runs")
+      .update({
+        scanned_symbols: patch.scannedSymbols,
+        candidate_count: patch.candidateCount,
+        emailed_count: patch.emailedCount,
+        status: patch.status,
+        error_summary: patch.errorSummary,
+        finished_at: new Date().toISOString(),
+      })
+      .eq("id", scanRunId)
+      .select("id"),
+  ).catch((error) => {
+    throw new Error(`Supabase scan completion failed: ${errorMessage(error)}`);
+  });
 }
 
 export async function upsertScanDiagnostics(
   supabase: SupabaseClient,
   input: ScanDiagnosticsInput,
 ): Promise<void> {
-  const { error } = await supabase
-    .from("hy_scan_diagnostics")
-    .upsert({
-      scan_run_id: input.scanRunId,
-      strategy_version: input.strategyVersion,
-      global_regime: input.globalRegime,
-      deep_universe_size: input.deepUniverseSize,
-      deep_universe_symbols: input.deepUniverseSymbols,
-      filter_funnel: input.filterFunnel,
-      symbol_diagnostics: input.symbolDiagnostics,
-    }, { onConflict: "scan_run_id" });
-  if (error) throw new Error(`Supabase scan diagnostics write failed: ${error.message}`);
+  await runQuery(
+    "scan diagnostics write",
+    () => supabase
+      .from("hy_scan_diagnostics")
+      .upsert({
+        scan_run_id: input.scanRunId,
+        strategy_version: input.strategyVersion,
+        global_regime: input.globalRegime,
+        deep_universe_size: input.deepUniverseSize,
+        deep_universe_symbols: input.deepUniverseSymbols,
+        filter_funnel: input.filterFunnel,
+        symbol_diagnostics: input.symbolDiagnostics,
+      }, { onConflict: "scan_run_id" })
+      .select("scan_run_id"),
+  ).catch((error) => {
+    throw new Error(`Supabase scan diagnostics write failed: ${errorMessage(error)}`);
+  });
 }
 
 export async function hasRecentSignal(
@@ -120,16 +144,20 @@ export async function hasRecentSignal(
   if (input.cooldownHours <= 0) return false;
   const cutoff = new Date(input.sourceTimestamp - input.cooldownHours * 60 * 60 * 1000).toISOString();
   const sourceTimestamp = new Date(input.sourceTimestamp).toISOString();
-  const { data, error } = await supabase
-    .from("hy_signals")
-    .select("id")
-    .eq("symbol", input.symbol)
-    .gte("source_data_timestamp", cutoff)
-    .lt("source_data_timestamp", sourceTimestamp)
-    .order("source_data_timestamp", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw new Error(`Supabase cooldown lookup failed: ${error.message}`);
+  const data = await runQuery(
+    "cooldown lookup",
+    () => supabase
+      .from("hy_signals")
+      .select("id")
+      .eq("symbol", input.symbol)
+      .gte("source_data_timestamp", cutoff)
+      .lt("source_data_timestamp", sourceTimestamp)
+      .order("source_data_timestamp", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ).catch((error) => {
+    throw new Error(`Supabase cooldown lookup failed: ${errorMessage(error)}`);
+  });
   return Boolean(data?.id);
 }
 
@@ -137,10 +165,14 @@ export async function expireSignals(
   supabase: SupabaseClient,
   now = new Date(),
 ): Promise<number> {
-  const { data, error } = await supabase.rpc("hy_expire_signals", {
-    p_now: now.toISOString(),
+  const data = await runQuery(
+    "signal expiry",
+    () => supabase.rpc("hy_expire_signals", {
+      p_now: now.toISOString(),
+    }),
+  ).catch((error) => {
+    throw new Error(`Supabase signal expiry failed: ${errorMessage(error)}`);
   });
-  if (error) throw new Error(`Supabase signal expiry failed: ${error.message}`);
   const count = Number(data);
   return Number.isFinite(count) ? count : 0;
 }
@@ -157,7 +189,9 @@ export async function claimSignal(
     shouldEmail: boolean;
   },
 ): Promise<ClaimResult> {
-  const { data, error } = await supabase.rpc("hy_claim_signal", {
+  const data = await runQuery(
+    "signal claim",
+    () => supabase.rpc("hy_claim_signal", {
     p_signal: {
       scan_run_id: input.scanRunId ?? null,
       signal_key: input.signalKey,
@@ -195,8 +229,11 @@ export async function claimSignal(
       p_should_email: policy.shouldEmail,
       p_scan_group_key: input.scanGroupKey,
       p_scan_email_cap: policy.scanEmailCap,
+    }),
+  ).catch((error) => {
+    throw new Error(`Supabase signal claim failed: ${errorMessage(error)}`);
   });
-  if (error || !data) throw new Error(`Supabase signal claim failed: ${error?.message ?? "empty response"}`);
+  if (!data) throw new Error("Supabase signal claim failed: empty response");
   return data as ClaimResult;
 }
 
@@ -204,21 +241,26 @@ export async function createNotification(
   supabase: SupabaseClient,
   input: { signalId: string; idempotencyKey: string; recipient: string; subject: string },
 ): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("hy_notifications")
-    .insert({
-      signal_id: input.signalId,
-      idempotency_key: input.idempotencyKey,
-      recipient: input.recipient,
-      subject: input.subject,
-      status: "PENDING",
-    })
-    .select("id")
-    .maybeSingle();
-
-  if (!error) return Boolean(data?.id);
-  if (error.code === "23505") return false;
-  throw new Error(`Supabase notification creation failed: ${error.message}`);
+  try {
+    const data = await runQuery(
+      "notification creation",
+      () => supabase
+        .from("hy_notifications")
+        .insert({
+          signal_id: input.signalId,
+          idempotency_key: input.idempotencyKey,
+          recipient: input.recipient,
+          subject: input.subject,
+          status: "PENDING",
+        })
+        .select("id")
+        .maybeSingle(),
+    );
+    return Boolean(data?.id);
+  } catch (error) {
+    if ((error as { code?: string }).code === "23505") return false;
+    throw new Error(`Supabase notification creation failed: ${errorMessage(error)}`);
+  }
 }
 
 export async function finishNotification(
@@ -226,17 +268,22 @@ export async function finishNotification(
   idempotencyKey: string,
   patch: { status: "SENT" | "FAILED" | "SKIPPED"; providerMessageId?: string; error?: string },
 ) {
-  const { error } = await supabase
-    .from("hy_notifications")
-    .update({
-      status: patch.status,
-      provider_message_id: patch.providerMessageId,
-      last_error: patch.error,
-      sent_at: patch.status === "SENT" ? new Date().toISOString() : null,
-      attempts: 1,
-    })
-    .eq("idempotency_key", idempotencyKey);
-  if (error) throw new Error(`Supabase notification update failed: ${error.message}`);
+  await runQuery(
+    "notification update",
+    () => supabase
+      .from("hy_notifications")
+      .update({
+        status: patch.status,
+        provider_message_id: patch.providerMessageId,
+        last_error: patch.error,
+        sent_at: patch.status === "SENT" ? new Date().toISOString() : null,
+        attempts: 1,
+      })
+      .eq("idempotency_key", idempotencyKey)
+      .select("id"),
+  ).catch((error) => {
+    throw new Error(`Supabase notification update failed: ${errorMessage(error)}`);
+  });
 }
 
 export async function recordSystemEvent(
@@ -249,12 +296,48 @@ export async function recordSystemEvent(
     details?: unknown;
   },
 ) {
-  const { error } = await supabase.from("hy_system_events").insert({
-    event_type: event.eventType,
-    severity: event.severity,
-    component: event.component,
-    message: event.message,
-    details: event.details ?? {},
+  await runQuery(
+    "system event insert",
+    () => supabase.from("hy_system_events").insert({
+      event_type: event.eventType,
+      severity: event.severity,
+      component: event.component,
+      message: event.message,
+      details: event.details ?? {},
+    }).select("id"),
+  ).catch((error) => {
+    throw new Error(`Supabase system event failed: ${errorMessage(error)}`);
   });
-  if (error) throw new Error(`Supabase system event failed: ${error.message}`);
+}
+
+/**
+ * Counts how many DATABASE_ERROR events the given component has recorded inside
+ * the trailing window. Used to require a sustained outage before escalating to
+ * a critical alert, so a single transient Supabase gateway timeout does not
+ * page. Returns 0 when the history is empty.
+ */
+export async function countRecentFailures(
+  supabase: SupabaseClient,
+  component: string,
+  windowMinutes: number,
+): Promise<number> {
+  const since = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
+  // `runQuery` unwraps `data`, but a head+count query resolves with `data: null`
+  // and the tally on `count`, so read the response directly here.
+  const { count, error } = await supabase
+    .from("hy_system_events")
+    .select("id", { count: "exact", head: true })
+    .eq("component", component)
+    .eq("event_type", "DATABASE_ERROR")
+    .gte("occurred_at", since);
+  if (error) throw new Error(`Supabase recent failure lookup failed: ${errorMessage(error)}`);
+  return count ?? 0;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return String(error);
 }
