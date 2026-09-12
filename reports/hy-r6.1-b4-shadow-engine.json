@@ -1,0 +1,91 @@
+{
+  "research": "HY-R6.1 B4 PRICE/PREMIUM DIVERGENCE SHADOW SIGNAL ENGINE",
+  "generated_at": "2026-09-09T15:57:09.2665619+08:00",
+  "candidate": "B4 PRICE_PREMIUM_DIVERGENCE",
+  "version": "hy-b4-shadow-v1",
+  "classification": "SHADOW_ENGINE_READY",
+  "frozen_b4": {
+    "hypothesis": "DIVERGENCE_REVERSAL",
+    "bullish": "price-change percentile <= 0.25 AND premium-change percentile >= 0.75 -> LONG_WATCH",
+    "bearish": "price-change percentile >= 0.75 AND premium-change percentile <= 0.25 -> SHORT_WATCH",
+    "event_formation": "FALSE_TO_TRUE_TRANSITION",
+    "true_to_true": "NO_DUPLICATE",
+    "true_to_false": "RESET",
+    "feature_version": "hy-r5.7-basis-premium-frozen-v1",
+    "cutoff_version": "hy-r5.8a1-basis-premium-event-cutoff-v1",
+    "frozen_hashes": {
+      "r57_feature_specification": "bbdaab9e4cba4c22e50471d538d808fca992e812aaff60a0fc3f70af6020cf51",
+      "r58a_hypothesis": "0b5a790a1783704fc5eb130c4d1fa65c865339e68232fa1b54af9012c58db0f3",
+      "r58a1_cutoff": "95fe1b5a20b0d4804e52dbc01c2f0e730a8f6b377e0c29ae2877875d8f06e800"
+    }
+  },
+  "architecture": {
+    "observation_contract": "lib/signal-engine/b4-shadow-validation.ts",
+    "transition_engine": "lib/signal-engine/b4-shadow.ts",
+    "control_and_outcome_helpers": "lib/signal-engine/b4-shadow.ts",
+    "persistence_adapter": "lib/services/b4-shadow-repository.ts",
+    "production_wiring": "NONE; existing scanner, scheduler, PAPER strategy and email path are untouched"
+  },
+  "event_contract": {
+    "shadow_status": "WOULD_HAVE_ALERTED",
+    "alert_types": ["LONG_WATCH", "SHORT_WATCH"],
+    "snapshot": "immutable event-time values including perpetual price, premium, both changes/percentiles, Funding and Mark/Index context",
+    "missing_data": "NO_SIGNAL / DATA_INCOMPLETE; no price, Funding, or Mark/Index fallback"
+  },
+  "storage": {
+    "migration": "supabase/migrations/20260909132405_hy_r61_b4_shadow_signal_engine.sql",
+    "tables": ["hy_shadow_signal_events", "hy_shadow_signal_outcomes"],
+    "events_immutable": true,
+    "outcomes_separate": true,
+    "rls_enabled": true,
+    "public_client_access": "REVOKED for anon and authenticated; service_role-only server repository",
+    "supabase_production_applied": false
+  },
+  "pit_contract": {
+    "required": ["closed observation", "pit_safe", "pit_available_at <= decision_timestamp", "Perpetual Price", "Premium Index", "Mark Price", "Index Price", "Funding state", "B4 rolling history"],
+    "incomplete_behavior": "FAIL CLOSED",
+    "future_observation_fill": false
+  },
+  "control_b": {
+    "match_fields": ["symbol", "calendar_period", "market_regime", "volatility_bucket", "liquidity_bucket", "funding_state", "mark_index_basis_state"],
+    "feature_strength_as_covariate": false,
+    "selection": "deterministic PIT-safe event-time selection only",
+    "no_legal_control": "CONTROL_UNAVAILABLE; event is retained"
+  },
+  "outcomes": {
+    "primary": "1h",
+    "secondary": "4h",
+    "exploratory": ["12h", "24h"],
+    "maturity": "future closed observation at or after event timestamp + horizon; future availability must be <= evaluation time",
+    "metrics": ["directional precision", "mean signed return", "median signed return", "MFE", "MAE"],
+    "trading_pnl": false
+  },
+  "observability": {
+    "feature_flag": "HY_B4_SHADOW_ENABLED",
+    "default": false,
+    "diagnostics": ["enabled", "version", "last_evaluation_at", "market_data_status", "rolling_history_ready", "eligible_symbols", "b4_conditions_evaluated", "shadow_events_generated", "long_watch_count", "short_watch_count", "duplicates_suppressed", "data_incomplete_count", "pit_failures", "emails_sent"],
+    "local_fixture_events": 2,
+    "local_fixture_emails": 0
+  },
+  "safety": {
+    "email_hard_block": true,
+    "private_api_hard_block": true,
+    "auto_trading": false,
+    "production_modified": false,
+    "production_env_modified": false,
+    "scheduler_modified": false,
+    "paper_strategy_modified": false,
+    "vercel_modified": false,
+    "supabase_production_modified": false,
+    "emails_sent": 0,
+    "private_api_called": false,
+    "orders": 0,
+    "commit_created": false
+  },
+  "verification": {
+    "tests": "PASS (316/316)",
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "diff_check": "PASS"
+  }
+}

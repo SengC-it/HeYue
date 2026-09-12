@@ -59,10 +59,29 @@ export interface BacktestResult {
   trades: BacktestTrade[];
 }
 
+export interface PortfolioRejectionCounts {
+  maxConcurrentPositions: number;
+  singleSignalRisk: number;
+  dailyRiskBudget: number;
+  dailyLossLimit: number;
+  emailCap: number;
+  capitalFloor: number;
+}
+
+export interface PortfolioBacktestResult {
+  params: StrategyParams;
+  metrics: BacktestMetrics;
+  rawMetrics: BacktestMetrics;
+  rawTrades: BacktestTrade[];
+  trades: BacktestTrade[];
+  rejectionCounts: PortfolioRejectionCounts;
+}
+
 export interface OptimizerResult {
   params: StrategyParams;
   train: BacktestMetrics;
   outOfSample: BacktestMetrics;
   datasetCount: number;
+  selectionEligible: boolean;
   eligible: boolean;
 }

@@ -34,15 +34,17 @@ export function optimizeDatasets(
       const oosRuns = split.outOfSample.map((dataset) => runBacktest(dataset, params, { minimumSampleDays: 0 }));
       const train = aggregateMetrics(trainRuns.map((run) => run.metrics));
       const outOfSample = aggregateMetrics(oosRuns.map((run) => run.metrics));
+      const hasRequiredHistory = datasets.every((dataset) => hasAtLeastOneYear(dataset));
       return {
         params,
         train,
         outOfSample,
         datasetCount: datasets.length,
-        eligible: datasets.every((dataset) => hasAtLeastOneYear(dataset)) && outOfSample.maxDrawdownPercent <= 30,
+        selectionEligible: hasRequiredHistory && train.maxDrawdownPercent <= 30,
+        eligible: hasRequiredHistory && train.maxDrawdownPercent <= 30 && outOfSample.maxDrawdownPercent <= 30,
       };
     })
-    .sort((left, right) => rankOptimizerResult(right) - rankOptimizerResult(left));
+    .sort((left, right) => optimizerSelectionScore(right) - optimizerSelectionScore(left));
 }
 
 function splitAtNineMonths(datasets: HistoricalDataset[]) {
@@ -107,9 +109,11 @@ function hasAtLeastOneYear(dataset: HistoricalDataset): boolean {
   return last - first >= 365 * 86_400_000;
 }
 
-function rankOptimizerResult(result: OptimizerResult): number {
-  const oos = result.outOfSample;
-  return (result.eligible ? 1_000_000 : 0) + oos.netPnlUsdt - oos.maxDrawdownPercent * 100;
+export function optimizerSelectionScore(
+  result: Pick<OptimizerResult, "selectionEligible" | "train">,
+): number {
+  const train = result.train;
+  return (result.selectionEligible ? 1_000_000 : 0) + train.netPnlUsdt - train.maxDrawdownPercent * 100;
 }
 
 function addMonths(timestamp: number, months: number): number {

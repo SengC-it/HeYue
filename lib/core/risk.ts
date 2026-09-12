@@ -29,6 +29,10 @@ export function buildTradePlan(
   if (policy.maxPositionNotionalUsdt !== undefined && policy.maxPositionNotionalUsdt <= 0) {
     throw new Error("Maximum position notional must be positive");
   }
+  const rewardRisk = policy.rewardRisk ?? 2;
+  if (!Number.isFinite(rewardRisk) || rewardRisk <= 0) {
+    throw new Error("Reward-risk multiple must be positive");
+  }
 
   let positionNotionalUsdt = policy.riskPerTradeUsdt !== undefined
     ? new Decimal(policy.riskPerTradeUsdt).div(riskDistance).mul(entryPrice)
@@ -49,8 +53,8 @@ export function buildTradePlan(
   const assumedMarginUsdt = actualPositionNotionalUsdt.div(policy.leverage).toNumber();
   const takeProfitUnrounded =
     candidate.side === "LONG"
-      ? entryPrice + riskDistance * 2
-      : entryPrice - riskDistance * 2;
+      ? entryPrice + riskDistance * rewardRisk
+      : entryPrice - riskDistance * rewardRisk;
   const takeProfitPrice = roundToStep(
     takeProfitUnrounded,
     instrument.priceTick,
@@ -67,7 +71,7 @@ export function buildTradePlan(
     entryPrice,
     stopPrice,
     takeProfitPrice,
-    rewardRisk: 2,
+    rewardRisk,
     assumedMarginUsdt,
     assumedLeverage: policy.leverage,
     positionNotionalUsdt: actualPositionNotionalUsdt.toNumber(),
@@ -88,6 +92,18 @@ export function roundToStep(value: number, step: number, mode: "down" | "up" | "
   const quotient = decimalValue.div(decimalStep);
   const rounding = mode === "down" ? Decimal.ROUND_FLOOR : mode === "up" ? Decimal.ROUND_CEIL : Decimal.ROUND_HALF_UP;
   return quotient.toDecimalPlaces(0, rounding).mul(decimalStep).toNumber();
+}
+
+export function estimateExecutionCostRisk(
+  plan: TradePlan,
+  takerFeeRate: number,
+  slippageBps: number,
+): number {
+  if (plan.theoreticalRiskUsdt <= 0) return Number.POSITIVE_INFINITY;
+  const costRate = Math.max(0, takerFeeRate) + Math.max(0, slippageBps) / 10_000;
+  const entryNotional = plan.entryPrice * plan.quantity;
+  const targetNotional = plan.takeProfitPrice * plan.quantity;
+  return ((entryNotional + targetNotional) * costRate) / plan.theoreticalRiskUsdt;
 }
 
 function roundQuantity(value: number, step: number): number {

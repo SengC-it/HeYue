@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-08-09",
+  "window": {
+    "start": "2025-08-09T02:15:00.000Z",
+    "end": "2026-08-09T02:14:59.999Z"
+  },
+  "methodology": {
+    "entry": "next 15m open after the signal candle, plus adverse slippage",
+    "stop": "stop-first intrabar; gap-through stops fill at the worse candle open",
+    "liquidity": "point-in-time trailing 24h quote volume",
+    "selection": "16 pre-bounded variants ranked on the first nine months only",
+    "oos": "the final three months were reported but not used for ranking",
+    "costStress": "the same selected opportunities are repriced at 6bps taker fee and 4bps slippage"
+  },
+  "legacyReported": {
+    "netPnlUsdt": 1994.0276,
+    "trades": 461,
+    "profitableFolds": 3,
+    "maximumFoldDrawdownPercent": 16.3929,
+    "comparable": false,
+    "reason": "same-close fills, download-time liquidity leakage, and cost stress changed the trade sample"
+  },
+  "correctedPreviousPolicy": {
+    "policy": "score75-cooldown8-rr2.5-h72",
+    "base": {
+      "netPnlUsdt": 345.483,
+      "trades": 514,
+      "profitableFolds": 2,
+      "minimumFoldNetPnlUsdt": -1118.5843,
+      "maximumFoldDrawdownPercent": 16.5777
+    },
+    "stress": {
+      "netPnlUsdt": -795.8179,
+      "trades": 514,
+      "profitableFolds": 2,
+      "minimumFoldNetPnlUsdt": -1477.3072,
+      "maximumFoldDrawdownPercent": 17.9999
+    }
+  },
+  "optimizedPolicy": {
+    "policy": "score80-cooldown24-rr2-h48",
+    "base": {
+      "netPnlUsdt": 1429.5988,
+      "trades": 216,
+      "profitableFolds": 3,
+      "minimumFoldNetPnlUsdt": -450.8905,
+      "maximumFoldDrawdownPercent": 9.2414
+    },
+    "stress": {
+      "netPnlUsdt": 934.1459,
+      "trades": 216,
+      "profitableFolds": 3,
+      "minimumFoldNetPnlUsdt": -507.1081,
+      "maximumFoldDrawdownPercent": 9.9922
+    },
+    "oos": {
+      "trades": 29,
+      "netPnlUsdt": 469.3117,
+      "profitFactor": 1.6,
+      "maxDrawdownPercent": 3.5108
+    }
+  },
+  "change": {
+    "baseNetPnlUsdt": 1084.1158,
+    "baseNetPnlPercent": 313.8,
+    "stressNetPnlUsdt": 1729.9638,
+    "tradeCount": -298,
+    "tradeCountPercent": -58.0,
+    "maximumFoldDrawdownPercentagePoints": -7.3363
+  },
+  "decision": "paper-forward-validation-only",
+  "reason": "OOS has only 29 trades and one historical fold remains materially negative"
+}

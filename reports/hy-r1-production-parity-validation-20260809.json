@@ -1,0 +1,894 @@
+{
+  "generatedAt": "2026-09-04T02:53:48.046Z",
+  "status": "COMPLETED",
+  "purpose": "Research-only validation of the unchanged HeYue PAPER policy against a bounded historical candidate cohort",
+  "focus": "production-parity",
+  "executionSemantics": "PRODUCTION_CLAIM_PARITY",
+  "signalDecisionPriceBasis": "CLOSED_15M_INFORMATION_ONLY",
+  "executionPriceBasis": "NEXT_15M_OPEN",
+  "riskPlanPriceBasis": "NEXT_15M_OPEN",
+  "executionPlanConsistent": true,
+  "cooldownBasis": "SIGNAL_SOURCE_TIMESTAMP",
+  "replacementRiskAccounting": "INCREMENTAL_DELTA",
+  "concurrentPositionCap": "NONE",
+  "dailyRealizedLossGate": "NONE",
+  "emailCapAffectsTradeSelection": false,
+  "qualifiedCandidateCount": 795,
+  "claimedSignalCount": 235,
+  "paperTradeCount": 235,
+  "emailAllowedCount": 235,
+  "emailDeliveredEquivalentCount": 235,
+  "universeMetadata": {
+    "universePolicy": "FIXED_COHORT_DYNAMIC_TOP10",
+    "candidatePoolSize": 50,
+    "dynamicUniverseSize": 10,
+    "lookbackHours": 24,
+    "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME",
+    "symbolCohort": "explicit fixed validation symbol cohort",
+    "survivorshipBiasLimitation": "This cohort is not a complete historical Binance universe: it may exclude delisted contracts, new listings, historical exchange-universe changes, and symbols whose local cache is unavailable. Results therefore retain survivorship and availability bias.",
+    "productionParityLevel": "BOUNDED_COHORT"
+  },
+  "policy": {
+    "id": "hy-paper-candidate-v2-production-parity",
+    "description": "Research-only reproduction of the current PAPER policy: TREND_PULLBACK, TREND, SHORT, score >= 80, strict local and BTC 4h global regime alignment, 24h cooldown, 50U risk, 10,000U max notional, 2R target, 48h max hold, execution cost risk <= 10%.",
+    "strategyVersion": "hy-paper-candidate-v2",
+    "params": {
+      "entryMode": "TREND_PULLBACK",
+      "emaFast": 20,
+      "emaSlow": 50,
+      "rsiPeriod": 14,
+      "atrPeriod": 14,
+      "stopAtrMultiplier": 0.75,
+      "breakoutPeriod": 20,
+      "breakoutVolumeRatio": 1.15,
+      "meanReversionRsiLow": 35,
+      "meanReversionRsiHigh": 65,
+      "bollingerPeriod": 20,
+      "bollingerDeviation": 2
+    },
+    "options": {
+      "initialCapitalUsdt": 10000,
+      "minScore": 80,
+      "maxHoldHours": 48,
+      "minimumSampleDays": 0,
+      "singleSignalRiskCapUsdt": 50,
+      "dailyRiskBudgetUsdt": 600,
+      "maxEmailsPerDay": 10,
+      "maxEmailsPerScan": 6,
+      "capitalFloorUsdt": 0,
+      "marginUsdt": 100,
+      "leverage": 20,
+      "takerFeeRate": 0.0004,
+      "slippageBps": 2,
+      "selectionTakerFeeRate": 0.0004,
+      "selectionSlippageBps": 2,
+      "entryDelayBars": 1,
+      "riskPerTradeUsdt": 50,
+      "maxPositionNotionalUsdt": 10000,
+      "rewardRisk": 2,
+      "requireRegimeAlignment": true,
+      "sideFilter": "SHORT",
+      "strategyFamilies": [
+        "TREND"
+      ],
+      "cooldownHours": 24,
+      "maxExecutionCostRiskFraction": 0.1,
+      "dynamicUniverseSize": 10,
+      "dynamicUniverseLookbackDays": 1,
+      "globalReferenceSymbol": "BTCUSDT",
+      "globalReferenceTimeframe": "4h",
+      "globalRegimeAlignment": true
+    }
+  },
+  "universe": {
+    "universePolicy": "FIXED_COHORT_DYNAMIC_TOP10",
+    "candidatePoolSize": 50,
+    "dynamicUniverseSize": 10,
+    "lookbackHours": 24,
+    "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME",
+    "symbolCohort": "explicit fixed validation symbol cohort",
+    "survivorshipBiasLimitation": "This cohort is not a complete historical Binance universe: it may exclude delisted contracts, new listings, historical exchange-universe changes, and symbols whose local cache is unavailable. Results therefore retain survivorship and availability bias.",
+    "productionParityLevel": "BOUNDED_COHORT",
+    "symbols": [
+      "1000BONKUSDT",
+      "1000CATUSDT",
+      "1000PEPEUSDT",
+      "1000SHIBUSDT",
+      "AAVEUSDT",
+      "ADAUSDT",
+      "ARCUSDT",
+      "AVAXUSDT",
+      "BANKUSDT",
+      "BNBUSDT",
+      "BTCUSDT",
+      "COOKIEUSDT",
+      "COTIUSDT",
+      "DEXEUSDT",
+      "DODOXUSDT",
+      "DOGEUSDT",
+      "ENAUSDT",
+      "EPICUSDT",
+      "ETHUSDT",
+      "FILUSDT",
+      "HEIUSDT",
+      "HOMEUSDT",
+      "HYPEUSDT",
+      "ICPUSDT",
+      "INJUSDT",
+      "IOTXUSDT",
+      "LINKUSDT",
+      "LTCUSDT",
+      "NEARUSDT",
+      "ONDOUSDT",
+      "PAXGUSDT",
+      "PENGUUSDT",
+      "PUMPUSDT",
+      "SAGAUSDT",
+      "SIRENUSDT",
+      "SKYAIUSDT",
+      "SOLUSDT",
+      "SUIUSDT",
+      "SYNUSDT",
+      "TAOUSDT",
+      "TRXUSDT",
+      "TSTUSDT",
+      "UNIUSDT",
+      "WLDUSDT",
+      "XLMUSDT",
+      "XMRUSDT",
+      "XRPUSDT",
+      "ACEUSDT",
+      "BICOUSDT",
+      "KAITOUSDT"
+    ],
+    "selection": "historical trailing 24h quote-volume ranking over a 50-symbol candidate pool, selecting dynamic top 10"
+  },
+  "window": {
+    "start": "2025-08-09T02:15:00.000Z",
+    "end": "2026-08-09T02:14:59.999Z",
+    "warmupStart": "2025-07-26T02:15:00.000Z",
+    "train": {
+      "start": "2025-08-09T02:15:00.000Z",
+      "end": "2026-05-07T02:15:00.000Z"
+    },
+    "outOfSample": {
+      "start": "2026-05-09T02:15:00.000Z",
+      "end": "2026-08-09T02:14:59.999Z"
+    },
+    "embargoHours": 48
+  },
+  "assumptions": {
+    "primaryTimeframe": "15m",
+    "confirmationTimeframes": [
+      "1h",
+      "4h"
+    ],
+    "dynamicUniverseLookbackHours": 24,
+    "initialCapitalUsdt": 10000,
+    "maxHoldHours": 48,
+    "takeProfitRewardRisk": 2,
+    "takerFeeRate": 0.0004,
+    "slippageBps": 2,
+    "funding": "actual cached Binance USDⓈ-M fundingRate observations; no synthetic fallback rate",
+    "entryModel": "candidate information is decided from the closed 15m candle; the execution candidate, risk plan, and fill all use the next 15m open plus adverse slippage",
+    "intrabarModel": "stop-first when both levels are inside one candle; gap-through stops fill at the worse open",
+    "claimSimulation": "same-symbol active replacement expires at valid_until; cooldown uses prior signal source timestamp; daily reservation uses max(newRisk - oldActiveRisk, 0)",
+    "validUntilSemantics": "production signal lifetime remains source timestamp + 48h; the next-open execution timestamp is at most one candle boundary later, so any entry-open comparison differs by <=1 candle boundary",
+    "emailSimulation": "email caps are measured as allowed/equivalent delivery only and never remove qualified, claimed, or paper samples; no external email is sent",
+    "note": "This is a research artifact only. It does not select or activate a production strategy."
+  },
+  "results": {
+    "full": {
+      "qualifiedCandidateCount": 795,
+      "claimedSignalCount": 235,
+      "paperTradeCount": 235,
+      "emailAllowedCount": 235,
+      "emailDeliveredEquivalentCount": 235,
+      "tradeCount": 230,
+      "metrics": {
+        "signals": 230,
+        "wins": 88,
+        "losses": 142,
+        "winRate": 38.26,
+        "avgScore": 81.39,
+        "avgRiskUsdt": 49.942,
+        "avgPnlUsdt": 3.7177,
+        "netR": 17.0118,
+        "netPnlUsdt": 855.0746,
+        "pricePnlBeforeExecutionCostsUsdt": 1653.0006,
+        "totalFeesUsdt": 529.257,
+        "totalFundingUsdt": -4.0405,
+        "totalSlippageUsdt": 264.6285,
+        "profitFactor": 1.1139,
+        "maxDrawdownUsdt": 977.3179,
+        "maxDrawdownPercent": 9.7732,
+        "finalEquityUsdt": 10855.0746
+      },
+      "rejectionCounts": {
+        "cooldown": 496,
+        "rejectedLowerScore": 64,
+        "singleSignalRiskCap": 0,
+        "dailyRiskBudget": 0
+      },
+      "deliveryStatusCounts": {
+        "NOT_APPLICABLE": 560,
+        "NOT_ALLOWED": 0,
+        "DUPLICATE_NOTIFICATION": 0,
+        "SKIPPED_DRY_RUN": 235,
+        "SENT": 0,
+        "FAILED": 0
+      }
+    },
+    "train": {
+      "qualifiedCandidateCount": 689,
+      "claimedSignalCount": 206,
+      "paperTradeCount": 206,
+      "emailAllowedCount": 206,
+      "emailDeliveredEquivalentCount": 206,
+      "tradeCount": 202,
+      "metrics": {
+        "signals": 202,
+        "wins": 76,
+        "losses": 126,
+        "winRate": 37.62,
+        "avgScore": 81.4,
+        "avgRiskUsdt": 49.9445,
+        "avgPnlUsdt": 2.4777,
+        "netR": 9.9595,
+        "netPnlUsdt": 500.4968,
+        "pricePnlBeforeExecutionCostsUsdt": 1201.8873,
+        "totalFeesUsdt": 463.6849,
+        "totalFundingUsdt": -5.8631,
+        "totalSlippageUsdt": 231.8425,
+        "profitFactor": 1.0746,
+        "maxDrawdownUsdt": 977.3179,
+        "maxDrawdownPercent": 9.7732,
+        "finalEquityUsdt": 10500.4968
+      },
+      "rejectionCounts": {
+        "cooldown": 439,
+        "rejectedLowerScore": 44,
+        "singleSignalRiskCap": 0,
+        "dailyRiskBudget": 0
+      },
+      "deliveryStatusCounts": {
+        "NOT_APPLICABLE": 483,
+        "NOT_ALLOWED": 0,
+        "DUPLICATE_NOTIFICATION": 0,
+        "SKIPPED_DRY_RUN": 206,
+        "SENT": 0,
+        "FAILED": 0
+      }
+    },
+    "outOfSample": {
+      "qualifiedCandidateCount": 106,
+      "claimedSignalCount": 29,
+      "paperTradeCount": 29,
+      "emailAllowedCount": 29,
+      "emailDeliveredEquivalentCount": 29,
+      "tradeCount": 28,
+      "metrics": {
+        "signals": 28,
+        "wins": 12,
+        "losses": 16,
+        "winRate": 42.86,
+        "avgScore": 81.31,
+        "avgRiskUsdt": 49.9242,
+        "avgPnlUsdt": 12.6635,
+        "netR": 7.0523,
+        "netPnlUsdt": 354.5778,
+        "pricePnlBeforeExecutionCostsUsdt": 451.1133,
+        "totalFeesUsdt": 65.5721,
+        "totalFundingUsdt": 1.8226,
+        "totalSlippageUsdt": 32.7861,
+        "profitFactor": 1.4414,
+        "maxDrawdownUsdt": 266.7762,
+        "maxDrawdownPercent": 2.6678,
+        "finalEquityUsdt": 10354.5778
+      },
+      "rejectionCounts": {
+        "cooldown": 57,
+        "rejectedLowerScore": 20,
+        "singleSignalRiskCap": 0,
+        "dailyRiskBudget": 0
+      },
+      "deliveryStatusCounts": {
+        "NOT_APPLICABLE": 77,
+        "NOT_ALLOWED": 0,
+        "DUPLICATE_NOTIFICATION": 0,
+        "SKIPPED_DRY_RUN": 29,
+        "SENT": 0,
+        "FAILED": 0
+      }
+    },
+    "folds": [
+      {
+        "id": "q1",
+        "start": "2025-08-09T02:15:00.000Z",
+        "end": "2025-11-08T08:14:59.999Z",
+        "qualifiedCandidateCount": 276,
+        "claimedSignalCount": 87,
+        "paperTradeCount": 87,
+        "emailAllowedCount": 87,
+        "emailDeliveredEquivalentCount": 87,
+        "tradeCount": 86,
+        "metrics": {
+          "signals": 86,
+          "wins": 33,
+          "losses": 53,
+          "winRate": 38.37,
+          "avgScore": 81.32,
+          "avgRiskUsdt": 49.949,
+          "avgPnlUsdt": 3.1207,
+          "netR": 5.2877,
+          "netPnlUsdt": 268.3782,
+          "pricePnlBeforeExecutionCostsUsdt": 565.5521,
+          "totalFeesUsdt": 194.8898,
+          "totalFundingUsdt": -4.8392,
+          "totalSlippageUsdt": 97.4449,
+          "profitFactor": 1.0949,
+          "maxDrawdownUsdt": 977.3179,
+          "maxDrawdownPercent": 9.7732,
+          "finalEquityUsdt": 10268.3782
+        },
+        "rejectionCounts": {
+          "cooldown": 180,
+          "rejectedLowerScore": 9,
+          "singleSignalRiskCap": 0,
+          "dailyRiskBudget": 0
+        },
+        "deliveryStatusCounts": {
+          "NOT_APPLICABLE": 189,
+          "NOT_ALLOWED": 0,
+          "DUPLICATE_NOTIFICATION": 0,
+          "SKIPPED_DRY_RUN": 87,
+          "SENT": 0,
+          "FAILED": 0
+        }
+      },
+      {
+        "id": "q2",
+        "start": "2025-11-08T08:15:00.000Z",
+        "end": "2026-02-07T14:14:59.999Z",
+        "qualifiedCandidateCount": 359,
+        "claimedSignalCount": 95,
+        "paperTradeCount": 95,
+        "emailAllowedCount": 95,
+        "emailDeliveredEquivalentCount": 95,
+        "tradeCount": 93,
+        "metrics": {
+          "signals": 93,
+          "wins": 38,
+          "losses": 55,
+          "winRate": 40.86,
+          "avgScore": 81.46,
+          "avgRiskUsdt": 49.9563,
+          "avgPnlUsdt": 8.1812,
+          "netR": 15.2931,
+          "netPnlUsdt": 760.8526,
+          "pricePnlBeforeExecutionCostsUsdt": 1071.7698,
+          "totalFeesUsdt": 209.0672,
+          "totalFundingUsdt": 2.6837,
+          "totalSlippageUsdt": 104.5337,
+          "profitFactor": 1.2615,
+          "maxDrawdownUsdt": 843.8412,
+          "maxDrawdownPercent": 8.4384,
+          "finalEquityUsdt": 10760.8526
+        },
+        "rejectionCounts": {
+          "cooldown": 234,
+          "rejectedLowerScore": 30,
+          "singleSignalRiskCap": 0,
+          "dailyRiskBudget": 0
+        },
+        "deliveryStatusCounts": {
+          "NOT_APPLICABLE": 264,
+          "NOT_ALLOWED": 0,
+          "DUPLICATE_NOTIFICATION": 0,
+          "SKIPPED_DRY_RUN": 95,
+          "SENT": 0,
+          "FAILED": 0
+        }
+      },
+      {
+        "id": "q3",
+        "start": "2026-02-07T14:15:00.000Z",
+        "end": "2026-05-09T20:14:59.999Z",
+        "qualifiedCandidateCount": 54,
+        "claimedSignalCount": 24,
+        "paperTradeCount": 24,
+        "emailAllowedCount": 24,
+        "emailDeliveredEquivalentCount": 24,
+        "tradeCount": 23,
+        "metrics": {
+          "signals": 23,
+          "wins": 5,
+          "losses": 18,
+          "winRate": 21.74,
+          "avgScore": 81.41,
+          "avgRiskUsdt": 49.8793,
+          "avgPnlUsdt": -22.9884,
+          "netR": -10.6214,
+          "netPnlUsdt": -528.7339,
+          "pricePnlBeforeExecutionCostsUsdt": -435.4346,
+          "totalFeesUsdt": 59.7278,
+          "totalFundingUsdt": -3.7076,
+          "totalSlippageUsdt": 29.8639,
+          "profitFactor": 0.453,
+          "maxDrawdownUsdt": 650.5302,
+          "maxDrawdownPercent": 6.5053,
+          "finalEquityUsdt": 9471.2661
+        },
+        "rejectionCounts": {
+          "cooldown": 25,
+          "rejectedLowerScore": 5,
+          "singleSignalRiskCap": 0,
+          "dailyRiskBudget": 0
+        },
+        "deliveryStatusCounts": {
+          "NOT_APPLICABLE": 30,
+          "NOT_ALLOWED": 0,
+          "DUPLICATE_NOTIFICATION": 0,
+          "SKIPPED_DRY_RUN": 24,
+          "SENT": 0,
+          "FAILED": 0
+        }
+      },
+      {
+        "id": "q4",
+        "start": "2026-05-09T20:15:00.000Z",
+        "end": "2026-08-09T02:14:59.999Z",
+        "qualifiedCandidateCount": 106,
+        "claimedSignalCount": 29,
+        "paperTradeCount": 29,
+        "emailAllowedCount": 29,
+        "emailDeliveredEquivalentCount": 29,
+        "tradeCount": 28,
+        "metrics": {
+          "signals": 28,
+          "wins": 12,
+          "losses": 16,
+          "winRate": 42.86,
+          "avgScore": 81.31,
+          "avgRiskUsdt": 49.9242,
+          "avgPnlUsdt": 12.6635,
+          "netR": 7.0523,
+          "netPnlUsdt": 354.5778,
+          "pricePnlBeforeExecutionCostsUsdt": 451.1133,
+          "totalFeesUsdt": 65.5721,
+          "totalFundingUsdt": 1.8226,
+          "totalSlippageUsdt": 32.7861,
+          "profitFactor": 1.4414,
+          "maxDrawdownUsdt": 266.7762,
+          "maxDrawdownPercent": 2.6678,
+          "finalEquityUsdt": 10354.5778
+        },
+        "rejectionCounts": {
+          "cooldown": 57,
+          "rejectedLowerScore": 20,
+          "singleSignalRiskCap": 0,
+          "dailyRiskBudget": 0
+        },
+        "deliveryStatusCounts": {
+          "NOT_APPLICABLE": 77,
+          "NOT_ALLOWED": 0,
+          "DUPLICATE_NOTIFICATION": 0,
+          "SKIPPED_DRY_RUN": 29,
+          "SENT": 0,
+          "FAILED": 0
+        }
+      }
+    ]
+  },
+  "data": [
+    {
+      "symbol": "1000BONKUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "1000CATUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "1000SHIBUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "ARCUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "AVAXUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "BANKUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2292,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "COOKIEUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "COTIUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1349,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "DEXEUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2494,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "DODOXUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "ENAUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "EPICUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2233,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "FILUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "HEIUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2203,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "HOMEUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2534,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "ICPUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "INJUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "IOTXUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "NEARUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "PAXGUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "PENGUUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "PUMPUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "SAGAUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "SIRENUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2658,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "SKYAIUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "SUIUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "SYNUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "TAOUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "TSTUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "UNIUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "WLDUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "XLMUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "XMRUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "candles15m": 36384,
+      "candles1h": 9095,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "ACEUSDT",
+      "candles15m": 36384,
+      "candles1h": 9096,
+      "candles4h": 2273,
+      "fundingRates": 2427,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "BICOUSDT",
+      "candles15m": 36384,
+      "candles1h": 9096,
+      "candles4h": 2273,
+      "fundingRates": 1095,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    },
+    {
+      "symbol": "KAITOUSDT",
+      "candles15m": 36384,
+      "candles1h": 9096,
+      "candles4h": 2273,
+      "fundingRates": 2189,
+      "volumeSource": "ESTIMATED_CLOSE_X_BASE_VOLUME"
+    }
+  ],
+  "knownLimitations": [
+    "This cohort is not a complete historical Binance universe: it may exclude delisted contracts, new listings, historical exchange-universe changes, and symbols whose local cache is unavailable. Results therefore retain survivorship and availability bias.",
+    "Dynamic ranking is limited to the supplied historical cohort; no claim is made about contracts absent from the cohort or cache.",
+    "Legacy caches without quoteVolume use ESTIMATED_CLOSE_X_BASE_VOLUME; email delivery counts are equivalent projections in dry-run mode."
+  ],
+  "runSettings": {
+    "concurrency": 1,
+    "interSymbolDelayMs": 0
+  }
+}

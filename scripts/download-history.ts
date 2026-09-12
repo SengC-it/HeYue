@@ -1,22 +1,23 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { BinancePublicClient, mapWithConcurrency } from "@/lib/binance/public-client";
+import { readHyEnv } from "@/lib/config";
 import type { Timeframe } from "@/lib/core/types";
 
 async function main() {
-  const baseUrl = process.env.BINANCE_API_BASE_URL ?? "https://fapi.binance.com";
-  const symbols = csv(process.env.CS_HISTORY_SYMBOLS);
+  const baseUrl = readHyEnv("HY_BINANCE_API_BASE_URL") ?? "https://fapi.binance.com";
+  const symbols = csv(readHyEnv("HY_HISTORY_SYMBOLS"));
   if (symbols.length === 0) {
-    throw new Error("Set CS_HISTORY_SYMBOLS before downloading local history");
+    throw new Error("Set HY_HISTORY_SYMBOLS before downloading local history");
   }
 
-  const days = positiveNumber(process.env.CS_HISTORY_DAYS, 400);
+  const days = positiveNumber(readHyEnv("HY_HISTORY_DAYS"), 400);
   const endTime = Date.now();
   const startTime = endTime - days * 86_400_000;
-  const timeframes = csv(process.env.CS_HISTORY_TIMEFRAMES).filter(isTimeframe);
+  const timeframes = csv(readHyEnv("HY_HISTORY_TIMEFRAMES")).filter(isTimeframe);
   const selectedTimeframes: Timeframe[] = timeframes.length > 0 ? timeframes : ["15m", "1h", "4h"];
-  const outputDirectory = resolve(process.env.CS_OPTIMIZER_DATA_DIR ?? "data/raw");
-  const client = new BinancePublicClient(baseUrl);
+  const outputDirectory = resolve(readHyEnv("HY_OPTIMIZER_DATA_DIR") ?? "data/raw");
+  const client = new BinancePublicClient(baseUrl, undefined, positiveNumber(readHyEnv("HY_BINANCE_REQUEST_DELAY_MS"), 0));
   const universe = await client.getUniverse();
   const instrumentBySymbol = new Map(universe.map((instrument) => [instrument.symbol, instrument]));
   const outputSymbols = symbols.filter((symbol) => instrumentBySymbol.has(symbol));
@@ -24,10 +25,10 @@ async function main() {
   if (unknownSymbols.length > 0) {
     console.warn(`Skipping symbols not present in the current USDT-M perpetual universe: ${unknownSymbols.join(", ")}`);
   }
-  if (outputSymbols.length === 0) throw new Error("None of CS_HISTORY_SYMBOLS are active USDT-M perpetuals");
+  if (outputSymbols.length === 0) throw new Error("None of HY_HISTORY_SYMBOLS are active USDT-M perpetuals");
 
   await mkdir(outputDirectory, { recursive: true });
-  const concurrency = positiveNumber(process.env.CS_HISTORY_CONCURRENCY, 2);
+  const concurrency = positiveNumber(readHyEnv("HY_HISTORY_CONCURRENCY"), 2);
   const results = await mapWithConcurrency(outputSymbols, concurrency, async (symbol) => {
     const instrument = instrumentBySymbol.get(symbol)!;
     const candleEntries: Record<string, unknown> = {};

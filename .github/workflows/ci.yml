@@ -8,6 +8,19 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: heyue_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d heyue_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,5 +33,76 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
-      - run: pnpm test
+      - name: Install PostgreSQL client for disposable SQL contract
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Run tests including disposable PostgreSQL contract
+        env:
+          HY_TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/heyue_test
+          HY_TEST_POSTGRES_EPHEMERAL: "true"
+        run: pnpm test
       - run: pnpm build
+      - name: Verify deployment readiness with dummy observation values
+        env:
+          HY_SUPABASE_URL: https://jfvbikivtpfjgfsnggiz.supabase.co
+          HY_SUPABASE_SERVICE_ROLE_KEY: ci-dummy-service-role-key
+          HY_CRON_SECRET: ci-dummy-cron-secret
+          HY_STRATEGY_ADMIN_SECRET: ci-dummy-strategy-admin-secret
+          HY_STRATEGY_SOURCE: DB
+          HY_STRATEGY_STAGE: PAPER
+          HY_STRATEGY_VERSION: hy-paper-candidate-v2
+          HY_PAPER_TRADING_ENABLED: "true"
+          HY_DRY_RUN: "false"
+          HY_GMAIL_SMTP_USER: ci-dummy@example.com
+          HY_GMAIL_SMTP_APP_PASSWORD: ci-dummy-app-password
+          HY_GMAIL_RECIPIENT: ci-dummy@example.com
+          HY_BINANCE_API_KEY: ""
+          HY_BINANCE_API_SECRET: ""
+          HY_BINANCE_SECRET_KEY: ""
+          BINANCE_API_KEY: ""
+          BINANCE_API_SECRET: ""
+          BINANCE_SECRET_KEY: ""
+        run: pnpm deploy:check
+      - name: Verify Vercel Production build gate with dummy observation values
+        env:
+          VERCEL_ENV: production
+          HY_SUPABASE_URL: https://jfvbikivtpfjgfsnggiz.supabase.co
+          HY_SUPABASE_SERVICE_ROLE_KEY: ci-dummy-service-role-key
+          HY_CRON_SECRET: ci-dummy-cron-secret
+          HY_STRATEGY_ADMIN_SECRET: ci-dummy-admin-secret
+          HY_STRATEGY_SOURCE: DB
+          HY_STRATEGY_STAGE: PAPER
+          HY_STRATEGY_VERSION: hy-paper-candidate-v2
+          HY_PAPER_TRADING_ENABLED: "true"
+          HY_DRY_RUN: "false"
+          HY_GMAIL_SMTP_USER: ci-dummy@example.com
+          HY_GMAIL_SMTP_APP_PASSWORD: ci-dummy-password
+          HY_GMAIL_RECIPIENT: ci-dummy@example.com
+          HY_BINANCE_API_KEY: ""
+          HY_BINANCE_API_SECRET: ""
+          HY_BINANCE_SECRET_KEY: ""
+          BINANCE_API_KEY: ""
+          BINANCE_API_SECRET: ""
+          BINANCE_SECRET_KEY: ""
+        run: pnpm vercel:build
+      - name: Verify Vercel Production build gate with explicit deployment sentinel
+        env:
+          HY_DEPLOY_TARGET: production
+          HY_SUPABASE_URL: https://jfvbikivtpfjgfsnggiz.supabase.co
+          HY_SUPABASE_SERVICE_ROLE_KEY: ci-dummy-service-role-key
+          HY_CRON_SECRET: ci-dummy-cron-secret
+          HY_STRATEGY_ADMIN_SECRET: ci-dummy-admin-secret
+          HY_STRATEGY_SOURCE: DB
+          HY_STRATEGY_STAGE: PAPER
+          HY_STRATEGY_VERSION: hy-paper-candidate-v2
+          HY_PAPER_TRADING_ENABLED: "true"
+          HY_DRY_RUN: "false"
+          HY_GMAIL_SMTP_USER: ci-dummy@example.com
+          HY_GMAIL_SMTP_APP_PASSWORD: ci-dummy-password
+          HY_GMAIL_RECIPIENT: ci-dummy@example.com
+          HY_BINANCE_API_KEY: ""
+          HY_BINANCE_API_SECRET: ""
+          HY_BINANCE_SECRET_KEY: ""
+          BINANCE_API_KEY: ""
+          BINANCE_API_SECRET: ""
+          BINANCE_SECRET_KEY: ""
+        run: pnpm vercel:build

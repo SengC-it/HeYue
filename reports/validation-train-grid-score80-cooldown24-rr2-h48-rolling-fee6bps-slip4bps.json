@@ -1,0 +1,241 @@
+{
+  "generatedAt": "2026-08-09T15:06:38.805Z",
+  "purpose": "Fixed-policy rolling robustness check; no parameter selection uses these folds",
+  "policy": {
+    "id": "train-grid-score80-cooldown24-rr2-h48",
+    "description": "Train-only selection grid: historical liquid top-10, pullback short, BTC 4h aligned, score >= 80, cooldown 24h, target 2R, hold 48h",
+    "params": {
+      "entryMode": "TREND_PULLBACK",
+      "emaFast": 20,
+      "emaSlow": 50,
+      "rsiPeriod": 14,
+      "atrPeriod": 14,
+      "stopAtrMultiplier": 0.75,
+      "breakoutPeriod": 20,
+      "breakoutVolumeRatio": 1.15,
+      "meanReversionRsiLow": 35,
+      "meanReversionRsiHigh": 65,
+      "bollingerPeriod": 20,
+      "bollingerDeviation": 2
+    },
+    "options": {
+      "initialCapitalUsdt": 10000,
+      "minScore": 80,
+      "maxHoldHours": 48,
+      "minimumSampleDays": 0,
+      "singleSignalRiskCapUsdt": 50,
+      "dailyRiskBudgetUsdt": 600,
+      "dailyLossLimitUsdt": 600,
+      "maxConcurrentPositions": 6,
+      "maxEmailsPerDay": 10,
+      "maxEmailsPerScan": 6,
+      "capitalFloorUsdt": 0,
+      "marginUsdt": 100,
+      "leverage": 20,
+      "takerFeeRate": 0.0006,
+      "slippageBps": 4,
+      "selectionTakerFeeRate": 0.0004,
+      "selectionSlippageBps": 2,
+      "entryDelayBars": 1,
+      "rewardRisk": 2,
+      "riskPerTradeUsdt": 50,
+      "maxPositionNotionalUsdt": 10000,
+      "requireRegimeAlignment": true,
+      "sideFilter": "SHORT",
+      "strategyFamilies": [
+        "TREND"
+      ],
+      "cooldownHours": 24,
+      "maxExecutionCostRiskFraction": 0.1,
+      "dynamicUniverseSize": 10,
+      "dynamicUniverseLookbackDays": 1,
+      "globalReferenceSymbol": "BTCUSDT",
+      "globalReferenceTimeframe": "4h",
+      "globalRegimeAlignment": true
+    }
+  },
+  "window": {
+    "start": "2025-08-09T02:15:00.000Z",
+    "end": "2026-08-09T02:14:59.999Z",
+    "warmupStart": "2025-07-26T02:15:00.000Z"
+  },
+  "assumptions": {
+    "initialCapitalUsdt": 10000,
+    "feeRate": 0.0006,
+    "slippageBps": 4,
+    "entryModel": "signal on a closed 15m candle; fill at the next 15m open plus adverse slippage",
+    "stopModel": "stop-first intrabar; a gap through the stop fills at the worse candle open",
+    "note": "Each fold is evaluated independently with a fresh 10,000U paper capital base; this is a stability check, not a compounded equity curve."
+  },
+  "universe": {
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "BNBUSDT",
+      "SOLUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT",
+      "LINKUSDT",
+      "AVAXUSDT",
+      "SUIUSDT",
+      "1000SHIBUSDT",
+      "1000PEPEUSDT",
+      "AAVEUSDT",
+      "TRXUSDT",
+      "PAXGUSDT",
+      "INJUSDT",
+      "COTIUSDT",
+      "LTCUSDT",
+      "XLMUSDT",
+      "XMRUSDT"
+    ],
+    "selection": "fixed liquid symbols",
+    "note": "This is not the full production top-100 universe."
+  },
+  "summary": {
+    "folds": 4,
+    "profitableFolds": 3,
+    "totalNetPnlUsdt": 934.1459,
+    "minimumFoldNetPnlUsdt": -507.1081,
+    "maximumFoldDrawdownPercent": 9.9922
+  },
+  "folds": [
+    {
+      "id": "q1",
+      "start": "2025-08-09T02:15:00.000Z",
+      "end": "2025-11-08T08:14:59.999Z",
+      "metrics": {
+        "signals": 78,
+        "wins": 31,
+        "losses": 47,
+        "winRate": 39.74,
+        "avgScore": 81.32,
+        "avgRiskUsdt": 49.9409,
+        "avgPnlUsdt": 2.7272,
+        "netR": 4.1724,
+        "netPnlUsdt": 212.7231,
+        "pricePnlBeforeExecutionCostsUsdt": 666.428,
+        "totalFeesUsdt": 268.1458,
+        "totalFundingUsdt": -6.7951,
+        "totalSlippageUsdt": 178.764,
+        "profitFactor": 1.0812,
+        "maxDrawdownUsdt": 975.6009,
+        "maxDrawdownPercent": 9.756,
+        "finalEquityUsdt": 10212.7231
+      },
+      "rawSignals": 80,
+      "rejectionCounts": {
+        "maxConcurrentPositions": 2,
+        "singleSignalRisk": 0,
+        "dailyRiskBudget": 0,
+        "dailyLossLimit": 0,
+        "emailCap": 0,
+        "capitalFloor": 0
+      }
+    },
+    {
+      "id": "q2",
+      "start": "2025-11-08T08:15:00.000Z",
+      "end": "2026-02-07T14:14:59.999Z",
+      "metrics": {
+        "signals": 87,
+        "wins": 38,
+        "losses": 49,
+        "winRate": 43.68,
+        "avgScore": 81.37,
+        "avgRiskUsdt": 49.9503,
+        "avgPnlUsdt": 9.5157,
+        "netR": 16.6548,
+        "netPnlUsdt": 827.8656,
+        "pricePnlBeforeExecutionCostsUsdt": 1306.2752,
+        "totalFeesUsdt": 287.7394,
+        "totalFundingUsdt": 1.1562,
+        "totalSlippageUsdt": 191.8265,
+        "profitFactor": 1.3063,
+        "maxDrawdownUsdt": 999.2247,
+        "maxDrawdownPercent": 9.9922,
+        "finalEquityUsdt": 10827.8656
+      },
+      "rawSignals": 88,
+      "rejectionCounts": {
+        "maxConcurrentPositions": 1,
+        "singleSignalRisk": 0,
+        "dailyRiskBudget": 0,
+        "dailyLossLimit": 0,
+        "emailCap": 0,
+        "capitalFloor": 0
+      }
+    },
+    {
+      "id": "q3",
+      "start": "2026-02-07T14:15:00.000Z",
+      "end": "2026-05-09T20:14:59.999Z",
+      "metrics": {
+        "signals": 22,
+        "wins": 5,
+        "losses": 17,
+        "winRate": 22.73,
+        "avgScore": 81.33,
+        "avgRiskUsdt": 49.8703,
+        "avgPnlUsdt": -23.0504,
+        "netR": -10.1915,
+        "netPnlUsdt": -507.1081,
+        "pricePnlBeforeExecutionCostsUsdt": -361.5612,
+        "totalFeesUsdt": 84.3279,
+        "totalFundingUsdt": -5.0005,
+        "totalSlippageUsdt": 56.2185,
+        "profitFactor": 0.4554,
+        "maxDrawdownUsdt": 611.9185,
+        "maxDrawdownPercent": 6.1192,
+        "finalEquityUsdt": 9492.8919
+      },
+      "rawSignals": 22,
+      "rejectionCounts": {
+        "maxConcurrentPositions": 0,
+        "singleSignalRisk": 0,
+        "dailyRiskBudget": 0,
+        "dailyLossLimit": 0,
+        "emailCap": 0,
+        "capitalFloor": 0
+      }
+    },
+    {
+      "id": "q4",
+      "start": "2026-05-09T20:15:00.000Z",
+      "end": "2026-08-09T02:14:59.999Z",
+      "metrics": {
+        "signals": 29,
+        "wins": 13,
+        "losses": 16,
+        "winRate": 44.83,
+        "avgScore": 81.03,
+        "avgRiskUsdt": 49.8687,
+        "avgPnlUsdt": 13.816,
+        "netR": 7.9792,
+        "netPnlUsdt": 400.6653,
+        "pricePnlBeforeExecutionCostsUsdt": 572.2779,
+        "totalFeesUsdt": 102.9695,
+        "totalFundingUsdt": 0.0033,
+        "totalSlippageUsdt": 68.6464,
+        "profitFactor": 1.4886,
+        "maxDrawdownUsdt": 367.7949,
+        "maxDrawdownPercent": 3.6779,
+        "finalEquityUsdt": 10400.6653
+      },
+      "rawSignals": 29,
+      "rejectionCounts": {
+        "maxConcurrentPositions": 0,
+        "singleSignalRisk": 0,
+        "dailyRiskBudget": 0,
+        "dailyLossLimit": 0,
+        "emailCap": 0,
+        "capitalFloor": 0
+      }
+    }
+  ],
+  "runSettings": {
+    "concurrency": 1,
+    "interSymbolDelayMs": 0
+  }
+}
