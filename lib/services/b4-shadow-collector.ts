@@ -35,13 +35,14 @@ import {
   persistB4ShadowEventAndTransition,
 } from "./b4-shadow-repository";
 import {
+  beginB4ShadowObservation,
   getB4ShadowFeatureStates,
   transitionB4ShadowEpisode,
   upsertB4ShadowFeatureState,
   upsertB4ShadowRuntimeState,
 } from "./b4-shadow-runtime-repository";
 
-export type B4ShadowCollectionStatus = "DISABLED" | "CONTEXT_INCOMPLETE" | "WAITING" | "FINALIZED" | "FAILED";
+export type B4ShadowCollectionStatus = "DISABLED" | "PRE_OBSERVATION" | "CONTEXT_INCOMPLETE" | "WAITING" | "FINALIZED" | "FAILED";
 
 export interface B4ShadowCollectionResult {
   status: B4ShadowCollectionStatus;
@@ -50,6 +51,7 @@ export interface B4ShadowCollectionResult {
   batchNumber: number;
   batchCount: number;
   closedMarketTimestamp: string;
+  observationStartedAt: string;
   contextGroupKey: string;
   stagedSymbols: string[];
   networkFetches: number;
@@ -71,10 +73,32 @@ export async function collectB4ShadowBatch(input: {
   const closedMarketTimestamp = new Date(closedTimestamp).toISOString();
   const contextGroupKey = b4ShadowContextGroupKey(closedTimestamp);
   const errors: B4ShadowCollectionResult["errors"] = [];
-  const resolution = resolveB4ShadowUniverse(await input.client.getUniverse(), closedTimestamp);
   const expectedSymbols = activeB4ShadowSymbolsAt(closedTimestamp);
   const batchCount = Math.max(1, Math.ceil(expectedSymbols.length / input.config.HY_SCAN_BATCH_SIZE));
   if (input.batchNumber >= batchCount) throw new Error("B4 batch is outside the frozen universe");
+  const observationStartedAt = await beginB4ShadowObservation(input.supabase, new Date(now).toISOString());
+  const observationStartedAtMs = Date.parse(observationStartedAt);
+  const pitAvailableAtMs = closedTimestamp + B4_SHADOW_INTERVAL_MS;
+  if (!Number.isFinite(observationStartedAtMs)) throw new Error("B4 observation epoch timestamp is invalid");
+  if (pitAvailableAtMs < observationStartedAtMs) {
+    return {
+      status: "PRE_OBSERVATION",
+      universeVersion: "hy-b4-shadow-universe-v1",
+      expectedSymbols: expectedSymbols.length,
+      batchNumber: input.batchNumber,
+      batchCount,
+      closedMarketTimestamp,
+      observationStartedAt,
+      contextGroupKey,
+      stagedSymbols: [],
+      networkFetches: 0,
+      skippedNetworkFetches: 0,
+      eventsGenerated: 0,
+      emailsSent: 0,
+      errors: [],
+    };
+  }
+  const resolution = resolveB4ShadowUniverse(await input.client.getUniverse(), closedTimestamp);
   if (resolution.status !== "READY") {
     return {
       status: "CONTEXT_INCOMPLETE",
@@ -83,6 +107,7 @@ export async function collectB4ShadowBatch(input: {
       batchNumber: input.batchNumber,
       batchCount,
       closedMarketTimestamp,
+      observationStartedAt,
       contextGroupKey,
       stagedSymbols: [],
       networkFetches: 0,
@@ -104,6 +129,7 @@ export async function collectB4ShadowBatch(input: {
       batchNumber: input.batchNumber,
       batchCount,
       closedMarketTimestamp,
+      observationStartedAt,
       contextGroupKey,
       networkFetches: 0,
       skippedNetworkFetches: expectedSymbols.length,
@@ -214,6 +240,7 @@ export async function collectB4ShadowBatch(input: {
       batchNumber: input.batchNumber,
       batchCount,
       closedMarketTimestamp,
+      observationStartedAt,
       contextGroupKey,
       stagedSymbols: [...stagedObservations.keys()].sort(),
       networkFetches,
@@ -228,6 +255,7 @@ export async function collectB4ShadowBatch(input: {
     batchNumber: input.batchNumber,
     batchCount,
     closedMarketTimestamp,
+    observationStartedAt,
     contextGroupKey,
     networkFetches,
     skippedNetworkFetches,
@@ -243,6 +271,7 @@ async function evaluateFinalizedContext(
     batchNumber: number;
     batchCount: number;
     closedMarketTimestamp: string;
+    observationStartedAt: string;
     contextGroupKey: string;
     networkFetches: number;
     skippedNetworkFetches: number;
@@ -290,31 +319,48 @@ async function evaluateFinalizedContext(
   } catch (error) {
     metadata.errors.push({ stage: "b4_outcome_maturity", message: errorMessage(error) });
   }
-  const diagnostics = metadata.errors.length > 0
-    ? { ...sidecar.diagnostics, status: "DEGRADED" as const }
-    : sidecar.diagnostics;
+  const sidecarErrors = sidecar.errors.map((error) => ({
+    symbol: error.symbol,
+    stage: "b4_sidecar",
+    message: error.message,
+  }));
+  const allErrors = [...metadata.errors, ...sidecarErrors];
+  let runtimePersistenceError: string | null = null;
+  const persistenceFailure = sidecar.status === "FAILED";
+  const diagnostics = persistenceFailure
+    ? {
+      ...sidecar.diagnostics,
+      status: "FAILED" as const,
+      lastError: sidecarErrors.at(-1)?.message ?? sidecar.diagnostics.lastError ?? "B4 sidecar persistence failed",
+    }
+    : allErrors.length > 0
+      ? { ...sidecar.diagnostics, status: "DEGRADED" as const, lastError: allErrors.at(-1)?.message ?? null }
+      : sidecar.diagnostics;
   try {
     await upsertB4ShadowRuntimeState(input.supabase, diagnostics, {
       lastClosedBarEvaluated: metadata.closedMarketTimestamp,
-      lastError: metadata.errors.at(-1)?.message ?? null,
+      lastError: diagnostics.lastError ?? null,
     });
   } catch (error) {
-    metadata.errors.push({ stage: "b4_runtime_state", message: errorMessage(error) });
+    runtimePersistenceError = errorMessage(error);
+    allErrors.push({ stage: "b4_runtime_state", message: runtimePersistenceError });
   }
+  const failed = persistenceFailure || runtimePersistenceError !== null;
   return {
-    status: metadata.errors.length > 0 ? "FAILED" : "FINALIZED",
+    status: failed ? "FAILED" : "FINALIZED",
     universeVersion: "hy-b4-shadow-universe-v1",
     expectedSymbols: metadata.expectedSymbols.length,
     batchNumber: metadata.batchNumber,
     batchCount: metadata.batchCount,
     closedMarketTimestamp: metadata.closedMarketTimestamp,
+    observationStartedAt: metadata.observationStartedAt,
     contextGroupKey: metadata.contextGroupKey,
     stagedSymbols: observations.map((observation) => observation.symbol).sort(),
     networkFetches: metadata.networkFetches,
     skippedNetworkFetches: metadata.skippedNetworkFetches,
     eventsGenerated: sidecar.events.length,
     emailsSent: 0,
-    errors: [...metadata.errors, ...sidecar.errors.map((error) => ({ symbol: error.symbol, stage: "b4_sidecar", message: error.message }))],
+    errors: allErrors,
   };
 }
 

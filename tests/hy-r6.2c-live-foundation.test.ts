@@ -276,7 +276,7 @@ describe("HY-R6.2C durable episode and maturity contracts", () => {
 
   it("keeps B4 containment canonical-only and the additive migration HY-scoped", () => {
     expect(readHyEnv("HY_B4_SHADOW_ENABLED", { CS_B4_SHADOW_ENABLED: "true" })).toBeUndefined();
-    const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260909150000_hy_r62c_b4_live_shadow_foundation.sql"), "utf8");
+    const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260912130659_hy_r62c_b4_live_shadow_foundation.sql"), "utf8");
     const tables = [...migration.matchAll(/create table public\.([a-z0-9_]+)/g)].map((match) => match[1]);
     expect(tables).toEqual([
       "hy_b4_shadow_feature_state",

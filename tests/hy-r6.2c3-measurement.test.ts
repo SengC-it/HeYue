@@ -186,7 +186,7 @@ describe("HY-R6.2C.3 frozen measurement protocol", () => {
   });
 
   it("defines pending-pair starvation protection and read-only R6.3 readiness", () => {
-    const migration = readFileSync(resolve(ROOT, "supabase/migrations/20260909150000_hy_r62c_b4_live_shadow_foundation.sql"), "utf8");
+    const migration = readFileSync(resolve(ROOT, "supabase/migrations/20260912130659_hy_r62c_b4_live_shadow_foundation.sql"), "utf8");
     expect(migration).toContain("hy_b4_shadow_pending_signal_maturity");
     expect(migration).toContain("hy_b4_shadow_pending_control_maturity");
     expect(migration).toContain("hy_b4_shadow_metric_readiness");

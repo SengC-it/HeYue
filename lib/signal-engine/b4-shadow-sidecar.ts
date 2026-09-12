@@ -65,6 +65,7 @@ export type B4ShadowAtomicResult =
   | "RESET_FALSE"
   | "STALE_OBSERVATION"
   | "SAME_BAR_RETRY"
+  | "PRE_OBSERVATION"
   | "INVARIANT_FAILURE";
 
 let latestDiagnostics = disabledDiagnostics();
@@ -141,7 +142,7 @@ export async function runB4ShadowSidecar(
     }
   }
 
-  const diagnostics = healthDiagnostics(engine.diagnostics(), events, errors.length > 0, persistenceFailure, durableDuplicateCount);
+  const diagnostics = healthDiagnostics(engine.diagnostics(), events, errors, errors.length > 0, persistenceFailure, durableDuplicateCount);
   latestDiagnostics = diagnostics;
   return {
     status: diagnostics.status,
@@ -213,6 +214,7 @@ export function buildB4ShadowObservationFromSnapshot(
 function healthDiagnostics(
   diagnostics: B4ShadowDiagnostics,
   events: readonly B4ShadowSignalEvent[],
+  errors: readonly { symbol?: string; message: string }[],
   hasErrors: boolean,
   persistenceFailure: boolean,
   durableDuplicateCount: number,
@@ -238,6 +240,7 @@ function healthDiagnostics(
     dataIncomplete: diagnostics.data_incomplete_count,
     pitFailures: diagnostics.pit_failures,
     emailSent: 0,
+    lastError: errors.at(-1)?.message ?? null,
   };
 }
 

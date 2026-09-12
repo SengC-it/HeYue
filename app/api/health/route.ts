@@ -105,6 +105,7 @@ function runtimeStateHealth(state: Awaited<ReturnType<typeof getB4ShadowRuntimeS
     enabled: state.enabled,
     version: state.version,
     status: state.status,
+    observationStartedAt: state.observationStartedAt,
     lastEvaluatedAt: state.lastEvaluationAt,
     lastClosedBarEvaluated: state.lastClosedBarEvaluated,
     warmupReady: state.warmupReady,

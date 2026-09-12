@@ -10,6 +10,7 @@ export interface B4ShadowRuntimeState {
   enabled: boolean;
   version: typeof B4_SHADOW_VERSION;
   status: B4ShadowSidecarStatus;
+  observationStartedAt: string | null;
   lastEvaluationAt: string | null;
   lastClosedBarEvaluated: string | null;
   warmupReady: boolean;
@@ -106,6 +107,31 @@ export async function transitionB4ShadowEpisode(
   return data === true || data === "true";
 }
 
+/**
+ * Start a durable B4 observation epoch. Postgres preserves an already-active
+ * epoch so concurrent hourly batches cannot move the cutoff backwards.
+ */
+export async function beginB4ShadowObservation(
+  supabase: SupabaseClient,
+  startedAt = new Date().toISOString(),
+): Promise<string> {
+  const { data, error } = await supabase.rpc("hy_b4_shadow_begin_observation", {
+    p_started_at: startedAt,
+  });
+  if (error) throw new Error(`Supabase B4 observation epoch start failed: ${error.message}`);
+  const value = Array.isArray(data) ? data[0] : data;
+  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+    throw new Error("Supabase B4 observation epoch start returned no timestamp");
+  }
+  return value;
+}
+
+/** Disable B4 durably while retaining counters and failure evidence. */
+export async function markB4ShadowDisabled(supabase: SupabaseClient): Promise<void> {
+  const { error } = await supabase.rpc("hy_b4_shadow_mark_disabled");
+  if (error) throw new Error(`Supabase B4 durable disable failed: ${error.message}`);
+}
+
 export async function upsertB4ShadowRuntimeState(
   supabase: SupabaseClient,
   diagnostics: B4ShadowHealthDiagnostics,
@@ -155,6 +181,7 @@ export function parseRuntimeState(row: Record<string, unknown>): B4ShadowRuntime
     enabled,
     version: B4_SHADOW_VERSION,
     status: enabled && parseStatus(row.status) === "DISABLED" ? "WARMING_UP" : parseStatus(row.status),
+    observationStartedAt: stringOrNull(row.observation_started_at),
     lastEvaluationAt: stringOrNull(row.last_evaluation_at),
     lastClosedBarEvaluated: stringOrNull(row.last_closed_bar_evaluated),
     warmupReady: row.warmup_ready === true,

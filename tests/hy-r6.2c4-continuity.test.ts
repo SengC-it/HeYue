@@ -17,7 +17,7 @@ import type { ServerConfig } from "../lib/config";
 
 const HOUR = B4_SHADOW_INTERVAL_MS;
 const TARGET_T = Date.parse("2026-09-10T12:00:00.000Z");
-const NOW_T = Date.parse("2026-09-10T13:05:00.000Z");
+const NOW_T = Date.parse("2026-09-10T13:00:00.000Z");
 
 describe("HY-R6.2C.4 incremental context continuity", () => {
   it("keeps context complete across three continuous collector hours", async () => {
@@ -243,6 +243,7 @@ class FakeB4Supabase {
   readonly finalizedContexts: FinalizedRow[] = [];
   readonly featureStates = new Map<string, B4ShadowFeatureState>();
   readonly rpcCalls: string[] = [];
+  private observationStartedAt: string | null = null;
 
   from(table: string): FakeQuery {
     return new FakeQuery(this, table);
@@ -250,6 +251,10 @@ class FakeB4Supabase {
 
   async rpc(name: string, args: Record<string, unknown>): Promise<QueryResult> {
     this.rpcCalls.push(name);
+    if (name === "hy_b4_shadow_begin_observation") {
+      this.observationStartedAt ??= String(args.p_started_at);
+      return { data: this.observationStartedAt, error: null };
+    }
     if (name === "hy_b4_shadow_upsert_feature_state") {
       const symbol = String(args.p_symbol);
       this.featureStates.set(symbol, {

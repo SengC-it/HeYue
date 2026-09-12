@@ -117,7 +117,7 @@ describe("HY-R6.2C.2 frozen Control-B and live parity", () => {
 
   it("never reuses a claimed control and preserves an unavailable control result", () => {
     const input = observation();
-    const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260909150000_hy_r62c_b4_live_shadow_foundation.sql"), "utf8");
+    const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260912130659_hy_r62c_b4_live_shadow_foundation.sql"), "utf8");
     expect(migration).toContain("hy_b4_shadow_control_claims");
     expect(migration).toContain("primary key (control_event_id, direction)");
     expect(migration).toContain("unique (event_id)");
@@ -130,7 +130,7 @@ describe("HY-R6.2C.2 frozen Control-B and live parity", () => {
   });
 
   it("fails closed when batches disagree on the frozen universe", () => {
-    const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260909150000_hy_r62c_b4_live_shadow_foundation.sql"), "utf8");
+    const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260912130659_hy_r62c_b4_live_shadow_foundation.sql"), "utf8");
     expect(migration).toContain("expected_symbols <> v_expected");
     expect(migration).toContain("A context group is one frozen universe snapshot");
   });
