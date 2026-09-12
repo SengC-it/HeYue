@@ -186,7 +186,7 @@ describe("HY-R6.2D.1 disposable PostgreSQL contract", () => {
 
       psql(databaseUrl, ["--command", "select public.hy_b4_shadow_mark_disabled();"]);
       expect(query(databaseUrl, "select enabled::text || '|' || status || '|' || coalesce(observation_started_at::text, 'NULL') from public.hy_b4_shadow_runtime_state where singleton_key = 'B4';"))
-        .toMatch(/^f\|DISABLED\|NULL$/);
+        .toMatch(/^false\|DISABLED\|NULL$/);
       expect(query(databaseUrl, "select count(*)::text from public.hy_shadow_signal_events;")).toBe("2");
     }, 30_000,
   );
