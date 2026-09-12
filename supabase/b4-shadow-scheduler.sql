@@ -5,15 +5,59 @@
 -- deterministic batch. The collector derives the closed hour itself, so all
 -- jobs below share B4's universe-version + closed-hour context key.
 --
--- Example for HY_SCAN_BATCH_SIZE = 10 (49 frozen symbols => 5 batches):
+-- Example for HY_SCAN_BATCH_SIZE = 10 (49 frozen symbols => 5 batches).
+-- The one-minute staggering keeps the shared closed-hour context while
+-- allowing the Supabase-to-Vercel request layer up to 60 seconds.
 -- select cron.schedule(
 --   'hy-b4-shadow-collect-0',
 --   '5 * * * *',
---   $$select net.http_get(
+--   $$select net.http_post(
 --     url := 'https://<approved-alias>/api/b4-shadow/collect?batch=0',
---     headers := jsonb_build_object('x-cron-secret', '<server-side-secret>')
+--     headers := jsonb_build_object('x-cron-secret', '<server-side-secret>'),
+--     body := '{}'::jsonb,
+--     timeout_milliseconds := 60000
 --   );$$
 -- );
--- Repeat for batch=1..4 with the same hourly cadence and a separately
--- approved secret mechanism. Do not copy this placeholder into Production
--- environment variables, and do not call the endpoint before B4 enablement.
+-- select cron.schedule(
+--   'hy-b4-shadow-collect-1',
+--   '6 * * * *',
+--   $$select net.http_post(
+--     url := 'https://<approved-alias>/api/b4-shadow/collect?batch=1',
+--     headers := jsonb_build_object('x-cron-secret', '<server-side-secret>'),
+--     body := '{}'::jsonb,
+--     timeout_milliseconds := 60000
+--   );$$
+-- );
+-- select cron.schedule(
+--   'hy-b4-shadow-collect-2',
+--   '7 * * * *',
+--   $$select net.http_post(
+--     url := 'https://<approved-alias>/api/b4-shadow/collect?batch=2',
+--     headers := jsonb_build_object('x-cron-secret', '<server-side-secret>'),
+--     body := '{}'::jsonb,
+--     timeout_milliseconds := 60000
+--   );$$
+-- );
+-- select cron.schedule(
+--   'hy-b4-shadow-collect-3',
+--   '8 * * * *',
+--   $$select net.http_post(
+--     url := 'https://<approved-alias>/api/b4-shadow/collect?batch=3',
+--     headers := jsonb_build_object('x-cron-secret', '<server-side-secret>'),
+--     body := '{}'::jsonb,
+--     timeout_milliseconds := 60000
+--   );$$
+-- );
+-- select cron.schedule(
+--   'hy-b4-shadow-collect-4',
+--   '9 * * * *',
+--   $$select net.http_post(
+--     url := 'https://<approved-alias>/api/b4-shadow/collect?batch=4',
+--     headers := jsonb_build_object('x-cron-secret', '<server-side-secret>'),
+--     body := '{}'::jsonb,
+--     timeout_milliseconds := 60000
+--   );$$
+-- );
+-- Do not copy this placeholder into Production environment variables, and do
+-- not call the endpoint before B4 enablement. The existing hy-scan-batch-0
+-- schedule remains */15 * * * * and is not changed by this file.

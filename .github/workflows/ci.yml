@@ -8,6 +8,19 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: heyue_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d heyue_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,7 +33,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
-      - run: pnpm test
+      - name: Install PostgreSQL client for disposable SQL contract
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Run tests including disposable PostgreSQL contract
+        env:
+          HY_TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/heyue_test
+          HY_TEST_POSTGRES_EPHEMERAL: "true"
+        run: pnpm test
       - run: pnpm build
       - name: Verify deployment readiness with dummy observation values
         env:

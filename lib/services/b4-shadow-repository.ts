@@ -75,7 +75,8 @@ export async function persistB4ShadowEventAndTransition(
   const controlEventId = (data as Record<string, unknown>).control_event_id;
   const controlMatchKey = (data as Record<string, unknown>).control_match_key;
   if (result !== "NEW_EVENT" && result !== "DUPLICATE_TRUE" && result !== "RESET_FALSE"
-    && result !== "STALE_OBSERVATION" && result !== "SAME_BAR_RETRY" && result !== "INVARIANT_FAILURE") {
+    && result !== "STALE_OBSERVATION" && result !== "SAME_BAR_RETRY" && result !== "PRE_OBSERVATION"
+    && result !== "INVARIANT_FAILURE") {
     throw new Error("Supabase B4 atomic transition returned an invalid result");
   }
   if (controlStatus !== "AVAILABLE" && controlStatus !== "CONTROL_UNAVAILABLE") {

@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { BinancePublicClient } from "@/lib/binance/public-client";
 import { getServerConfig } from "@/lib/config";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { collectB4ShadowBatch } from "@/lib/services/b4-shadow-collector";
+import { collectB4ShadowBatch, type B4ShadowCollectionStatus } from "@/lib/services/b4-shadow-collector";
+import { markB4ShadowDisabled } from "@/lib/services/b4-shadow-runtime-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   return runCollection(request);
@@ -22,10 +24,12 @@ async function runCollection(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
     }
     if (!config.HY_B4_SHADOW_ENABLED) {
+      await markB4ShadowDisabled(getSupabaseAdmin());
       return NextResponse.json({
         ok: true,
         status: "DISABLED",
         reason: "HY_B4_SHADOW_ENABLED is false",
+        observationStartedAt: null,
         emailsSent: 0,
       });
     }
@@ -41,7 +45,7 @@ async function runCollection(request: NextRequest): Promise<NextResponse> {
       config,
       batchNumber,
     });
-    const status = result.status === "FAILED" ? 503 : result.status === "CONTEXT_INCOMPLETE" ? 503 : 200;
+    const status = b4ShadowHttpStatus(result.status);
     return NextResponse.json({ ok: status === 200, ...result }, { status });
   } catch (error) {
     return NextResponse.json({
@@ -51,6 +55,10 @@ async function runCollection(request: NextRequest): Promise<NextResponse> {
       emailsSent: 0,
     }, { status: 503 });
   }
+}
+
+export function b4ShadowHttpStatus(status: B4ShadowCollectionStatus): 200 | 503 {
+  return status === "FAILED" || status === "CONTEXT_INCOMPLETE" ? 503 : 200;
 }
 
 function isAuthorized(request: NextRequest, expectedSecret?: string): boolean {
