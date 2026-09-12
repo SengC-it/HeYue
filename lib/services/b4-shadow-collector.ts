@@ -4,6 +4,8 @@ import { BinancePublicClient, mapWithConcurrency } from "@/lib/binance/public-cl
 import {
   B4_SHADOW_INTERVAL_MS,
   B4_SHADOW_UNIVERSE_SYMBOLS,
+  B4_LIVE_CONTEXT_RAW_BAR_REQUIREMENT,
+  B4_LIVE_RAW_BAR_REQUIREMENT,
   activeB4ShadowSymbolsAt,
   b4ShadowBatchSymbols,
   b4ShadowClosedHourTimestamp,
@@ -140,7 +142,8 @@ export async function collectB4ShadowBatch(input: {
     try {
       networkFetches += 1;
       const incremental = priorState !== undefined && priorState.rollingPrimitives.length >= 721;
-      let history = await input.client.getB4LiveHistory(instrument.symbol, closedTimestamp + B4_SHADOW_INTERVAL_MS, incremental ? 3 : 722);
+      const requestLimit = incremental ? B4_LIVE_CONTEXT_RAW_BAR_REQUIREMENT : B4_LIVE_RAW_BAR_REQUIREMENT;
+      let history = await input.client.getB4LiveHistory(instrument.symbol, closedTimestamp + B4_SHADOW_INTERVAL_MS, requestLimit);
       history = { ...history, storedPrimitiveHistory: priorState?.rollingPrimitives };
       let result = buildB4LiveObservation(history, closedTimestamp + B4_SHADOW_INTERVAL_MS, {
         marketRegime: "UNKNOWN",
@@ -150,7 +153,7 @@ export async function collectB4ShadowBatch(input: {
       });
       if (result.historyMode === "GAP") {
         networkFetches += 1;
-        history = await input.client.getB4LiveHistory(instrument.symbol, closedTimestamp + B4_SHADOW_INTERVAL_MS, 722);
+        history = await input.client.getB4LiveHistory(instrument.symbol, closedTimestamp + B4_SHADOW_INTERVAL_MS, B4_LIVE_RAW_BAR_REQUIREMENT);
         result = buildB4LiveObservation({ ...history, storedPrimitiveHistory: undefined }, closedTimestamp + B4_SHADOW_INTERVAL_MS, {
           marketRegime: "UNKNOWN",
           volatilityBucket: calculateB4Volatility(history.priceBars).bucket,

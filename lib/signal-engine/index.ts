@@ -59,6 +59,7 @@ export {
   b4CrossSectionalPercentile,
   classifyB4Volatility,
   classifyB4MarketRegime,
+  B4_LIVE_CONTEXT_RAW_BAR_REQUIREMENT,
 } from "./b4-context";
 export type {
   B4ContextCandle,

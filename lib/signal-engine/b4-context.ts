@@ -25,6 +25,8 @@ export const B4_LIQUIDITY_HIGH_BOUNDARY = 0.66 as const;
 export const B4_REGIME_DOWN_BOUNDARY = -0.005 as const;
 export const B4_REGIME_UP_BOUNDARY = 0.005 as const;
 export const B4_CONTEXT_INTERVAL_MS = 3_600_000 as const;
+/** Minimum closed hourly raw context needed by the live collector. */
+export const B4_LIVE_CONTEXT_RAW_BAR_REQUIREMENT = 25 as const;
 
 /** Frozen R5.10A funding bucket. Boundary values remain NEUTRAL. */
 export function classifyB4FundingBucket(fundingRate: number): B4FundingBucket {
