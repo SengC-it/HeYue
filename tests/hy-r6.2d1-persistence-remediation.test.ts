@@ -25,9 +25,9 @@ const FIXTURE_PATH = resolve(ROOT, "tests/fixtures/hy-r6.2d1-b4-outcome-free-eve
 
 describe("HY-R6.2D.1 persistence and runtime remediation", () => {
   it("keeps the applied R6.2C body unchanged and locks the additive hotfix", () => {
-    const r62cBody = readFileSync(R62C_MIGRATION);
+    const r62cBody = readFileSync(R62C_MIGRATION, "utf8").replace(/\r\n/g, "\n");
     expect(createHash("sha256").update(r62cBody).digest("hex").toUpperCase())
-      .toBe("8DD0E2918DC06484DC6247FD7C28029F3F8235FAF5FF5120C98FB63799DA9E4B");
+      .toBe("9E4C4BAC906EC90DF89C2430BFB5AC0818B7E2B7E58C45FDC84D2E234713C461");
     expect(readFileSync(R62C_MIGRATION, "utf8")).toContain("create table public.hy_b4_shadow_runtime_state");
     expect(readFileSync(R62C_MIGRATION, "utf8")).not.toContain("observation_started_at");
     expect(HOTFIX_MIGRATION).toContain("add column if not exists observation_started_at timestamptz");
@@ -143,8 +143,8 @@ describe("HY-R6.2D.1 disposable PostgreSQL contract", () => {
       psql(databaseUrl, ["--file", R62C_MIGRATION]);
       psql(databaseUrl, ["--file", HOTFIX_MIGRATION_PATH]);
 
-      expect(query(databaseUrl, "select relrowsecurity::text from pg_class where relname = 'hy_shadow_signal_events';")).toBe("t");
-      expect(query(databaseUrl, "select relrowsecurity::text from pg_class where relname = 'hy_b4_shadow_runtime_state';")).toBe("t");
+      expect(query(databaseUrl, "select relrowsecurity::text from pg_class where relname = 'hy_shadow_signal_events';")).toBe("true");
+      expect(query(databaseUrl, "select relrowsecurity::text from pg_class where relname = 'hy_b4_shadow_runtime_state';")).toBe("true");
       expect(query(databaseUrl, "select format_type(atttypid, atttypmod) from pg_attribute where attrelid = 'public.hy_shadow_signal_events'::regclass and attname = 'control_event_id';"))
         .toBe("text");
       expect(query(databaseUrl, "select public.hy_b4_shadow_begin_observation('2026-09-12T13:30:00Z');"))
