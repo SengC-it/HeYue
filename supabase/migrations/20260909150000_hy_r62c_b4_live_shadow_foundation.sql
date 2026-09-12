@@ -57,12 +57,9 @@ create table public.hy_b4_shadow_control_candidates (
   liquidity_bucket text not null check (liquidity_bucket <> 'UNKNOWN'),
   funding_bucket text not null check (funding_bucket in ('NEGATIVE', 'NEUTRAL', 'POSITIVE')),
   mark_index_basis_bucket text not null check (mark_index_basis_bucket in ('EXTREME_NEGATIVE', 'NEGATIVE', 'NEUTRAL', 'POSITIVE', 'EXTREME_POSITIVE')),
-  claimed_by_event_id uuid references public.hy_shadow_signal_events(event_id) on delete restrict,
-  claimed_at timestamptz,
   source text not null check (source = 'B4_NON_EVENT'),
   created_at timestamptz not null default now(),
   unique (symbol, market_timestamp),
-  unique (claimed_by_event_id),
   check (pit_available_at >= market_timestamp)
 );
 
@@ -72,6 +69,48 @@ create index hy_b4_shadow_control_candidates_match_idx
     liquidity_bucket, funding_bucket, mark_index_basis_bucket,
     pit_available_at desc
   );
+
+-- Control-B is without-replacement within each direction-specific matching
+-- pass. One control may therefore be claimed once by BULLISH and once by
+-- BEARISH, while one event can have at most one control claim.
+create table public.hy_b4_shadow_control_claims (
+  control_event_id uuid not null references public.hy_b4_shadow_control_candidates(control_event_id) on delete restrict,
+  direction text not null check (direction in ('BULLISH', 'BEARISH')),
+  event_id uuid not null references public.hy_shadow_signal_events(event_id) on delete restrict,
+  claimed_at timestamptz not null default now(),
+  primary key (control_event_id, direction),
+  unique (event_id)
+);
+
+create index hy_b4_shadow_control_claims_event_idx
+  on public.hy_b4_shadow_control_claims (event_id);
+
+-- Durable Control-B outcome evidence. The origin is the control observation,
+-- not the matched signal event, and the unique key makes each horizon idempotent.
+create table public.hy_b4_shadow_control_outcomes (
+  control_event_id uuid not null,
+  direction text not null check (direction in ('BULLISH', 'BEARISH')),
+  horizon_hours smallint not null check (horizon_hours in (1, 4, 12, 24)),
+  future_observation_timestamp timestamptz not null,
+  future_available_at timestamptz not null,
+  reference_price numeric(30, 12) not null check (reference_price > 0),
+  future_price numeric(30, 12) not null check (future_price > 0),
+  signed_return numeric(30, 18) not null,
+  max_favorable_move numeric(30, 18) not null,
+  max_adverse_move numeric(30, 18) not null,
+  pit_safe boolean not null check (pit_safe),
+  outcome_status text not null check (outcome_status = 'MATURED'),
+  calculation_version text not null check (calculation_version = 'hy-b4-shadow-v1'),
+  created_at timestamptz not null default now(),
+  primary key (control_event_id, direction, horizon_hours),
+  foreign key (control_event_id, direction)
+    references public.hy_b4_shadow_control_claims(control_event_id, direction)
+    on delete restrict,
+  check (future_available_at >= future_observation_timestamp)
+);
+
+create index hy_b4_shadow_control_outcomes_due_idx
+  on public.hy_b4_shadow_control_outcomes (future_observation_timestamp, control_event_id);
 
 create table public.hy_b4_shadow_context_staging (
   context_group_key text not null,
@@ -338,7 +377,11 @@ begin
      and liquidity_bucket = p_event->>'liquidity_bucket'
      and funding_bucket = p_event->'funding_state'->>'bucket'
      and mark_index_basis_bucket = p_event->'mark_index_basis_state'->>'bucket'
-     and claimed_by_event_id is null
+     and not exists (
+       select 1 from public.hy_b4_shadow_control_claims claim
+        where claim.control_event_id = hy_b4_shadow_control_candidates.control_event_id
+          and claim.direction = v_direction
+     )
      and pit_available_at <= (p_event->>'created_at')::timestamptz
      and market_timestamp <= v_closed_bar
    order by pit_available_at desc, market_timestamp desc, control_event_id
@@ -403,9 +446,8 @@ begin
   end if;
 
   if v_control_event_id is not null then
-    update public.hy_b4_shadow_control_candidates
-       set claimed_by_event_id = v_event_id, claimed_at = now()
-     where control_event_id = v_control_event_id;
+    insert into public.hy_b4_shadow_control_claims (control_event_id, direction, event_id)
+    values (v_control_event_id, v_direction, v_event_id);
   end if;
 
   update public.hy_b4_shadow_feature_state
@@ -452,6 +494,7 @@ begin
      or p_symbol is null
      or p_expected_symbols is null
      or cardinality(p_expected_symbols) = 0
+     or cardinality(p_expected_symbols) < 2
      or not (p_symbol = any(p_expected_symbols))
      or jsonb_typeof(p_observation) <> 'object'
      or p_pit_available_at < p_market_timestamp
@@ -545,20 +588,44 @@ begin
         jsonb_set(observation, '{market_regime}', to_jsonb(
           case when v_median > 0.005 then 'UP' when v_median < -0.005 then 'DOWN' else 'RANGE' end
         )),
-        '{liquidity_percentile}', to_jsonb((select count(*) from public.hy_b4_shadow_context_staging peer
-          where peer.context_group_key = staged.context_group_key
-            and peer.market_timestamp = staged.market_timestamp
-            and peer.quote_volume_mean <= staged.quote_volume_mean)::numeric / cardinality(v_expected))
+        '{liquidity_percentile}', to_jsonb((
+          (
+            (select count(*)::numeric from public.hy_b4_shadow_context_staging peer
+              where peer.context_group_key = staged.context_group_key
+                and peer.market_timestamp = staged.market_timestamp
+                and peer.quote_volume_mean < staged.quote_volume_mean)
+            + ((select count(*)::numeric from public.hy_b4_shadow_context_staging peer
+              where peer.context_group_key = staged.context_group_key
+                and peer.market_timestamp = staged.market_timestamp
+                and peer.quote_volume_mean = staged.quote_volume_mean) - 1) / 2
+          ) / (cardinality(v_expected) - 1)
+        ))
       ),
       '{liquidity_bucket}', to_jsonb(case
-        when (select count(*) from public.hy_b4_shadow_context_staging peer
-          where peer.context_group_key = staged.context_group_key
-            and peer.market_timestamp = staged.market_timestamp
-            and peer.quote_volume_mean <= staged.quote_volume_mean)::numeric / cardinality(v_expected) <= 0.33 then 'LOW'
-        when (select count(*) from public.hy_b4_shadow_context_staging peer
-          where peer.context_group_key = staged.context_group_key
-            and peer.market_timestamp = staged.market_timestamp
-            and peer.quote_volume_mean <= staged.quote_volume_mean)::numeric / cardinality(v_expected) <= 0.66 then 'NORMAL'
+        when (
+          (
+            (select count(*)::numeric from public.hy_b4_shadow_context_staging peer
+              where peer.context_group_key = staged.context_group_key
+                and peer.market_timestamp = staged.market_timestamp
+                and peer.quote_volume_mean < staged.quote_volume_mean)
+            + ((select count(*)::numeric from public.hy_b4_shadow_context_staging peer
+              where peer.context_group_key = staged.context_group_key
+                and peer.market_timestamp = staged.market_timestamp
+                and peer.quote_volume_mean = staged.quote_volume_mean) - 1) / 2
+          ) / (cardinality(v_expected) - 1)
+        ) <= 0.33 then 'LOW'
+        when (
+          (
+            (select count(*)::numeric from public.hy_b4_shadow_context_staging peer
+              where peer.context_group_key = staged.context_group_key
+                and peer.market_timestamp = staged.market_timestamp
+                and peer.quote_volume_mean < staged.quote_volume_mean)
+            + ((select count(*)::numeric from public.hy_b4_shadow_context_staging peer
+              where peer.context_group_key = staged.context_group_key
+                and peer.market_timestamp = staged.market_timestamp
+                and peer.quote_volume_mean = staged.quote_volume_mean) - 1) / 2
+          ) / (cardinality(v_expected) - 1)
+        ) <= 0.66 then 'NORMAL'
         else 'HIGH' end)
     ) order by symbol
   ) into v_rows
@@ -577,9 +644,138 @@ begin
 end;
 $$;
 
+-- Return only due, missing signal event/horizon work items. Pair-level
+-- keyset pagination prevents completed historical rows from starving newer
+-- maturity work.
+create or replace function public.hy_b4_shadow_pending_signal_maturity(
+  p_evaluated_at timestamptz,
+  p_after_market_timestamp timestamptz default null,
+  p_after_event_id uuid default null,
+  p_after_horizon_hours smallint default 0,
+  p_limit integer default 100
+)
+returns table (event_id uuid, horizon_hours smallint, market_timestamp timestamptz)
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  select event.event_id, horizon.horizon_hours, event.market_timestamp
+    from public.hy_shadow_signal_events event
+    cross join lateral unnest(array[1, 4, 12, 24]::smallint[]) horizon(horizon_hours)
+   where event.market_timestamp + horizon.horizon_hours * interval '1 hour' <= p_evaluated_at
+     and not exists (
+       select 1 from public.hy_shadow_signal_outcomes outcome
+        where outcome.event_id = event.event_id
+          and outcome.horizon_hours = horizon.horizon_hours
+     )
+     and (
+       p_after_market_timestamp is null
+       or event.market_timestamp > p_after_market_timestamp
+       or (event.market_timestamp = p_after_market_timestamp and (
+         p_after_event_id is null
+         or event.event_id > p_after_event_id
+         or (event.event_id = p_after_event_id and horizon.horizon_hours > p_after_horizon_hours)
+       ))
+     )
+   order by event.market_timestamp, event.event_id, horizon.horizon_hours
+   limit greatest(1, least(coalesce(p_limit, 100), 5000));
+$$;
+
+-- Control-B uses the same pair-level pending contract, but its horizon starts
+-- from the control observation timestamp and is keyed by direction.
+create or replace function public.hy_b4_shadow_pending_control_maturity(
+  p_evaluated_at timestamptz,
+  p_after_market_timestamp timestamptz default null,
+  p_after_control_event_id uuid default null,
+  p_after_direction text default null,
+  p_after_horizon_hours smallint default 0,
+  p_limit integer default 100
+)
+returns table (
+  control_event_id uuid,
+  direction text,
+  event_id uuid,
+  symbol text,
+  market_timestamp timestamptz,
+  pit_available_at timestamptz,
+  reference_price numeric,
+  horizon_hours smallint
+)
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  select candidate.control_event_id,
+         claim.direction,
+         claim.event_id,
+         candidate.symbol,
+         candidate.market_timestamp,
+         candidate.pit_available_at,
+         candidate.reference_price,
+         horizon.horizon_hours
+    from public.hy_b4_shadow_control_claims claim
+    join public.hy_b4_shadow_control_candidates candidate
+      on candidate.control_event_id = claim.control_event_id
+    cross join lateral unnest(array[1, 4, 12, 24]::smallint[]) horizon(horizon_hours)
+   where candidate.market_timestamp + horizon.horizon_hours * interval '1 hour' <= p_evaluated_at
+     and not exists (
+       select 1 from public.hy_b4_shadow_control_outcomes outcome
+        where outcome.control_event_id = claim.control_event_id
+          and outcome.direction = claim.direction
+          and outcome.horizon_hours = horizon.horizon_hours
+     )
+     and (
+       p_after_market_timestamp is null
+       or candidate.market_timestamp > p_after_market_timestamp
+       or (candidate.market_timestamp = p_after_market_timestamp and (
+         p_after_control_event_id is null
+         or candidate.control_event_id > p_after_control_event_id
+         or (candidate.control_event_id = p_after_control_event_id and (
+           p_after_direction is null
+           or claim.direction > p_after_direction
+           or (claim.direction = p_after_direction and horizon.horizon_hours > p_after_horizon_hours)
+         ))
+       ))
+     )
+   order by candidate.market_timestamp, candidate.control_event_id, claim.direction, horizon.horizon_hours
+   limit greatest(1, least(coalesce(p_limit, 100), 5000));
+$$;
+
+-- R6.3 readiness shape only. Future performance columns deliberately remain
+-- NULL until a separately approved outcome analysis is run.
+create or replace function public.hy_b4_shadow_metric_readiness()
+returns table (
+  eligible_events bigint,
+  matched_events bigint,
+  matching_coverage numeric,
+  signal_1h_precision numeric,
+  control_1h_precision numeric,
+  incremental_precision_lift numeric,
+  bullish_count bigint,
+  bearish_count bigint,
+  future_performance_not_calculated boolean
+)
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  select count(*) filter (where event.data_completeness = 'COMPLETE' and event.pit_status = 'PASS')::bigint,
+         count(*) filter (where event.control_status = 'AVAILABLE')::bigint,
+         case when count(*) = 0 then null else (count(*) filter (where event.control_status = 'AVAILABLE'))::numeric / count(*) end,
+         null::numeric,
+         null::numeric,
+         null::numeric,
+         count(*) filter (where event.direction = 'BULLISH')::bigint,
+         count(*) filter (where event.direction = 'BEARISH')::bigint,
+         true
+    from public.hy_shadow_signal_events event;
+$$;
+
 alter table public.hy_b4_shadow_feature_state enable row level security;
 alter table public.hy_b4_shadow_runtime_state enable row level security;
 alter table public.hy_b4_shadow_control_candidates enable row level security;
+alter table public.hy_b4_shadow_control_claims enable row level security;
+alter table public.hy_b4_shadow_control_outcomes enable row level security;
 alter table public.hy_b4_shadow_context_staging enable row level security;
 alter table public.hy_b4_shadow_context_finalized enable row level security;
 
@@ -587,6 +783,8 @@ revoke all on table
   public.hy_b4_shadow_feature_state,
   public.hy_b4_shadow_runtime_state,
   public.hy_b4_shadow_control_candidates,
+  public.hy_b4_shadow_control_claims,
+  public.hy_b4_shadow_control_outcomes,
   public.hy_b4_shadow_context_staging,
   public.hy_b4_shadow_context_finalized
 from public, anon, authenticated;
@@ -594,6 +792,8 @@ from public, anon, authenticated;
 grant select, insert, update on table public.hy_b4_shadow_feature_state to service_role;
 grant select, insert, update on table public.hy_b4_shadow_runtime_state to service_role;
 grant select, insert, update on table public.hy_b4_shadow_control_candidates to service_role;
+grant select, insert on table public.hy_b4_shadow_control_claims to service_role;
+grant select, insert on table public.hy_b4_shadow_control_outcomes to service_role;
 grant select, insert, update on table public.hy_b4_shadow_context_staging to service_role;
 grant select on table public.hy_b4_shadow_context_finalized to service_role;
 
@@ -615,4 +815,19 @@ to service_role;
 revoke all on function public.hy_b4_shadow_stage_and_finalize(text, timestamptz, text, text[], jsonb, timestamptz, numeric, numeric, numeric, numeric, text, text, text)
 from public, anon, authenticated;
 grant execute on function public.hy_b4_shadow_stage_and_finalize(text, timestamptz, text, text[], jsonb, timestamptz, numeric, numeric, numeric, numeric, text, text, text)
+to service_role;
+
+revoke all on function public.hy_b4_shadow_pending_signal_maturity(timestamptz, timestamptz, uuid, smallint, integer)
+from public, anon, authenticated;
+grant execute on function public.hy_b4_shadow_pending_signal_maturity(timestamptz, timestamptz, uuid, smallint, integer)
+to service_role;
+
+revoke all on function public.hy_b4_shadow_pending_control_maturity(timestamptz, timestamptz, uuid, text, smallint, integer)
+from public, anon, authenticated;
+grant execute on function public.hy_b4_shadow_pending_control_maturity(timestamptz, timestamptz, uuid, text, smallint, integer)
+to service_role;
+
+revoke all on function public.hy_b4_shadow_metric_readiness()
+from public, anon, authenticated;
+grant execute on function public.hy_b4_shadow_metric_readiness()
 to service_role;

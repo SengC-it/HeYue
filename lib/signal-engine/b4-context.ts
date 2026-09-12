@@ -1,4 +1,13 @@
-import type { Candle } from "@/lib/core/types";
+export interface B4ContextCandle {
+  openTime: number;
+  closeTime: number;
+  close: number;
+  high: number;
+  low: number;
+  open?: number;
+  volume?: number;
+  quoteVolume?: number;
+}
 
 export type B4FundingBucket = "NEGATIVE" | "NEUTRAL" | "POSITIVE";
 export type B4BasisBucket = "EXTREME_NEGATIVE" | "NEGATIVE" | "NEUTRAL" | "POSITIVE" | "EXTREME_POSITIVE";
@@ -41,7 +50,7 @@ export interface B4VolatilityContext {
 }
 
 /** R5.10A: RMS of the last 24 complete log returns, not absolute returns. */
-export function calculateB4Volatility(candles: readonly Candle[]): B4VolatilityContext {
+export function calculateB4Volatility(candles: readonly B4ContextCandle[]): B4VolatilityContext {
   const closed = candles
     .filter((candle) => Number.isFinite(candle.openTime)
       && Number.isFinite(candle.closeTime)
@@ -66,12 +75,12 @@ export function classifyB4VolatilityValue(value: number): B4VolatilityBucket {
     : value < B4_VOLATILITY_HIGH_BOUNDARY ? "NORMAL" : "HIGH";
 }
 
-export function classifyB4Volatility(candles: readonly Candle[]): B4VolatilityContext["bucket"] {
+export function classifyB4Volatility(candles: readonly B4ContextCandle[]): B4VolatilityContext["bucket"] {
   return calculateB4Volatility(candles).bucket;
 }
 
 /** Mean of the last 24 complete hourly quote-asset volumes. */
-export function meanB4QuoteVolume(candles: readonly Candle[]): number | null {
+export function meanB4QuoteVolume(candles: readonly B4ContextCandle[]): number | null {
   const closed = candles
     .filter((candle) => Number.isFinite(candle.openTime)
       && Number.isFinite(candle.closeTime)
@@ -85,10 +94,17 @@ export function meanB4QuoteVolume(candles: readonly Candle[]): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-/** Empirical same-timestamp percentile, including the current value. */
+/**
+ * Exact R5.10A cross-sectional percentile. Ties receive their average
+ * (competition) rank, so the result is stable when multiple symbols share a
+ * quote-volume value. A one-symbol cross-section has no percentile meaning.
+ */
 export function b4CrossSectionalPercentile(value: number, peerValues: readonly number[]): number | null {
-  if (!Number.isFinite(value) || peerValues.length === 0 || peerValues.some((item) => !Number.isFinite(item))) return null;
-  return peerValues.filter((item) => item <= value).length / peerValues.length;
+  if (!Number.isFinite(value) || peerValues.length < 2 || peerValues.some((item) => !Number.isFinite(item))) return null;
+  const less = peerValues.filter((item) => item < value).length;
+  const equal = peerValues.filter((item) => item === value).length;
+  const rank = equal > 0 ? less + (equal + 1) / 2 : less + 1;
+  return (rank - 1) / (peerValues.length - 1);
 }
 
 export function classifyB4LiquidityPercentile(percentile: number | null): B4LiquidityBucket | "UNKNOWN" {
@@ -98,18 +114,23 @@ export function classifyB4LiquidityPercentile(percentile: number | null): B4Liqu
   return "HIGH";
 }
 
-/** Last closed 4h return from two contiguous complete 4h candles. */
-export function calculateB4FourHourReturn(candles: readonly Candle[]): number | null {
+/**
+ * R5.10A four-hour return from five contiguous complete 1h candles.
+ *
+ * Passing a pair of 4h candles is intentionally rejected: timeframe is not
+ * carried by Candle, so the one-hour spacing is the explicit contract.
+ */
+export function calculateB4FourHourReturn(candles: readonly B4ContextCandle[]): number | null {
   const closed = candles
     .filter((candle) => Number.isFinite(candle.openTime)
       && Number.isFinite(candle.closeTime)
-      && candle.closeTime < candle.openTime + 4 * B4_CONTEXT_INTERVAL_MS
+      && candle.closeTime < candle.openTime + B4_CONTEXT_INTERVAL_MS
       && Number.isFinite(candle.close)
       && candle.close > 0)
     .sort((left, right) => left.openTime - right.openTime)
-    .slice(-2);
-  if (closed.length !== 2 || !isContiguous(closed, 4 * B4_CONTEXT_INTERVAL_MS)) return null;
-  return closed[1].close / closed[0].close - 1;
+    .slice(-5);
+  if (closed.length !== 5 || !isContiguous(closed)) return null;
+  return closed[4].close / closed[0].close - 1;
 }
 
 /** R5.10A same-timestamp cross-sectional market regime. */
@@ -129,6 +150,6 @@ export function isNormalB4Context(value: string): boolean {
   return value !== "UNKNOWN" && value.trim().length > 0;
 }
 
-function isContiguous(candles: readonly Candle[], intervalMs: number = B4_CONTEXT_INTERVAL_MS): boolean {
+function isContiguous(candles: readonly B4ContextCandle[], intervalMs: number = B4_CONTEXT_INTERVAL_MS): boolean {
   return candles.every((candle, index) => index === 0 || candle.openTime === candles[index - 1].openTime + intervalMs);
 }

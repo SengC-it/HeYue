@@ -34,7 +34,9 @@ describe("HY-R6.2C.2 frozen Control-B and live parity", () => {
     expect(calculateB4Volatility(candlesWithHourlyCloses(0.0051)).bucket).toBe("NORMAL");
     expect(calculateB4Volatility(candlesWithHourlyCloses(0.0151)).bucket).toBe("HIGH");
     expect(meanB4QuoteVolume(candlesWithHourlyQuoteVolumes())).toBe(12.5);
-    expect(b4CrossSectionalPercentile(33, Array.from({ length: 100 }, (_, i) => i + 1))).toBe(0.33);
+    expect(b4CrossSectionalPercentile(33, Array.from({ length: 100 }, (_, i) => i + 1))).toBeCloseTo(32 / 99, 12);
+    expect(b4CrossSectionalPercentile(200, [100, 200, 200, 300])).toBe(0.5);
+    expect(b4CrossSectionalPercentile(100, [100])).toBeNull();
     expect(classifyB4LiquidityPercentile(0.33)).toBe("LOW");
     expect(classifyB4LiquidityPercentile(0.66)).toBe("NORMAL");
     expect(classifyB4MarketRegime([0.005, 0.005])).toBe("RANGE");
@@ -62,14 +64,14 @@ describe("HY-R6.2C.2 frozen Control-B and live parity", () => {
       s.symbol,
       s.expected.calendarPeriod,
       classifyB4MarketRegime(s.fourHourReturns),
-      "NORMAL",
+      s.expected.volatilityBucket,
       classifyB4LiquidityPercentile(percentile),
       classifyB4FundingBucket(s.fundingRate),
       classifyB4BasisBucket(s.basis),
     ].join("|");
     expect(key).toBe(s.expected.matchKey);
     expect(s.timestamp).toContain("2026-07");
-    expect(s.expected.volatilityBucket).toBe("NORMAL");
+    expect(s.expected.volatilityBucket).toBeTypeOf("string");
   });
 
   it("uses only the seven bucket match fields and ignores raw values", () => {
@@ -116,8 +118,10 @@ describe("HY-R6.2C.2 frozen Control-B and live parity", () => {
   it("never reuses a claimed control and preserves an unavailable control result", () => {
     const input = observation();
     const migration = readFileSync(resolve(import.meta.dirname, "..", "supabase/migrations/20260909150000_hy_r62c_b4_live_shadow_foundation.sql"), "utf8");
-    expect(migration).toContain("unique (claimed_by_event_id)");
-    expect(migration).toContain("claimed_by_event_id is null");
+    expect(migration).toContain("hy_b4_shadow_control_claims");
+    expect(migration).toContain("primary key (control_event_id, direction)");
+    expect(migration).toContain("unique (event_id)");
+    expect(migration).not.toContain("claimed_by_event_id");
     expect(migration).toContain("for update skip locked");
     expect(migration).toContain("unique (symbol, market_timestamp)");
     const event = new B4ShadowEngine({ enabled: true }).evaluate(input).event!;

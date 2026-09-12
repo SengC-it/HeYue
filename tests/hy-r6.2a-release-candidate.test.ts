@@ -169,9 +169,9 @@ describe("HY-R6.2A repository idempotency and migration audit", () => {
 
   it("keeps the scanner route PAPER path and email path independent of the shadow sidecar", () => {
     const route = readFileSync(resolve(import.meta.dirname, "..", "app/api/scan/route.ts"), "utf8");
-    expect(route).toContain("HY_B4_SHADOW_ENABLED");
-    expect(route).toContain("runB4ShadowSidecar");
-    expect(route).toContain("runtimeConfig.HY_MICROSTRUCTURE_ENABLED || runtimeConfig.HY_B4_SHADOW_ENABLED");
+    expect(route).not.toContain("HY_B4_SHADOW_ENABLED");
+    expect(route).not.toContain("runB4ShadowSidecar");
+    expect(route).toContain("runtimeConfig.HY_MICROSTRUCTURE_ENABLED");
     expect(route).toContain("createPaperTrade");
     expect(route).toContain("sendSignalEmail");
     expect(route).not.toContain("hy-paper-candidate-v2");

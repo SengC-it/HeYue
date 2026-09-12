@@ -1,5 +1,7 @@
-import { calculateB4ShadowOutcome } from "./b4-shadow";
+import { calculateB4ShadowControlOutcome, calculateB4ShadowOutcome } from "./b4-shadow";
 import type {
+  B4ShadowControlEvent,
+  B4ShadowControlOutcome,
   B4ShadowFutureObservation,
   B4ShadowOutcome,
   B4ShadowSignalEvent,
@@ -22,6 +24,18 @@ export interface B4OutcomeMaturityResult {
   notDue: number;
   unavailable: number;
 }
+
+export interface B4ControlOutcomeMaturityOptions {
+  controls: readonly B4ShadowControlEvent[];
+  evaluatedAt: string;
+  fetchFutureObservation: (
+    control: B4ShadowControlEvent,
+    horizonHours: (typeof B4_SHADOW_OUTCOME_HORIZONS)[number],
+  ) => Promise<B4ShadowFutureObservation | null>;
+  persistOutcome: (outcome: B4ShadowControlOutcome) => Promise<unknown>;
+}
+
+export type B4ControlOutcomeMaturityResult = B4OutcomeMaturityResult;
 
 /**
  * Mature only due horizons using a closed future observation whose PIT
@@ -50,6 +64,39 @@ export async function matureB4ShadowOutcomes(
         continue;
       }
       const outcome = calculateB4ShadowOutcome(event, horizonHours, future, options.evaluatedAt);
+      if (!outcome) {
+        result.unavailable += 1;
+        continue;
+      }
+      await options.persistOutcome(outcome);
+      result.matured += 1;
+    }
+  }
+  return result;
+}
+
+export async function matureB4ShadowControlOutcomes(
+  options: B4ControlOutcomeMaturityOptions,
+): Promise<B4ControlOutcomeMaturityResult> {
+  const evaluatedAtMs = Date.parse(options.evaluatedAt);
+  const result: B4ControlOutcomeMaturityResult = { due: 0, matured: 0, notDue: 0, unavailable: 0 };
+  for (const control of options.controls) {
+    const controlTime = Date.parse(control.market_timestamp);
+    if (!Number.isFinite(controlTime) || !Number.isFinite(evaluatedAtMs)) continue;
+    const horizons = control.pending_horizons ?? B4_SHADOW_OUTCOME_HORIZONS;
+    for (const horizonHours of horizons) {
+      const dueAt = controlTime + horizonHours * B4_SHADOW_INTERVAL_MS;
+      if (dueAt > evaluatedAtMs) {
+        result.notDue += 1;
+        continue;
+      }
+      result.due += 1;
+      const future = await options.fetchFutureObservation(control, horizonHours);
+      if (!future) {
+        result.unavailable += 1;
+        continue;
+      }
+      const outcome = calculateB4ShadowControlOutcome(control, horizonHours, future, options.evaluatedAt);
       if (!outcome) {
         result.unavailable += 1;
         continue;

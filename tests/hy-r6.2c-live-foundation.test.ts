@@ -175,13 +175,22 @@ describe("HY-R6.2C B4 live feature foundation", () => {
       volume: 1,
       closeTime: (index + 1) * HOUR - 1,
     })))).toMatchObject({ bucket: "LOW", value: 0 });
-    expect(b4CrossSectionalPercentile(2, [1, 2, 3])).toBeCloseTo(2 / 3, 12);
+    expect(b4CrossSectionalPercentile(2, [1, 2, 3])).toBeCloseTo(0.5, 12);
     expect(classifyB4MarketRegime([0.005, 0.005])).toBe("RANGE");
     expect(classifyB4MarketRegime([-0.005, -0.005])).toBe("RANGE");
+    expect(calculateB4FourHourReturn(Array.from({ length: 5 }, (_, index) => ({
+      openTime: index * HOUR,
+      closeTime: (index + 1) * HOUR - 1,
+      open: 100,
+      high: 101 + index,
+      low: 99,
+      close: 100 + index * 1.5,
+      volume: 1,
+    })))).toBeCloseTo(0.06, 12);
     expect(calculateB4FourHourReturn([
       { openTime: 0, closeTime: 4 * HOUR - 1, open: 100, high: 101, low: 99, close: 100, volume: 1 },
       { openTime: 4 * HOUR, closeTime: 8 * HOUR - 1, open: 100, high: 106, low: 99, close: 106, volume: 1 },
-    ])).toBeCloseTo(0.06, 12);
+    ])).toBeNull();
   });
 
   it("keeps research and live frozen arithmetic deterministic", () => {
@@ -273,6 +282,8 @@ describe("HY-R6.2C durable episode and maturity contracts", () => {
       "hy_b4_shadow_feature_state",
       "hy_b4_shadow_runtime_state",
       "hy_b4_shadow_control_candidates",
+      "hy_b4_shadow_control_claims",
+      "hy_b4_shadow_control_outcomes",
       "hy_b4_shadow_context_staging",
       "hy_b4_shadow_context_finalized",
     ]);
@@ -292,12 +303,15 @@ describe("HY-R6.2C durable episode and maturity contracts", () => {
     expect(migration).not.toContain("hy_signal_events");
   });
 
-  it("wires durable history and atomic sidecar persistence in the scanner", () => {
+  it("keeps the PAPER scanner independent and exposes a dedicated B4 collector", () => {
     const route = readFileSync(resolve(import.meta.dirname, "..", "app/api/scan/route.ts"), "utf8");
-    expect(route).toContain("storedPrimitiveHistory: state?.rollingPrimitives");
-    expect(route).toContain("persistB4ShadowEventAndTransition");
-    expect(route).toContain("finalizeB4ShadowContext");
-    expect(route).not.toContain("persistEvent: runtimeConfig.HY_B4_SHADOW_ENABLED");
+    const collector = readFileSync(resolve(import.meta.dirname, "..", "app/api/b4-shadow/collect/route.ts"), "utf8");
+    expect(route).toContain("runtimeConfig.HY_MICROSTRUCTURE_ENABLED");
+    expect(route).not.toContain("runB4ShadowSidecar");
+    expect(route).not.toContain("finalizeB4ShadowContext");
+    expect(collector).toContain("collectB4ShadowBatch");
+    expect(collector).toContain("x-cron-secret");
+    expect(collector).not.toContain("sendSignalEmail");
   });
 
   it("uses one RPC boundary for an atomic event transition", async () => {

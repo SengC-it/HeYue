@@ -28,35 +28,7 @@ import {
   upsertInstruments,
 } from "@/lib/services/signal-repository";
 import { createPaperTrade } from "@/lib/services/paper-trading";
-import {
-  createB4ShadowSignalOutcome,
-  listB4ShadowSignalEventsForMaturity,
-  persistB4ShadowControlCandidate,
-  persistB4ShadowEventAndTransition,
-} from "@/lib/services/b4-shadow-repository";
-import {
-  finalizeB4ShadowContext,
-  stageB4ShadowContext,
-} from "@/lib/services/b4-shadow-context-repository";
-import {
-  getB4ShadowFeatureStates,
-  type B4ShadowFeatureState,
-  transitionB4ShadowEpisode,
-  upsertB4ShadowFeatureState,
-  upsertB4ShadowRuntimeState,
-} from "@/lib/services/b4-shadow-runtime-repository";
-import type { B4LivePrimitive } from "@/lib/signal-engine/b4-live-features";
 import { loadApprovedStrategyPolicy } from "@/lib/services/strategy-repository";
-import {
-  runB4ShadowSidecar,
-} from "@/lib/signal-engine/b4-shadow-sidecar";
-import {
-  buildB4LiveObservation,
-  calculateB4FourHourReturn,
-  calculateB4Volatility,
-  meanB4QuoteVolume,
-  matureB4ShadowOutcomes,
-} from "@/lib/signal-engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -121,11 +93,9 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
     const errors: Array<{ symbol?: string; stage: string; message: string }> = [];
     const snapshots = await mapWithConcurrency(batch, runtimeConfig.HY_REQUEST_CONCURRENCY, async (instrument) => {
       try {
-        const timeframes = normalizedTimeframes(runtimeConfig.HY_B4_SHADOW_ENABLED
-          ? [...runtimeConfig.scanTimeframes, "1h", "4h"]
-          : runtimeConfig.scanTimeframes);
+        const timeframes = normalizedTimeframes(runtimeConfig.scanTimeframes);
         return await client.getSnapshot(instrument, timeframes, 250, {
-          includeMicrostructure: runtimeConfig.HY_MICROSTRUCTURE_ENABLED || runtimeConfig.HY_B4_SHADOW_ENABLED,
+          includeMicrostructure: runtimeConfig.HY_MICROSTRUCTURE_ENABLED,
           microstructureDepthLimit: runtimeConfig.HY_MICROSTRUCTURE_DEPTH_LIMIT,
           microstructureTradeLimit: runtimeConfig.HY_MICROSTRUCTURE_TRADE_LIMIT,
         }) as MarketSnapshot;
@@ -134,180 +104,6 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
         return null;
       }
     });
-
-    const b4DecisionTime = Date.now();
-    let b4FeatureStates = new Map<string, B4ShadowFeatureState>();
-    if (runtimeConfig.HY_B4_SHADOW_ENABLED) {
-      try {
-        b4FeatureStates = await getB4ShadowFeatureStates(supabase, batch.map((instrument) => instrument.symbol));
-      } catch (error) {
-        errors.push({ symbol: undefined, stage: "b4_feature_state", message: errorMessage(error) });
-      }
-    }
-    const b4FeatureUpdates: Array<{
-      symbol: string;
-      lastEvaluatedClosedBar: string;
-      rollingPrimitives: readonly B4LivePrimitive[];
-    }> = [];
-    const b4Observations = runtimeConfig.HY_B4_SHADOW_ENABLED
-      ? (await mapWithConcurrency(batch, runtimeConfig.HY_REQUEST_CONCURRENCY, async (instrument, index) => {
-        try {
-          const state = b4FeatureStates.get(instrument.symbol);
-          const incremental = state !== undefined && state.rollingPrimitives.length >= 721;
-          let history = await client.getB4LiveHistory(instrument.symbol, b4DecisionTime, incremental ? 3 : 722);
-          history = { ...history, storedPrimitiveHistory: state?.rollingPrimitives };
-          const snapshot = snapshots[index];
-          let result = buildB4LiveObservation(
-            history,
-            b4DecisionTime,
-            {
-              marketRegime: "UNKNOWN",
-              volatilityBucket: calculateB4Volatility(snapshot?.candles["1h"] ?? []).bucket,
-              liquidityBucket: "UNKNOWN",
-              volatilityValue: calculateB4Volatility(snapshot?.candles["1h"] ?? []).value,
-            },
-          );
-          // A missed hourly tick cannot safely be bridged by a short fetch.
-          // Re-bootstrap the frozen window once, then resume incremental mode.
-          if (result.historyMode === "GAP") {
-            history = await client.getB4LiveHistory(instrument.symbol, b4DecisionTime, 722);
-            result = buildB4LiveObservation(
-              { ...history, storedPrimitiveHistory: undefined },
-              b4DecisionTime,
-              {
-                marketRegime: "UNKNOWN",
-                volatilityBucket: calculateB4Volatility(snapshot?.candles["1h"] ?? []).bucket,
-                liquidityBucket: "UNKNOWN",
-                volatilityValue: calculateB4Volatility(snapshot?.candles["1h"] ?? []).value,
-              },
-            );
-          }
-          if (result.historyMode !== "UNCHANGED") {
-            b4FeatureUpdates.push({
-              symbol: instrument.symbol,
-              lastEvaluatedClosedBar: result.observation.market_timestamp,
-              rollingPrimitives: result.nextPrimitiveHistory,
-            });
-          }
-          if (result.status !== "READY") return null;
-          const quoteVolumeMean = meanB4QuoteVolume(snapshot?.candles["1h"] ?? []);
-          const fourHourReturn = calculateB4FourHourReturn(snapshot?.candles["4h"] ?? []);
-          if (quoteVolumeMean === null || fourHourReturn === null || result.observation.volatility_value === null) return null;
-          await stageB4ShadowContext(supabase!, {
-            contextGroupKey: scanGroupKey,
-            marketTimestamp: result.observation.market_timestamp,
-            expectedSymbols: deepUniverse.map((item) => item.symbol),
-            observation: result.observation,
-            fourHourReturn,
-            quoteVolumeMean,
-            volatilityValue: result.observation.volatility_value,
-          });
-          return result.observation;
-        } catch (error) {
-          errors.push({ symbol: instrument.symbol, stage: "b4_live_features", message: errorMessage(error) });
-          return null;
-        }
-      })).filter((observation): observation is NonNullable<typeof observation> => observation !== null)
-      : [];
-
-    let finalizedB4Observations: typeof b4Observations = [];
-    if (runtimeConfig.HY_B4_SHADOW_ENABLED) {
-      const timestamps = [...new Set(b4Observations.map((observation) => observation.market_timestamp))];
-      for (const marketTimestamp of timestamps) {
-        try {
-          const finalized = await finalizeB4ShadowContext(supabase, {
-            contextGroupKey: scanGroupKey,
-            marketTimestamp,
-            expectedSymbols: deepUniverse.map((item) => item.symbol),
-          });
-          if (finalized.status === "FINALIZED") finalizedB4Observations.push(...finalized.observations);
-        } catch (error) {
-          errors.push({ symbol: undefined, stage: "b4_context_finalize", message: errorMessage(error) });
-        }
-      }
-    }
-
-    const b4ShadowSidecar = await runB4ShadowSidecar({
-      enabled: runtimeConfig.HY_B4_SHADOW_ENABLED,
-      observations: finalizedB4Observations,
-      persistAndTransition: runtimeConfig.HY_B4_SHADOW_ENABLED
-        ? (event) => persistB4ShadowEventAndTransition(supabase!, event)
-        : undefined,
-      persistControlCandidate: runtimeConfig.HY_B4_SHADOW_ENABLED
-        ? (observation) => persistB4ShadowControlCandidate(supabase!, observation)
-        : undefined,
-      syncEpisodeState: runtimeConfig.HY_B4_SHADOW_ENABLED
-        ? (observation, direction, episodeKey) => transitionB4ShadowEpisode(supabase!, {
-          symbol: observation.symbol,
-          direction,
-          marketTimestamp: observation.market_timestamp,
-          episodeKey,
-        })
-        : undefined,
-    });
-    let b4HealthDiagnostics = errors.some((error) => error.stage.startsWith("b4_"))
-      ? { ...b4ShadowSidecar.diagnostics, status: "DEGRADED" as const }
-      : b4ShadowSidecar.diagnostics;
-    let b4LastClosedBar: string | null = null;
-
-    if (runtimeConfig.HY_B4_SHADOW_ENABLED) {
-      try {
-        await Promise.all(b4FeatureUpdates.map((state) => upsertB4ShadowFeatureState(supabase!, state)));
-      } catch (error) {
-        errors.push({ symbol: undefined, stage: "b4_feature_state", message: errorMessage(error) });
-        b4HealthDiagnostics = { ...b4HealthDiagnostics, status: "DEGRADED" as const };
-      }
-      try {
-        const priorClosedBars = [...b4FeatureStates.values()].flatMap((state) => state.lastEvaluatedClosedBar === null
-          ? []
-          : [state.lastEvaluatedClosedBar]);
-        const lastClosedBar = [
-          ...b4FeatureUpdates.map((state) => state.lastEvaluatedClosedBar),
-          ...priorClosedBars,
-        ]
-          .sort()
-          .at(-1) ?? null;
-        b4LastClosedBar = lastClosedBar;
-        await upsertB4ShadowRuntimeState(supabase, b4HealthDiagnostics, {
-          lastClosedBarEvaluated: lastClosedBar,
-          lastError: b4ShadowSidecar.errors.at(-1)?.message ?? errors.at(-1)?.message ?? null,
-        });
-      } catch (error) {
-        // The additive R6.2C migration may not yet be applied to a preview
-        // database; never let this telemetry sidecar break the PAPER scan.
-        console.warn(`HeYue B4 runtime state unavailable: ${errorMessage(error)}`);
-      }
-    }
-
-    let b4OutcomeMaturity: Awaited<ReturnType<typeof matureB4ShadowOutcomes>> | null = null;
-    if (runtimeConfig.HY_B4_SHADOW_ENABLED) {
-      try {
-        const maturityTime = new Date().toISOString();
-        const eventsForMaturity = await listB4ShadowSignalEventsForMaturity(supabase, maturityTime);
-        b4OutcomeMaturity = await matureB4ShadowOutcomes({
-          events: eventsForMaturity,
-          evaluatedAt: maturityTime,
-          fetchFutureObservation: (event, horizonHours) => client.getClosedB4FutureObservation(
-            event.symbol,
-            Date.parse(event.market_timestamp),
-            Date.parse(event.market_timestamp) + horizonHours * 3_600_000,
-            Date.parse(maturityTime),
-          ),
-          persistOutcome: (outcome) => createB4ShadowSignalOutcome(supabase!, outcome),
-        });
-      } catch (error) {
-        errors.push({ symbol: undefined, stage: "b4_outcome_maturity", message: errorMessage(error) });
-        b4HealthDiagnostics = { ...b4HealthDiagnostics, status: "DEGRADED" as const };
-        try {
-          await upsertB4ShadowRuntimeState(supabase, b4HealthDiagnostics, {
-            lastClosedBarEvaluated: b4LastClosedBar,
-            lastError: errorMessage(error),
-          });
-        } catch {
-          // Keep the maturity error isolated from the PAPER scanner.
-        }
-      }
-    }
 
     const filterFunnel = createEmptyFilterFunnel();
     const symbolDiagnostics = new Map<string, PerSymbolDiagnostics>();
@@ -534,8 +330,6 @@ async function runScan(request: NextRequest): Promise<NextResponse> {
       topRejectionStage: findTopRejectionStage([...symbolDiagnostics.values()]),
       expiredSignalCount,
       dryRun: runtimeConfig.HY_DRY_RUN,
-      b4Shadow: b4HealthDiagnostics,
-      b4OutcomeMaturity,
     });
   } catch (error) {
     const message = errorMessage(error);

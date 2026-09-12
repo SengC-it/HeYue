@@ -163,3 +163,30 @@ export interface B4ShadowOutcome {
   outcome_status: "MATURED";
   calculation_version: typeof B4_SHADOW_VERSION;
 }
+
+export interface B4ShadowControlEvent {
+  control_event_id: string;
+  direction: B4ShadowDirection;
+  event_id: string;
+  symbol: string;
+  market_timestamp: string;
+  pit_available_at: string;
+  reference_price: number;
+  pending_horizons?: readonly (typeof B4_SHADOW_OUTCOME_HORIZONS)[number][];
+}
+
+export interface B4ShadowControlOutcome {
+  control_event_id: string;
+  direction: B4ShadowDirection;
+  horizon_hours: (typeof B4_SHADOW_OUTCOME_HORIZONS)[number];
+  future_observation_timestamp: string;
+  future_available_at: string;
+  reference_price: number;
+  future_price: number;
+  signed_return: number;
+  max_favorable_move: number;
+  max_adverse_move: number;
+  pit_safe: true;
+  outcome_status: "MATURED";
+  calculation_version: typeof B4_SHADOW_VERSION;
+}

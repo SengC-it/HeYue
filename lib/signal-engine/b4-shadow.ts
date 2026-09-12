@@ -18,6 +18,8 @@ import {
   type B4ShadowDirection,
   type B4ShadowEvaluation,
   type B4ShadowFutureObservation,
+  type B4ShadowControlEvent,
+  type B4ShadowControlOutcome,
   type B4ShadowObservation,
   type B4ShadowOutcome,
   type B4ShadowSignalEvent,
@@ -160,6 +162,64 @@ export function calculateB4ShadowOutcome(
     horizon_hours: horizonHours,
     future_observation_timestamp: parsedFuture.timestamp,
     future_available_at: parsedFuture.pit_available_at,
+    future_price: parsedFuture.close_price,
+    signed_return: signedReturn,
+    max_favorable_move: maxFavorableMove,
+    max_adverse_move: maxAdverseMove,
+    pit_safe: true,
+    outcome_status: "MATURED",
+    calculation_version: B4_SHADOW_VERSION,
+  };
+}
+
+/** Control-B uses the matched event direction but the control observation as
+ * the immutable price/time origin. The path checks intentionally mirror the
+ * signal outcome contract. */
+export function calculateB4ShadowControlOutcome(
+  control: Pick<B4ShadowControlEvent, "control_event_id" | "direction" | "reference_price" | "market_timestamp">,
+  horizonHours: (typeof import("./b4-shadow-types").B4_SHADOW_OUTCOME_HORIZONS)[number],
+  future: B4ShadowFutureObservation,
+  evaluatedAt: string,
+): B4ShadowControlOutcome | null {
+  const parsedFuture = parseB4ShadowFutureObservation(future);
+  const controlTime = Date.parse(control.market_timestamp);
+  const futureTime = Date.parse(parsedFuture.timestamp);
+  const availableAt = Date.parse(parsedFuture.pit_available_at);
+  const evaluationTime = Date.parse(evaluatedAt);
+  const dueTime = controlTime + horizonHours * B4_SHADOW_INTERVAL_MS;
+  if (!Number.isFinite(controlTime) || !Number.isFinite(futureTime) || !Number.isFinite(availableAt)
+    || !Number.isFinite(evaluationTime) || futureTime !== dueTime || availableAt > evaluationTime
+    || !parsedFuture.observation_closed || !parsedFuture.path?.length) return null;
+
+  const path = parsedFuture.path
+    .filter((item) => {
+      const timestamp = Date.parse(item.timestamp);
+      const available = Date.parse(item.pit_available_at);
+      return timestamp > controlTime && timestamp <= dueTime
+        && Number.isFinite(available) && available <= evaluationTime && item.observation_closed;
+    })
+    .sort((left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp));
+  if (path.length === 0 || Date.parse(path[0].timestamp) !== controlTime + B4_SHADOW_INTERVAL_MS
+    || Date.parse(path.at(-1)!.timestamp) !== dueTime
+    || path.some((item, index) => index > 0
+      && Date.parse(item.timestamp) !== Date.parse(path[index - 1].timestamp) + B4_SHADOW_INTERVAL_MS)) return null;
+
+  const signedReturn = control.direction === "BULLISH"
+    ? parsedFuture.close_price / control.reference_price - 1
+    : control.reference_price / parsedFuture.close_price - 1;
+  const maxFavorableMove = control.direction === "BULLISH"
+    ? Math.max(...path.map((item) => item.high_price / control.reference_price - 1))
+    : Math.max(...path.map((item) => control.reference_price / item.low_price - 1));
+  const maxAdverseMove = control.direction === "BULLISH"
+    ? Math.min(...path.map((item) => item.low_price / control.reference_price - 1))
+    : Math.min(...path.map((item) => control.reference_price / item.high_price - 1));
+  return {
+    control_event_id: control.control_event_id,
+    direction: control.direction,
+    horizon_hours: horizonHours,
+    future_observation_timestamp: parsedFuture.timestamp,
+    future_available_at: parsedFuture.pit_available_at,
+    reference_price: control.reference_price,
     future_price: parsedFuture.close_price,
     signed_return: signedReturn,
     max_favorable_move: maxFavorableMove,

@@ -20,6 +20,14 @@ export interface B4ShadowFinalizedContext {
   observations: B4ShadowObservation[];
 }
 
+export interface B4ShadowStagedContext {
+  symbol: string;
+  observation: B4ShadowObservation;
+  quoteVolumeMean: number;
+  fourHourReturn: number;
+  volatilityValue: number;
+}
+
 export async function stageB4ShadowContext(
   supabase: SupabaseClient,
   input: B4ShadowContextStageInput,
@@ -82,6 +90,37 @@ export async function finalizeB4ShadowContext(
   });
   if (error) throw new Error(`Supabase B4 context finalize failed: ${error.message}`);
   return parseFinalizedResult(data);
+}
+
+/** Read durable staged rows before calling Binance. A returned row is already
+ * safe to reuse for the same frozen universe/hour context. */
+export async function getStagedB4ShadowContexts(
+  supabase: SupabaseClient,
+  input: { contextGroupKey: string; marketTimestamp: string; symbols: readonly string[] },
+): Promise<Map<string, B4ShadowStagedContext>> {
+  if (input.symbols.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from(B4_CONTEXT_STAGING_TABLE)
+    .select("symbol,observation,quote_volume_mean,four_hour_return,volatility_value")
+    .eq("context_group_key", input.contextGroupKey)
+    .eq("market_timestamp", input.marketTimestamp)
+    .in("symbol", [...new Set(input.symbols)]);
+  if (error) throw new Error(`Supabase B4 staged context lookup failed: ${error.message}`);
+  return new Map((data ?? []).flatMap((raw) => {
+    const row = raw as Record<string, unknown>;
+    const symbol = typeof row.symbol === "string" ? row.symbol : null;
+    const quoteVolumeMean = Number(row.quote_volume_mean);
+    const fourHourReturn = Number(row.four_hour_return);
+    const volatilityValue = Number(row.volatility_value);
+    if (!symbol || !Number.isFinite(quoteVolumeMean) || !Number.isFinite(fourHourReturn) || !Number.isFinite(volatilityValue)) return [];
+    return [[symbol, {
+      symbol,
+      observation: parseB4ShadowObservation(row.observation),
+      quoteVolumeMean,
+      fourHourReturn,
+      volatilityValue,
+    }] as const];
+  }));
 }
 
 export async function getFinalizedB4ShadowContext(
