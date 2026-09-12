@@ -19,3 +19,5 @@ reports/*
 !reports/validation-train-grid-score80-cooldown24-rr2-h48-rolling-latest.json
 !reports/validation-train-grid-score80-cooldown24-rr2-h48-rolling-fee6bps-slip4bps.json
 !reports/hy-r1-production-parity-validation-*.json
+.vercel
+.env*
