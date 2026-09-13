@@ -57,4 +57,4 @@
 
 ## 8. Verification
 
-- Tests: 209 passed / 1 skipped (210 total); typecheck: PASS; lint: PASS; build: PASS; diff: PASS; GitHub CI: pending push.
+- Tests: 209 passed / 1 skipped (210 total); typecheck: PASS; lint: PASS; build: PASS; diff: PASS; GitHub CI: PASS (run 34770335635; verify).
