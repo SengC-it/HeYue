@@ -33,7 +33,7 @@
     "failureSetRepresentation": "canonical CSV text with CRLF/CR normalized to LF, UTF-8 encoded",
     "historicalEvidenceSha256": "b90c267d023d3e5999403dc6a42682e48dcb1c2cb9e8617db9118ed1cb1044a6",
     "historicalEvidenceRepresentation": "canonical JSON with recursively sorted object keys",
-    "productionEvidenceSha256": "df4392bf8a2c54c67388d301cc6420f230efffa13db150ce263c44d4373e99cb",
+    "productionEvidenceSha256": "bb6106ecd843da731c9a13f0801a4dad5ee8c48d7553b0b9be629b583b539a67",
     "productionEvidenceRepresentation": "canonical JSON with recursively sorted object keys",
     "strategySha256": "3c3df714d4e5768a4393e523b331b70f239e5c07b963e5bdada7442d69a27918",
     "strategyRepresentation": "canonical JSON of {version, strategyFamily, parameters} with recursively sorted object keys"
@@ -122,7 +122,9 @@
     "currentForward": {
       "observedAt": "2026-09-13T01:06:54.387Z",
       "finalOosBoundary": "2026-08-09T02:15:00.000Z",
-      "calendarDaysObserved": 34.95271281,
+      "forwardObservationStartedAt": "2026-08-09T15:46:25.317519Z",
+      "forwardObservationStartedAtSource": "Production public.hy_strategy_versions.created_at for exact strategy version hy-paper-candidate-v2",
+      "calendarDaysObserved": 34.38922535,
       "rows": [
         {
           "symbol": "HYPEUSDT",
@@ -510,7 +512,7 @@
       "minimumCalendarDays": 30,
       "minimumMaturedTrades": 100,
       "earlyKillRule": "At least 30 matured trades AND Net PnL < 0 AND PF < 0.90 AND Expectancy < 0",
-      "observedCalendarDays": 34.95271281,
+      "observedCalendarDays": 34.38922535,
       "observedMaturedTrades": 1,
       "calendarDaysRequirementMet": true,
       "maturedTradesRequirementMet": false,

@@ -26,6 +26,8 @@ export interface ProductionEvidenceSnapshot {
   projectRef: string;
   observedAt: string;
   finalOosBoundary: string;
+  forwardObservationStartedAt: string;
+  forwardObservationStartedAtSource: string;
   strategy: {
     version: string;
     strategyFamily: string;
@@ -194,6 +196,34 @@ export function calculateCalendarDays(start: string, end: string): number {
   const elapsed = Date.parse(end) - Date.parse(start);
   if (!Number.isFinite(elapsed) || elapsed < 0) throw new Error("Forward evidence dates are invalid");
   return round(elapsed / (24 * 60 * 60 * 1000));
+}
+
+export function validateForwardObservationClock(input: {
+  finalOosBoundary: string;
+  forwardObservationStartedAt: string;
+  observedAt: string;
+}): void {
+  const finalOosBoundary = Date.parse(input.finalOosBoundary);
+  const forwardObservationStartedAt = Date.parse(input.forwardObservationStartedAt);
+  const observedAt = Date.parse(input.observedAt);
+  if (![finalOosBoundary, forwardObservationStartedAt, observedAt].every(Number.isFinite)) {
+    throw new Error("Forward observation clock contains an invalid timestamp");
+  }
+  if (forwardObservationStartedAt <= finalOosBoundary) {
+    throw new Error("Forward observation start must be after the historical OOS boundary");
+  }
+  if (forwardObservationStartedAt > observedAt) {
+    throw new Error("Forward observation start cannot be after observedAt");
+  }
+}
+
+export function calculateForwardObservationCalendarDays(input: {
+  finalOosBoundary: string;
+  forwardObservationStartedAt: string;
+  observedAt: string;
+}): number {
+  validateForwardObservationClock(input);
+  return calculateCalendarDays(input.forwardObservationStartedAt, input.observedAt);
 }
 
 export function classifyForwardGate(input: {

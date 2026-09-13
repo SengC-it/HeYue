@@ -7,12 +7,13 @@ import {
   R71A_FORWARD_MIN_MATURED_TRADES,
   R71A_HISTORICAL_DD_TOLERANCE,
   R71A_REPORT_VERSION,
-  calculateCalendarDays,
+  calculateForwardObservationCalendarDays,
   calculateForwardMetrics,
   classifyForwardGate,
   canonicalCsvText,
   sha256Bytes,
   sha256CanonicalJson,
+  validateForwardObservationClock,
   validateFrozenFailureSet,
   type ForwardPaperTradeEvidence,
   type ProductionEvidenceSnapshot,
@@ -40,7 +41,7 @@ async function main(): Promise<void> {
   if (!h0) throw new Error("The frozen R7.1 report is missing H0");
 
   const forwardMetrics = calculateForwardMetrics(production.forwardPaperTrades);
-  const calendarDays = calculateCalendarDays(production.finalOosBoundary, production.observedAt);
+  const calendarDays = calculateForwardObservationCalendarDays(production);
   const forwardGate = classifyForwardGate({ calendarDays, metrics: forwardMetrics });
   const h0Oos = metricBundle(optimized.oos);
   const h0Selection = h0.selection;
@@ -65,6 +66,7 @@ async function main(): Promise<void> {
   const historicalEvidenceHash = sha256CanonicalJson(historical);
   const productionEvidenceHash = sha256CanonicalJson({
     finalOosBoundary: production.finalOosBoundary,
+    forwardObservationStartedAt: production.forwardObservationStartedAt,
     strategy: strategyHashInput,
     forwardPaperTrades: production.forwardPaperTrades,
   });
@@ -141,6 +143,8 @@ async function main(): Promise<void> {
       currentForward: {
         observedAt: production.observedAt,
         finalOosBoundary: production.finalOosBoundary,
+        forwardObservationStartedAt: production.forwardObservationStartedAt,
+        forwardObservationStartedAtSource: production.forwardObservationStartedAtSource,
         calendarDaysObserved: calendarDays,
         rows: production.forwardPaperTrades,
         metrics: forwardMetrics,
@@ -218,6 +222,7 @@ async function main(): Promise<void> {
 
 function validateProductionEvidence(snapshot: ProductionEvidenceSnapshot): void {
   if (snapshot.strategy.version !== "hy-paper-candidate-v2") throw new Error("Production evidence strategy version is not hy-paper-candidate-v2");
+  validateForwardObservationClock(snapshot);
   if (snapshot.strategy.strategyFamily !== "TREND" || snapshot.strategy.status !== "PAPER") throw new Error("Production evidence baseline identity is unexpected");
   if (!snapshot.runtimeSafety.paperTradingEnabled || snapshot.runtimeSafety.autoTrading || snapshot.runtimeSafety.exchangeCredentialsConfigured) {
     throw new Error("Production safety evidence does not satisfy PAPER-only constraints");
@@ -401,6 +406,10 @@ function renderMarkdown(report: any): string {
     "",
     "### Forward gate",
     "",
+    `- Historical OOS boundary: ${facts.currentForward.finalOosBoundary} (historical evaluation boundary only).`,
+    `- Forward observation start: ${facts.currentForward.forwardObservationStartedAt} (Production hy_strategy_versions.created_at for ${report.forwardCandidate.sourceStrategy}).`,
+    `- Observed at: ${facts.currentForward.observedAt}.`,
+    `- Corrected calendar days observed: ${facts.currentForward.calendarDaysObserved}.`,
     `- Minimum: ${R71A_FORWARD_MIN_CALENDAR_DAYS} calendar days AND ${R71A_FORWARD_MIN_MATURED_TRADES} matured PAPER trades.`,
     `- Observed: ${report.forwardCandidate.forwardGate.observedCalendarDays} days and ${report.forwardCandidate.forwardGate.observedMaturedTrades} matured trades.`,
     `- Economic snapshot: net ${facts.currentForward.metrics.netPnlUsdt} USDT; expectancy ${facts.currentForward.metrics.expectancyUsdt}; total R ${facts.currentForward.metrics.totalR}; max DD ${facts.currentForward.metrics.maxDrawdownPercent}.`,

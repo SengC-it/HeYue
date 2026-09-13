@@ -10,7 +10,7 @@ H0 is frozen as a forward-validation candidate under the explicit R7.1A special 
 - Source strategy: `hy-paper-candidate-v2`
 - Historical final OOS: 29 trades; base net 469.31166529 USDT; base PF 1.59999141; stress net 400.66533784 USDT; stress PF 1.48858398.
 - Current forward evidence: 1 matured trade(s); net 95.36074897 USDT; PF UNDEFINED (zero losses).
-- Forward gate: OPEN_INSUFFICIENT_SAMPLE; 34.95271281 calendar day(s) observed and 1 matured trade(s) against 30 days + 100 trades.
+- Forward gate: OPEN_INSUFFICIENT_SAMPLE; 34.38922535 calendar day(s) observed and 1 matured trade(s) against 30 days + 100 trades.
 
 ## Frozen authoritative facts
 
@@ -76,8 +76,12 @@ For H1/H2/H4, the PnL/expectancy/PF fields below are the frozen train+validation
 
 ### Forward gate
 
+- Historical OOS boundary: 2026-08-09T02:15:00.000Z (historical evaluation boundary only).
+- Forward observation start: 2026-08-09T15:46:25.317519Z (Production hy_strategy_versions.created_at for hy-paper-candidate-v2).
+- Observed at: 2026-09-13T01:06:54.387Z.
+- Corrected calendar days observed: 34.38922535.
 - Minimum: 30 calendar days AND 100 matured PAPER trades.
-- Observed: 34.95271281 days and 1 matured trades.
+- Observed: 34.38922535 days and 1 matured trades.
 - Economic snapshot: net 95.36074897 USDT; expectancy 95.36074897; total R 1.90725694; max DD 0.
 - PF: UNDEFINED_NO_LOSSES; not claimed as a finite PF; no finite PF is claimed when there are zero losses.
 - Early kill: NOT TRIGGERED (requires at least 30 matured trades plus all three negative conditions).

@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   R71A_CANDIDATE_ID,
   calculateForwardMetrics,
+  calculateForwardObservationCalendarDays,
+  calculateCalendarDays,
   canonicalJson,
   classifyForwardGate,
   parseCsv,
   sha256CanonicalJson,
+  validateForwardObservationClock,
   validateFrozenFailureSet,
 } from "@/lib/research/r7-1a";
 
@@ -57,5 +60,32 @@ describe("HY-R7.1A evidence freeze guardrails", () => {
     const gate = classifyForwardGate({ calendarDays: 30, metrics });
     expect(gate.earlyKill).toBe(false);
     expect(gate.gateStatus).toBe("OPEN_INSUFFICIENT_SAMPLE");
+  });
+
+  it("uses the Production strategy creation clock instead of the historical OOS boundary", () => {
+    const finalOosBoundary = "2026-08-09T02:15:00.000Z";
+    const forwardObservationStartedAt = "2026-08-09T15:46:25.317519Z";
+    const observedAt = "2026-09-13T01:06:54.387Z";
+    expect(forwardObservationStartedAt).not.toBe(finalOosBoundary);
+    const corrected = calculateForwardObservationCalendarDays({ finalOosBoundary, forwardObservationStartedAt, observedAt });
+    expect(corrected).toBe(calculateCalendarDays(forwardObservationStartedAt, observedAt));
+    expect(corrected).not.toBe(calculateCalendarDays(finalOosBoundary, observedAt));
+    expect(corrected).toBe(34.38922535);
+  });
+
+  it("rejects a forward start at or before the historical OOS boundary", () => {
+    expect(() => validateForwardObservationClock({
+      finalOosBoundary: "2026-08-09T02:15:00.000Z",
+      forwardObservationStartedAt: "2026-08-09T02:15:00.000Z",
+      observedAt: "2026-09-13T01:06:54.387Z",
+    })).toThrow("after the historical OOS boundary");
+  });
+
+  it("rejects a forward start after observedAt", () => {
+    expect(() => validateForwardObservationClock({
+      finalOosBoundary: "2026-08-09T02:15:00.000Z",
+      forwardObservationStartedAt: "2026-09-14T00:00:00.000Z",
+      observedAt: "2026-09-13T01:06:54.387Z",
+    })).toThrow("after observedAt");
   });
 });

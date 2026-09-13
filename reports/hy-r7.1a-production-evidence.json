@@ -4,6 +4,8 @@
   "projectRef": "jfvbikivtpfjgfsnggiz",
   "observedAt": "2026-09-13T01:06:54.387Z",
   "finalOosBoundary": "2026-08-09T02:15:00.000Z",
+  "forwardObservationStartedAt": "2026-08-09T15:46:25.317519Z",
+  "forwardObservationStartedAtSource": "Production public.hy_strategy_versions.created_at for exact strategy version hy-paper-candidate-v2",
   "strategy": {
     "version": "hy-paper-candidate-v2",
     "strategyFamily": "TREND",
