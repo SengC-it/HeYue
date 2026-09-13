@@ -310,23 +310,22 @@ async function main(): Promise<void> {
   const selectedThroughputGate = selected?.oosSignalRate
     ? passesThroughputGate(candidateA.oosSignalRate?.count ?? 0, selected.oosSignalRate.count, selected.oosSignalRate.annualizedSignals)
     : false;
-  const aPractical = (candidateA.oosSignalRate?.signalsPerWeek ?? 0) >= R72_TARGET_WEEKLY
-    || (candidateA.oosSignalRate?.annualizedSignals ?? 0) >= R72_TARGET_ANNUALIZED;
-  const aSparse = (candidateA.oosSignalRate?.signalsPerWeek ?? 0) < R72_MIN_PRACTICAL_WEEKLY;
-  const classification = selected && selectedProfitabilityGate && selectedThroughputGate
-    ? "THROUGHPUT_PROFITABILITY_CANDIDATE_READY"
-    : aPractical && candidateA.finalOos && candidateA.finalOos.base.metrics.netPnlUsdt > 0
-      ? "THROUGHPUT_PROFITABILITY_CANDIDATE_READY"
-      : aSparse
-        ? "CANDIDATE_A_TOO_SPARSE_NO_SAFE_EXPANSION"
-        : "PROFITABILITY_RESEARCH_INVALID";
-
   const productionForwardRate = calculateSignalRate(
     [Date.parse(PRODUCTION_SNAPSHOT.currentForward.firstSignalEntryAt)],
     Date.parse(PRODUCTION_SNAPSHOT.strategy.createdAt),
     Date.parse(PRODUCTION_SNAPSHOT.latestScanFinishedAt),
   );
   const productionObservationDays = productionForwardRate.observationDays;
+  const historicalPractical = (candidateA.oosSignalRate?.signalsPerWeek ?? 0) >= R72_TARGET_WEEKLY
+    || (candidateA.oosSignalRate?.annualizedSignals ?? 0) >= R72_TARGET_ANNUALIZED;
+  const productionSparse = productionForwardRate.signalsPerWeek < R72_MIN_PRACTICAL_WEEKLY;
+  const classification = selected && selectedProfitabilityGate && selectedThroughputGate
+    ? "THROUGHPUT_PROFITABILITY_CANDIDATE_READY"
+    : productionSparse
+      ? "CANDIDATE_A_TOO_SPARSE_NO_SAFE_EXPANSION"
+      : historicalPractical && candidateA.finalOos && candidateA.finalOos.base.metrics.netPnlUsdt > 0
+        ? "THROUGHPUT_PROFITABILITY_CANDIDATE_READY"
+        : "PROFITABILITY_RESEARCH_INVALID";
   const report = buildReport({
     data,
     historicalFunnel,
@@ -820,7 +819,13 @@ function buildReport(input: {
         targetSignalsPerWeek: R72_TARGET_WEEKLY,
         targetAnnualizedSignals: R72_TARGET_ANNUALIZED,
         tooSparseBelowSignalsPerWeek: R72_MIN_PRACTICAL_WEEKLY,
-        candidateAClassification: (candidateA.oosSignalRate?.signalsPerWeek ?? 0) < R72_MIN_PRACTICAL_WEEKLY
+        historicalCandidateAClassification: (candidateA.oosSignalRate?.signalsPerWeek ?? 0) < R72_MIN_PRACTICAL_WEEKLY
+          ? "TOO_SPARSE_FOR_PRACTICAL_VALIDATION"
+          : "NOT_TOO_SPARSE",
+        productionForwardCandidateAClassification: input.productionForwardRate.signalsPerWeek < R72_MIN_PRACTICAL_WEEKLY
+          ? "TOO_SPARSE_FOR_PRACTICAL_VALIDATION"
+          : "NOT_TOO_SPARSE",
+        candidateAClassification: input.productionForwardRate.signalsPerWeek < R72_MIN_PRACTICAL_WEEKLY
           ? "TOO_SPARSE_FOR_PRACTICAL_VALIDATION"
           : "NOT_TOO_SPARSE",
       },
@@ -995,7 +1000,7 @@ Train and validation funnels are retained in the JSON artifact; no thresholds we
 - Estimated days to 30 matured trades at current Production rate: **${json.signalRates.estimatedDaysTo30Trades ?? "NOT AVAILABLE"}**
 - Estimated days to 100 matured trades at current Production rate: **${json.signalRates.estimatedDaysTo100Trades ?? "NOT AVAILABLE"}**
 
-The below-0.5-signal/week result is a usability classification only, not an edge failure.
+Historical OOS frequency meets the throughput target, but the current Production forward rate is below 0.5 signal/week. That is a current-usability classification only, not an edge failure.
 
 ## Challenger selection and comparison
 

@@ -1614,7 +1614,9 @@
       "targetSignalsPerWeek": 2,
       "targetAnnualizedSignals": 100,
       "tooSparseBelowSignalsPerWeek": 0.5,
-      "candidateAClassification": "NOT_TOO_SPARSE"
+      "historicalCandidateAClassification": "NOT_TOO_SPARSE",
+      "productionForwardCandidateAClassification": "TOO_SPARSE_FOR_PRACTICAL_VALIDATION",
+      "candidateAClassification": "TOO_SPARSE_FOR_PRACTICAL_VALIDATION"
     }
   },
   "failureSetAudit": {
@@ -1674,15 +1676,13 @@
     "perCandidateOneShot": true,
     "executedFinalOosRuns": 1
   },
-  "classification": "THROUGHPUT_PROFITABILITY_CANDIDATE_READY",
+  "classification": "CANDIDATE_A_TOO_SPARSE_NO_SAFE_EXPANSION",
   "verification": {
     "tests": "191 passed / 192 (1 skipped)",
     "typecheck": "PASS",
     "lint": "PASS",
     "build": "PASS",
     "diff": "PASS",
-    "githubCi": "PASS",
-    "ciRun": 34740882668,
-    "ciHead": "bcb5c52bb08cd160bdbdf307e4303a1ee0c60d2c"
+    "githubCi": "pending push"
   }
 }

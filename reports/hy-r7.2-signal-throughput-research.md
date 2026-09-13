@@ -49,7 +49,7 @@ Train and validation funnels are retained in the JSON artifact; no thresholds we
 - Estimated days to 30 matured trades at current Production rate: **1033.7242602**
 - Estimated days to 100 matured trades at current Production rate: **3445.747534**
 
-The below-0.5-signal/week result is a usability classification only, not an edge failure.
+Historical OOS frequency meets the throughput target, but the current Production forward rate is below 0.5 signal/week. That is a current-usability classification only, not an edge failure.
 
 ## Challenger selection and comparison
 
@@ -81,6 +81,6 @@ The frozen 37-row failure set is audit-only: retained=0, suppressed=37, retained
 
 ## Result
 
-Classification: **THROUGHPUT_PROFITABILITY_CANDIDATE_READY**
+Classification: **CANDIDATE_A_TOO_SPARSE_NO_SAFE_EXPANSION**
 
-Local verification: tests **191 passed / 192 (1 skipped)**, typecheck **PASS**, lint **PASS**, build **PASS**, and diff **PASS**. GitHub CI **PASS** (run `34740882668` for research HEAD `bcb5c52bb08cd160bdbdf307e4303a1ee0c60d2c`).
+Local verification: tests **191 passed / 192 (1 skipped)**, typecheck **PASS**, lint **PASS**, build **PASS**, and diff **PASS**. GitHub CI is pending the push of this classification correction.
