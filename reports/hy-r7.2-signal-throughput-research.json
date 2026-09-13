@@ -1,0 +1,1686 @@
+{
+  "reportVersion": "hy-r7.2-v1",
+  "purpose": "Research-only signal throughput and profitability evaluation; no production behavior was changed.",
+  "safety": {
+    "productionModified": false,
+    "supabaseModified": false,
+    "vercelModified": false,
+    "paperStrategyModified": false,
+    "realEmail": "OFF",
+    "privateApi": false,
+    "orders": 0,
+    "autoTrading": false,
+    "b4Touched": false,
+    "b4HistoricalSeries": "NOT_USED"
+  },
+  "frozenCandidateA": {
+    "candidateId": "HY-R7-FORWARD-CANDIDATE-A",
+    "strategyVersion": "hy-paper-candidate-v2",
+    "strategyHash": "3c3df714d4e5768a4393e523b331b70f239e5c07b963e5bdada7442d69a27918",
+    "entryMode": "TREND_PULLBACK",
+    "score": 80,
+    "cooldownHours": 24,
+    "rewardRisk": 2,
+    "maxHoldHours": 48,
+    "stopAtrMultiplier": 0.75,
+    "sideFilter": "SHORT",
+    "strategyFamily": "TREND",
+    "requireRegimeAlignment": true,
+    "globalReferenceSymbol": "BTCUSDT",
+    "globalReferenceTimeframe": "4h",
+    "globalRegimeAlignment": true,
+    "maxExecutionCostRiskFraction": 0.1,
+    "selectionRule": "Candidate A remains frozen; all challengers use the same entry, score, side, regime, risk, cooldown, RR and hold rules."
+  },
+  "windows": {
+    "datasetWindow": {
+      "start": "2025-08-09T02:15:00.000Z",
+      "end": "2026-08-09T02:14:59.999Z"
+    },
+    "train": {
+      "start": "2025-08-09T02:15:00.000Z",
+      "end": "2026-02-07T02:15:00.000Z"
+    },
+    "validation": {
+      "start": "2026-02-09T02:15:00.000Z",
+      "end": "2026-05-07T02:15:00.000Z"
+    },
+    "finalOos": {
+      "start": "2026-05-09T02:15:00.000Z",
+      "end": "2026-08-09T02:14:59.999Z"
+    },
+    "embargoHours": 48,
+    "pit": "At each 15m decision, only candles and dynamic quote-volume rank through that closed decision candle are consumed; entry is the next bar open."
+  },
+  "historicalDataset": {
+    "directory": "data/hy-r2b-history-24m",
+    "rawFiles": 49,
+    "rawBytes": 633080652,
+    "symbols": [
+      "1000BONKUSDT",
+      "1000CATUSDT",
+      "1000PEPEUSDT",
+      "1000SHIBUSDT",
+      "AAVEUSDT",
+      "ADAUSDT",
+      "ARCUSDT",
+      "AVAXUSDT",
+      "BANKUSDT",
+      "BEATUSDT",
+      "BNBUSDT",
+      "BTCUSDT",
+      "COOKIEUSDT",
+      "COTIUSDT",
+      "DEXEUSDT",
+      "DODOXUSDT",
+      "DOGEUSDT",
+      "ENAUSDT",
+      "EPICUSDT",
+      "ETHUSDT",
+      "FILUSDT",
+      "GWEIUSDT",
+      "HEIUSDT",
+      "HOMEUSDT",
+      "HYPEUSDT",
+      "ICPUSDT",
+      "INJUSDT",
+      "IOTXUSDT",
+      "LINKUSDT",
+      "LTCUSDT",
+      "NEARUSDT",
+      "ONDOUSDT",
+      "PAXGUSDT",
+      "PENGUUSDT",
+      "PUMPUSDT",
+      "SAGAUSDT",
+      "SIRENUSDT",
+      "SKYAIUSDT",
+      "SOLUSDT",
+      "SUIUSDT",
+      "SYNUSDT",
+      "TAOUSDT",
+      "TRXUSDT",
+      "TSTUSDT",
+      "UNIUSDT",
+      "WLDUSDT",
+      "XLMUSDT",
+      "XMRUSDT",
+      "XRPUSDT"
+    ],
+    "manifestSha256": "95d71fb5cfedcf07e7272e60a64e50488a5281230b569b786bdf136e7852793f",
+    "coverage": {
+      "earliestOpenTime": "2024-07-26T02:15:00.000Z",
+      "latestCloseTime": "2026-08-09T02:14:59.999Z",
+      "allFilesEndAtOrBeforeWindowEnd": true
+    }
+  },
+  "historicalFunnel": {
+    "unit": "symbol x closed 15m decision observation; final signal means post-cooldown, execution-cost eligible event before portfolio caps",
+    "train": {
+      "input": 830187,
+      "stages": [
+        {
+          "stage": "symbols considered",
+          "input": 830187,
+          "passed": 830187,
+          "rejected": 0,
+          "passRate": 1,
+          "cumulativePassRate": 1
+        },
+        {
+          "stage": "liquidity/universe eligible",
+          "input": 830187,
+          "passed": 174657,
+          "rejected": 655530,
+          "passRate": 0.21038272,
+          "cumulativePassRate": 0.21038272
+        },
+        {
+          "stage": "TREND_PULLBACK condition met",
+          "input": 174657,
+          "passed": 30078,
+          "rejected": 144579,
+          "passRate": 0.17221182,
+          "cumulativePassRate": 0.03623039
+        },
+        {
+          "stage": "SHORT side eligible",
+          "input": 30078,
+          "passed": 17045,
+          "rejected": 13033,
+          "passRate": 0.56669326,
+          "cumulativePassRate": 0.02053152
+        },
+        {
+          "stage": "local regime aligned",
+          "input": 17045,
+          "passed": 10431,
+          "rejected": 6614,
+          "passRate": 0.61196832,
+          "cumulativePassRate": 0.01256464
+        },
+        {
+          "stage": "BTC 4h regime aligned",
+          "input": 10431,
+          "passed": 7890,
+          "rejected": 2541,
+          "passRate": 0.75639919,
+          "cumulativePassRate": 0.00950388
+        },
+        {
+          "stage": "score >=80",
+          "input": 7890,
+          "passed": 986,
+          "rejected": 6904,
+          "passRate": 0.12496831,
+          "cumulativePassRate": 0.00118768
+        },
+        {
+          "stage": "cooldown eligible",
+          "input": 986,
+          "passed": 434,
+          "rejected": 552,
+          "passRate": 0.44016227,
+          "cumulativePassRate": 0.00052277
+        },
+        {
+          "stage": "execution-cost eligible",
+          "input": 434,
+          "passed": 201,
+          "rejected": 233,
+          "passRate": 0.46313364,
+          "cumulativePassRate": 0.00024211
+        },
+        {
+          "stage": "final signal emitted",
+          "input": 201,
+          "passed": 201,
+          "rejected": 0,
+          "passRate": 1,
+          "cumulativePassRate": 0.00024211
+        }
+      ]
+    },
+    "validation": {
+      "input": 409248,
+      "stages": [
+        {
+          "stage": "symbols considered",
+          "input": 409248,
+          "passed": 409248,
+          "rejected": 0,
+          "passRate": 1,
+          "cumulativePassRate": 1
+        },
+        {
+          "stage": "liquidity/universe eligible",
+          "input": 409248,
+          "passed": 83520,
+          "rejected": 325728,
+          "passRate": 0.20408163,
+          "cumulativePassRate": 0.20408163
+        },
+        {
+          "stage": "TREND_PULLBACK condition met",
+          "input": 83520,
+          "passed": 14521,
+          "rejected": 68999,
+          "passRate": 0.17386255,
+          "cumulativePassRate": 0.03548215
+        },
+        {
+          "stage": "SHORT side eligible",
+          "input": 14521,
+          "passed": 6892,
+          "rejected": 7629,
+          "passRate": 0.47462296,
+          "cumulativePassRate": 0.01684064
+        },
+        {
+          "stage": "local regime aligned",
+          "input": 6892,
+          "passed": 3517,
+          "rejected": 3375,
+          "passRate": 0.5103018,
+          "cumulativePassRate": 0.00859381
+        },
+        {
+          "stage": "BTC 4h regime aligned",
+          "input": 3517,
+          "passed": 2128,
+          "rejected": 1389,
+          "passRate": 0.60506113,
+          "cumulativePassRate": 0.00519978
+        },
+        {
+          "stage": "score >=80",
+          "input": 2128,
+          "passed": 144,
+          "rejected": 1984,
+          "passRate": 0.06766917,
+          "cumulativePassRate": 0.00035186
+        },
+        {
+          "stage": "cooldown eligible",
+          "input": 144,
+          "passed": 103,
+          "rejected": 41,
+          "passRate": 0.71527778,
+          "cumulativePassRate": 0.00025168
+        },
+        {
+          "stage": "execution-cost eligible",
+          "input": 103,
+          "passed": 25,
+          "rejected": 78,
+          "passRate": 0.24271845,
+          "cumulativePassRate": 0.00006109
+        },
+        {
+          "stage": "final signal emitted",
+          "input": 25,
+          "passed": 25,
+          "rejected": 0,
+          "passRate": 1,
+          "cumulativePassRate": 0.00006109
+        }
+      ]
+    },
+    "finalOos": {
+      "input": 432719,
+      "stages": [
+        {
+          "stage": "symbols considered",
+          "input": 432719,
+          "passed": 432719,
+          "rejected": 0,
+          "passRate": 1,
+          "cumulativePassRate": 1
+        },
+        {
+          "stage": "liquidity/universe eligible",
+          "input": 432719,
+          "passed": 88310,
+          "rejected": 344409,
+          "passRate": 0.20408163,
+          "cumulativePassRate": 0.20408163
+        },
+        {
+          "stage": "TREND_PULLBACK condition met",
+          "input": 88310,
+          "passed": 15206,
+          "rejected": 73104,
+          "passRate": 0.17218888,
+          "cumulativePassRate": 0.03514059
+        },
+        {
+          "stage": "SHORT side eligible",
+          "input": 15206,
+          "passed": 7686,
+          "rejected": 7520,
+          "passRate": 0.50545837,
+          "cumulativePassRate": 0.0177621
+        },
+        {
+          "stage": "local regime aligned",
+          "input": 7686,
+          "passed": 4594,
+          "rejected": 3092,
+          "passRate": 0.59771012,
+          "cumulativePassRate": 0.01061659
+        },
+        {
+          "stage": "BTC 4h regime aligned",
+          "input": 4594,
+          "passed": 3210,
+          "rejected": 1384,
+          "passRate": 0.69873748,
+          "cumulativePassRate": 0.00741821
+        },
+        {
+          "stage": "score >=80",
+          "input": 3210,
+          "passed": 205,
+          "rejected": 3005,
+          "passRate": 0.06386293,
+          "cumulativePassRate": 0.00047375
+        },
+        {
+          "stage": "cooldown eligible",
+          "input": 205,
+          "passed": 110,
+          "rejected": 95,
+          "passRate": 0.53658537,
+          "cumulativePassRate": 0.00025421
+        },
+        {
+          "stage": "execution-cost eligible",
+          "input": 110,
+          "passed": 32,
+          "rejected": 78,
+          "passRate": 0.29090909,
+          "cumulativePassRate": 0.00007395
+        },
+        {
+          "stage": "final signal emitted",
+          "input": 32,
+          "passed": 32,
+          "rejected": 0,
+          "passRate": 1,
+          "cumulativePassRate": 0.00007395
+        }
+      ]
+    }
+  },
+  "dominantBottleneck": {
+    "stage": "liquidity/universe eligible",
+    "family": "UNIVERSE",
+    "rejected": 344409,
+    "input": 432719,
+    "rejectionSharePercent": 79.591837
+  },
+  "candidateFamilySelected": "UNIVERSE",
+  "candidateA": {
+    "id": "A",
+    "description": "Frozen Candidate A: exact hy-paper-candidate-v2 rules with dynamic top-10 liquid universe",
+    "universeSize": 10,
+    "rules": {
+      "entryMode": "TREND_PULLBACK",
+      "side": "SHORT",
+      "strategyFamily": "TREND",
+      "minScore": 80,
+      "cooldownHours": 24,
+      "rewardRisk": 2,
+      "maxHoldHours": 48,
+      "stopAtrMultiplier": 0.75,
+      "localRegimeAlignment": true,
+      "btc4hRegimeAlignment": true,
+      "changedFromA": []
+    },
+    "train": {
+      "base": {
+        "metrics": {
+          "trades": 186,
+          "wins": 72,
+          "losses": 114,
+          "winRate": 0.387097,
+          "netPnlUsdt": 742.40605663,
+          "expectancyUsdt": 3.99143041,
+          "netR": 14.85473652,
+          "profitFactor": 1.12247504,
+          "maxDrawdownUsdt": 1106.38411739,
+          "maxDrawdownPercent": 0.11063841,
+          "averageWinnerUsdt": 94.50137514,
+          "averageLoserUsdt": -53.17274521,
+          "totalFeesUsdt": 418.00931972,
+          "totalFundingUsdt": -3.10013379,
+          "totalSlippageUsdt": 209.00471476,
+          "grossPnlUsdt": 1163.51551014,
+          "pricePnlBeforeExecutionCostsUsdt": 1372.5202249,
+          "finalEquityUsdt": 10742.40605663
+        },
+        "rawMetrics": {
+          "trades": 189,
+          "wins": 74,
+          "losses": 115,
+          "winRate": 0.391534,
+          "netPnlUsdt": 882.34223004,
+          "expectancyUsdt": 4.66847741,
+          "netR": 17.6630664,
+          "profitFactor": 1.14430764,
+          "maxDrawdownUsdt": 1106.38411739,
+          "maxDrawdownPercent": 0.11063841,
+          "averageWinnerUsdt": 94.54940783,
+          "averageLoserUsdt": -53.16794739,
+          "totalFeesUsdt": 424.38595079,
+          "totalFundingUsdt": -3.10013379,
+          "totalSlippageUsdt": 212.19303628,
+          "grossPnlUsdt": 1309.82831462,
+          "pricePnlBeforeExecutionCostsUsdt": 1522.0213509,
+          "finalEquityUsdt": 10882.34223004
+        },
+        "rawSignalCount": 189,
+        "selectedSignalCount": 186,
+        "portfolioRejections": {
+          "maxConcurrentPositions": 3,
+          "singleSignalRisk": 0,
+          "dailyRiskBudget": 0,
+          "dailyLossLimit": 0,
+          "emailCap": 0,
+          "capitalFloor": 0
+        }
+      },
+      "stress": {
+        "metrics": {
+          "trades": 97,
+          "wins": 40,
+          "losses": 57,
+          "winRate": 0.412371,
+          "netPnlUsdt": 569.25496607,
+          "expectancyUsdt": 5.8686079,
+          "netR": 11.46777025,
+          "profitFactor": 1.18825258,
+          "maxDrawdownUsdt": 651.40431809,
+          "maxDrawdownPercent": 0.06514043,
+          "averageWinnerUsdt": 89.82860537,
+          "averageLoserUsdt": -53.05068857,
+          "totalFeesUsdt": 224.56594446,
+          "totalFundingUsdt": -5.06736775,
+          "totalSlippageUsdt": 149.71078142,
+          "grossPnlUsdt": 798.88827828,
+          "pricePnlBeforeExecutionCostsUsdt": 948.5990597,
+          "finalEquityUsdt": 10569.25496607
+        },
+        "rawMetrics": {
+          "trades": 97,
+          "wins": 40,
+          "losses": 57,
+          "winRate": 0.412371,
+          "netPnlUsdt": 569.25496607,
+          "expectancyUsdt": 5.8686079,
+          "netR": 11.46777025,
+          "profitFactor": 1.18825258,
+          "maxDrawdownUsdt": 651.40431809,
+          "maxDrawdownPercent": 0.06514043,
+          "averageWinnerUsdt": 89.82860537,
+          "averageLoserUsdt": -53.05068857,
+          "totalFeesUsdt": 224.56594446,
+          "totalFundingUsdt": -5.06736775,
+          "totalSlippageUsdt": 149.71078142,
+          "grossPnlUsdt": 798.88827828,
+          "pricePnlBeforeExecutionCostsUsdt": 948.5990597,
+          "finalEquityUsdt": 10569.25496607
+        },
+        "rawSignalCount": 97,
+        "selectedSignalCount": 97,
+        "portfolioRejections": {
+          "maxConcurrentPositions": 0,
+          "singleSignalRisk": 0,
+          "dailyRiskBudget": 0,
+          "dailyLossLimit": 0,
+          "emailCap": 0,
+          "capitalFloor": 0
+        }
+      }
+    },
+    "validation": {
+      "base": {
+        "metrics": {
+          "trades": 22,
+          "wins": 5,
+          "losses": 17,
+          "winRate": 0.227273,
+          "netPnlUsdt": -451.08013103,
+          "expectancyUsdt": -20.50364232,
+          "netR": -9.06467495,
+          "profitFactor": 0.49262083,
+          "maxDrawdownUsdt": 626.48435596,
+          "maxDrawdownPercent": 0.06264844,
+          "averageWinnerUsdt": 87.591878,
+          "averageLoserUsdt": -52.29644241,
+          "totalFeesUsdt": 56.87793583,
+          "totalFundingUsdt": -3.99075676,
+          "totalSlippageUsdt": 28.43895344,
+          "grossPnlUsdt": -390.21143844,
+          "pricePnlBeforeExecutionCostsUsdt": -361.772485,
+          "finalEquityUsdt": 9548.91986897
+        },
+        "rawMetrics": {
+          "trades": 22,
+          "wins": 5,
+          "losses": 17,
+          "winRate": 0.227273,
+          "netPnlUsdt": -451.08013103,
+          "expectancyUsdt": -20.50364232,
+          "netR": -9.06467495,
+          "profitFactor": 0.49262083,
+          "maxDrawdownUsdt": 626.48435596,
+          "maxDrawdownPercent": 0.06264844,
+          "averageWinnerUsdt": 87.591878,
+          "averageLoserUsdt": -52.29644241,
+          "totalFeesUsdt": 56.87793583,
+          "totalFundingUsdt": -3.99075676,
+          "totalSlippageUsdt": 28.43895344,
+          "grossPnlUsdt": -390.21143844,
+          "pricePnlBeforeExecutionCostsUsdt": -361.772485,
+          "finalEquityUsdt": 9548.91986897
+        },
+        "rawSignalCount": 22,
+        "selectedSignalCount": 22,
+        "portfolioRejections": {
+          "maxConcurrentPositions": 0,
+          "singleSignalRisk": 0,
+          "dailyRiskBudget": 0,
+          "dailyLossLimit": 0,
+          "emailCap": 0,
+          "capitalFloor": 0
+        }
+      },
+      "stress": {
+        "metrics": {
+          "trades": 6,
+          "wins": 0,
+          "losses": 6,
+          "winRate": 0,
+          "netPnlUsdt": -298.57754796,
+          "expectancyUsdt": -49.76292466,
+          "netR": -6.01937895,
+          "profitFactor": 0,
+          "maxDrawdownUsdt": 298.57754796,
+          "maxDrawdownPercent": 0.02985775,
+          "averageWinnerUsdt": 0,
+          "averageLoserUsdt": -49.76292466,
+          "totalFeesUsdt": 14.44345925,
+          "totalFundingUsdt": -0.59242471,
+          "totalSlippageUsdt": 9.62892901,
+          "grossPnlUsdt": -283.54166401,
+          "pricePnlBeforeExecutionCostsUsdt": -273.912735,
+          "finalEquityUsdt": 9701.42245204
+        },
+        "rawMetrics": {
+          "trades": 6,
+          "wins": 0,
+          "losses": 6,
+          "winRate": 0,
+          "netPnlUsdt": -298.57754796,
+          "expectancyUsdt": -49.76292466,
+          "netR": -6.01937895,
+          "profitFactor": 0,
+          "maxDrawdownUsdt": 298.57754796,
+          "maxDrawdownPercent": 0.02985775,
+          "averageWinnerUsdt": 0,
+          "averageLoserUsdt": -49.76292466,
+          "totalFeesUsdt": 14.44345925,
+          "totalFundingUsdt": -0.59242471,
+          "totalSlippageUsdt": 9.62892901,
+          "grossPnlUsdt": -283.54166401,
+          "pricePnlBeforeExecutionCostsUsdt": -273.912735,
+          "finalEquityUsdt": 9701.42245204
+        },
+        "rawSignalCount": 6,
+        "selectedSignalCount": 6,
+        "portfolioRejections": {
+          "maxConcurrentPositions": 0,
+          "singleSignalRisk": 0,
+          "dailyRiskBudget": 0,
+          "dailyLossLimit": 0,
+          "emailCap": 0,
+          "capitalFloor": 0
+        }
+      }
+    },
+    "selection": {
+      "base": {
+        "trades": 208,
+        "wins": 77,
+        "losses": 131,
+        "winRate": 0.370192,
+        "netPnlUsdt": 291.3259256,
+        "expectancyUsdt": 1.40060541,
+        "netR": 5.79006157,
+        "profitFactor": 1.04191298,
+        "maxDrawdownUsdt": 1106.38411739,
+        "maxDrawdownPercent": 0.11063841,
+        "averageWinnerUsdt": 94.05270649,
+        "averageLoserUsdt": -53.05902652,
+        "totalFeesUsdt": 474.88725555,
+        "totalFundingUsdt": -7.09089055,
+        "totalSlippageUsdt": 237.4436682,
+        "grossPnlUsdt": 773.3040717,
+        "pricePnlBeforeExecutionCostsUsdt": 1010.7477399,
+        "finalEquityUsdt": 10291.3259256
+      },
+      "stress": {
+        "trades": 103,
+        "wins": 40,
+        "losses": 63,
+        "winRate": 0.38835,
+        "netPnlUsdt": 270.6774181,
+        "expectancyUsdt": 2.6279361,
+        "netR": 5.4483913,
+        "profitFactor": 1.08146881,
+        "maxDrawdownUsdt": 651.40431809,
+        "maxDrawdownPercent": 0.06514043,
+        "averageWinnerUsdt": 89.82860537,
+        "averageLoserUsdt": -52.7375682,
+        "totalFeesUsdt": 239.00940371,
+        "totalFundingUsdt": -5.65979246,
+        "totalSlippageUsdt": 159.33971042,
+        "grossPnlUsdt": 515.34661428,
+        "pricePnlBeforeExecutionCostsUsdt": 674.6863247,
+        "finalEquityUsdt": 10270.6774181
+      },
+      "signalRate": {
+        "count": 208,
+        "uniqueSignalTimestamps": 176,
+        "observationDays": 271,
+        "signalsPerDay": 0.76752768,
+        "signalsPerWeek": 5.37269373,
+        "medianDaysBetweenSignals": 0.15625,
+        "p90DaysBetweenSignals": 3.4125,
+        "p95DaysBetweenSignals": 5.63020833,
+        "annualizedSignals": 280.33948339
+      },
+      "profitabilityEligible": false
+    },
+    "finalOosStatus": "RUN",
+    "finalOos": {
+      "base": {
+        "metrics": {
+          "trades": 31,
+          "wins": 14,
+          "losses": 17,
+          "winRate": 0.451613,
+          "netPnlUsdt": 516.82431928,
+          "expectancyUsdt": 16.67175223,
+          "netR": 10.30738765,
+          "profitFactor": 1.62010391,
+          "maxDrawdownUsdt": 213.82273443,
+          "maxDrawdownPercent": 0.02138227,
+          "averageWinnerUsdt": 96.44801748,
+          "averageLoserUsdt": -49.02634855,
+          "totalFeesUsdt": 69.78650024,
+          "totalFundingUsdt": 0.55517448,
+          "totalSlippageUsdt": 34.89327496,
+          "grossPnlUsdt": 586.05564504,
+          "pricePnlBeforeExecutionCostsUsdt": 620.94892,
+          "finalEquityUsdt": 10516.82431928
+        },
+        "rawMetrics": {
+          "trades": 31,
+          "wins": 14,
+          "losses": 17,
+          "winRate": 0.451613,
+          "netPnlUsdt": 516.82431928,
+          "expectancyUsdt": 16.67175223,
+          "netR": 10.30738765,
+          "profitFactor": 1.62010391,
+          "maxDrawdownUsdt": 213.82273443,
+          "maxDrawdownPercent": 0.02138227,
+          "averageWinnerUsdt": 96.44801748,
+          "averageLoserUsdt": -49.02634855,
+          "totalFeesUsdt": 69.78650024,
+          "totalFundingUsdt": 0.55517448,
+          "totalSlippageUsdt": 34.89327496,
+          "grossPnlUsdt": 586.05564504,
+          "pricePnlBeforeExecutionCostsUsdt": 620.94892,
+          "finalEquityUsdt": 10516.82431928
+        },
+        "rawSignalCount": 31,
+        "selectedSignalCount": 31,
+        "portfolioRejections": {
+          "maxConcurrentPositions": 0,
+          "singleSignalRisk": 0,
+          "dailyRiskBudget": 0,
+          "dailyLossLimit": 0,
+          "emailCap": 0,
+          "capitalFloor": 0
+        }
+      },
+      "stress": {
+        "metrics": {
+          "trades": 20,
+          "wins": 11,
+          "losses": 9,
+          "winRate": 0.55,
+          "netPnlUsdt": 643.37792938,
+          "expectancyUsdt": 32.16889647,
+          "netR": 12.83455542,
+          "profitFactor": 2.57592303,
+          "maxDrawdownUsdt": 325.16491525,
+          "maxDrawdownPercent": 0.03251649,
+          "averageWinnerUsdt": 95.60296308,
+          "averageLoserUsdt": -45.36162939,
+          "totalFeesUsdt": 47.11772361,
+          "totalFundingUsdt": -0.3846857,
+          "totalSlippageUsdt": 31.41193131,
+          "grossPnlUsdt": 690.88033869,
+          "pricePnlBeforeExecutionCostsUsdt": 722.29227,
+          "finalEquityUsdt": 10643.37792938
+        },
+        "rawMetrics": {
+          "trades": 20,
+          "wins": 11,
+          "losses": 9,
+          "winRate": 0.55,
+          "netPnlUsdt": 643.37792938,
+          "expectancyUsdt": 32.16889647,
+          "netR": 12.83455542,
+          "profitFactor": 2.57592303,
+          "maxDrawdownUsdt": 325.16491525,
+          "maxDrawdownPercent": 0.03251649,
+          "averageWinnerUsdt": 95.60296308,
+          "averageLoserUsdt": -45.36162939,
+          "totalFeesUsdt": 47.11772361,
+          "totalFundingUsdt": -0.3846857,
+          "totalSlippageUsdt": 31.41193131,
+          "grossPnlUsdt": 690.88033869,
+          "pricePnlBeforeExecutionCostsUsdt": 722.29227,
+          "finalEquityUsdt": 10643.37792938
+        },
+        "rawSignalCount": 20,
+        "selectedSignalCount": 20,
+        "portfolioRejections": {
+          "maxConcurrentPositions": 0,
+          "singleSignalRisk": 0,
+          "dailyRiskBudget": 0,
+          "dailyLossLimit": 0,
+          "emailCap": 0,
+          "capitalFloor": 0
+        }
+      }
+    },
+    "finalOosSignalRate": {
+      "count": 31,
+      "uniqueSignalTimestamps": 26,
+      "observationDays": 91.99999999,
+      "signalsPerDay": 0.33695652,
+      "signalsPerWeek": 2.35869565,
+      "medianDaysBetweenSignals": 0.3125,
+      "p90DaysBetweenSignals": 3.08541667,
+      "p95DaysBetweenSignals": 5.00208333,
+      "annualizedSignals": 123.07336958
+    },
+    "finalOosBootstrap": {
+      "expectancyUsdt": {
+        "sampleCount": 31,
+        "iterations": 2000,
+        "seed": 7201,
+        "p025": -9.27058142,
+        "median": 16.10767624,
+        "p975": 41.01727197
+      },
+      "profitFactor": {
+        "sampleCount": 31,
+        "iterations": 2000,
+        "seed": 7201,
+        "p025": 0.75142439,
+        "median": 1.60771902,
+        "p975": 3.2593025
+      }
+    },
+    "finalOosProfitabilityGate": true,
+    "selectedForFinalOos": false,
+    "top1SymbolConcentration": 0.27238327,
+    "top3SymbolConcentration": 0.64603864
+  },
+  "challengerCandidates": [
+    {
+      "id": "B1",
+      "description": "Frozen Candidate A rules with dynamic top-20 liquid universe",
+      "universeSize": 20,
+      "rules": {
+        "entryMode": "TREND_PULLBACK",
+        "side": "SHORT",
+        "strategyFamily": "TREND",
+        "minScore": 80,
+        "cooldownHours": 24,
+        "rewardRisk": 2,
+        "maxHoldHours": 48,
+        "stopAtrMultiplier": 0.75,
+        "localRegimeAlignment": true,
+        "btc4hRegimeAlignment": true,
+        "changedFromA": [
+          "dynamic universe size only"
+        ]
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 284,
+            "wins": 106,
+            "losses": 178,
+            "winRate": 0.373239,
+            "netPnlUsdt": 463.59370874,
+            "expectancyUsdt": 1.63237221,
+            "netR": 9.26992412,
+            "profitFactor": 1.04895091,
+            "maxDrawdownUsdt": 1830.81965069,
+            "maxDrawdownPercent": 0.18308197,
+            "averageWinnerUsdt": 93.7186615,
+            "averageLoserUsdt": -53.2055304,
+            "totalFeesUsdt": 621.65835706,
+            "totalFundingUsdt": -7.55642093,
+            "totalSlippageUsdt": 310.82923467,
+            "grossPnlUsdt": 1092.80848673,
+            "pricePnlBeforeExecutionCostsUsdt": 1403.6377214,
+            "finalEquityUsdt": 10463.59370874
+          },
+          "rawMetrics": {
+            "trades": 323,
+            "wins": 125,
+            "losses": 198,
+            "winRate": 0.386997,
+            "netPnlUsdt": 1235.38799149,
+            "expectancyUsdt": 3.82473062,
+            "netR": 24.73159758,
+            "profitFactor": 1.11728239,
+            "maxDrawdownUsdt": 1840.79999602,
+            "maxDrawdownPercent": 0.18408,
+            "averageWinnerUsdt": 94.15068815,
+            "averageLoserUsdt": -53.19923246,
+            "totalFeesUsdt": 707.2733567,
+            "totalFundingUsdt": -4.20039915,
+            "totalSlippageUsdt": 353.63677037,
+            "grossPnlUsdt": 1946.86174733,
+            "pricePnlBeforeExecutionCostsUsdt": 2300.4985177,
+            "finalEquityUsdt": 11235.38799149
+          },
+          "rawSignalCount": 323,
+          "selectedSignalCount": 284,
+          "portfolioRejections": {
+            "maxConcurrentPositions": 22,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 17,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 161,
+            "wins": 70,
+            "losses": 91,
+            "winRate": 0.434783,
+            "netPnlUsdt": 1442.70849053,
+            "expectancyUsdt": 8.9609223,
+            "netR": 28.94952701,
+            "profitFactor": 1.29674403,
+            "maxDrawdownUsdt": 539.58967701,
+            "maxDrawdownPercent": 0.05395897,
+            "averageWinnerUsdt": 90.06432868,
+            "averageLoserUsdt": -53.42631338,
+            "totalFeesUsdt": 380.90587491,
+            "totalFundingUsdt": -3.91573019,
+            "totalSlippageUsdt": 253.93758297,
+            "grossPnlUsdt": 1827.53009563,
+            "pricePnlBeforeExecutionCostsUsdt": 2081.4676786,
+            "finalEquityUsdt": 11442.70849053
+          },
+          "rawMetrics": {
+            "trades": 175,
+            "wins": 74,
+            "losses": 101,
+            "winRate": 0.422857,
+            "netPnlUsdt": 1312.3053859,
+            "expectancyUsdt": 7.49888792,
+            "netR": 26.3385045,
+            "profitFactor": 1.24409051,
+            "maxDrawdownUsdt": 662.57005386,
+            "maxDrawdownPercent": 0.06625701,
+            "averageWinnerUsdt": 90.38664703,
+            "averageLoserUsdt": -53.23075737,
+            "totalFeesUsdt": 413.88701295,
+            "totalFundingUsdt": -2.66508158,
+            "totalSlippageUsdt": 275.92499607,
+            "grossPnlUsdt": 1728.85748043,
+            "pricePnlBeforeExecutionCostsUsdt": 2004.7824765,
+            "finalEquityUsdt": 11312.3053859
+          },
+          "rawSignalCount": 175,
+          "selectedSignalCount": 161,
+          "portfolioRejections": {
+            "maxConcurrentPositions": 9,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 5,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 27,
+            "wins": 6,
+            "losses": 21,
+            "winRate": 0.222222,
+            "netPnlUsdt": -568.2926065,
+            "expectancyUsdt": -21.04787431,
+            "netR": -11.41044758,
+            "profitFactor": 0.48473232,
+            "maxDrawdownUsdt": 704.41844263,
+            "maxDrawdownPercent": 0.07044184,
+            "averageWinnerUsdt": 89.10248835,
+            "averageLoserUsdt": -52.5194065,
+            "totalFeesUsdt": 68.23623487,
+            "totalFundingUsdt": -4.23755166,
+            "totalSlippageUsdt": 34.11809897,
+            "grossPnlUsdt": -495.81881997,
+            "pricePnlBeforeExecutionCostsUsdt": -461.700721,
+            "finalEquityUsdt": 9431.7073935
+          },
+          "rawMetrics": {
+            "trades": 27,
+            "wins": 6,
+            "losses": 21,
+            "winRate": 0.222222,
+            "netPnlUsdt": -568.2926065,
+            "expectancyUsdt": -21.04787431,
+            "netR": -11.41044758,
+            "profitFactor": 0.48473232,
+            "maxDrawdownUsdt": 704.41844263,
+            "maxDrawdownPercent": 0.07044184,
+            "averageWinnerUsdt": 89.10248835,
+            "averageLoserUsdt": -52.5194065,
+            "totalFeesUsdt": 68.23623487,
+            "totalFundingUsdt": -4.23755166,
+            "totalSlippageUsdt": 34.11809897,
+            "grossPnlUsdt": -495.81881997,
+            "pricePnlBeforeExecutionCostsUsdt": -461.700721,
+            "finalEquityUsdt": 9431.7073935
+          },
+          "rawSignalCount": 27,
+          "selectedSignalCount": 27,
+          "portfolioRejections": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 8,
+            "wins": 0,
+            "losses": 8,
+            "winRate": 0,
+            "netPnlUsdt": -408.15052704,
+            "expectancyUsdt": -51.01881588,
+            "netR": -8.21237712,
+            "profitFactor": 0,
+            "maxDrawdownUsdt": 408.15052704,
+            "maxDrawdownPercent": 0.04081505,
+            "averageWinnerUsdt": 0,
+            "averageLoserUsdt": -51.01881588,
+            "totalFeesUsdt": 20.27020645,
+            "totalFundingUsdt": -0.52404443,
+            "totalSlippageUsdt": 13.51341115,
+            "grossPnlUsdt": -387.35627615,
+            "pricePnlBeforeExecutionCostsUsdt": -373.842865,
+            "finalEquityUsdt": 9591.84947296
+          },
+          "rawMetrics": {
+            "trades": 8,
+            "wins": 0,
+            "losses": 8,
+            "winRate": 0,
+            "netPnlUsdt": -408.15052704,
+            "expectancyUsdt": -51.01881588,
+            "netR": -8.21237712,
+            "profitFactor": 0,
+            "maxDrawdownUsdt": 408.15052704,
+            "maxDrawdownPercent": 0.04081505,
+            "averageWinnerUsdt": 0,
+            "averageLoserUsdt": -51.01881588,
+            "totalFeesUsdt": 20.27020645,
+            "totalFundingUsdt": -0.52404443,
+            "totalSlippageUsdt": 13.51341115,
+            "grossPnlUsdt": -387.35627615,
+            "pricePnlBeforeExecutionCostsUsdt": -373.842865,
+            "finalEquityUsdt": 9591.84947296
+          },
+          "rawSignalCount": 8,
+          "selectedSignalCount": 8,
+          "portfolioRejections": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "selection": {
+        "base": {
+          "trades": 311,
+          "wins": 112,
+          "losses": 199,
+          "winRate": 0.360129,
+          "netPnlUsdt": -104.69889776,
+          "expectancyUsdt": -0.3366524,
+          "netR": -2.14052346,
+          "profitFactor": 0.99009798,
+          "maxDrawdownUsdt": 1830.81965069,
+          "maxDrawdownPercent": 0.18308197,
+          "averageWinnerUsdt": 93.47136651,
+          "averageLoserUsdt": -53.13312536,
+          "totalFeesUsdt": 689.89459193,
+          "totalFundingUsdt": -11.79397258,
+          "totalSlippageUsdt": 344.94733364,
+          "grossPnlUsdt": 596.98966676,
+          "pricePnlBeforeExecutionCostsUsdt": 941.9370004,
+          "finalEquityUsdt": 9895.30110224
+        },
+        "stress": {
+          "trades": 169,
+          "wins": 70,
+          "losses": 99,
+          "winRate": 0.414201,
+          "netPnlUsdt": 1034.55796349,
+          "expectancyUsdt": 6.12164475,
+          "netR": 20.73714989,
+          "profitFactor": 1.19631286,
+          "maxDrawdownUsdt": 839.75068954,
+          "maxDrawdownPercent": 0.08397507,
+          "averageWinnerUsdt": 90.06432868,
+          "averageLoserUsdt": -53.23176813,
+          "totalFeesUsdt": 401.17608136,
+          "totalFundingUsdt": -4.43977462,
+          "totalSlippageUsdt": 267.45099413,
+          "grossPnlUsdt": 1440.17381947,
+          "pricePnlBeforeExecutionCostsUsdt": 1707.6248136,
+          "finalEquityUsdt": 11034.55796349
+        },
+        "signalRate": {
+          "count": 311,
+          "uniqueSignalTimestamps": 244,
+          "observationDays": 271,
+          "signalsPerDay": 1.14760148,
+          "signalsPerWeek": 8.03321033,
+          "medianDaysBetweenSignals": 0.11458333,
+          "p90DaysBetweenSignals": 1.42916667,
+          "p95DaysBetweenSignals": 4.39791667,
+          "annualizedSignals": 419.16143911
+        },
+        "profitabilityEligible": false
+      },
+      "finalOosStatus": "NOT_RUN_BEFORE_SELECTION",
+      "finalOos": null,
+      "finalOosSignalRate": null,
+      "finalOosBootstrap": null,
+      "finalOosProfitabilityGate": false,
+      "selectedForFinalOos": false,
+      "top1SymbolConcentration": null,
+      "top3SymbolConcentration": null
+    },
+    {
+      "id": "B2",
+      "description": "Frozen Candidate A rules with dynamic top-30 liquid universe",
+      "universeSize": 30,
+      "rules": {
+        "entryMode": "TREND_PULLBACK",
+        "side": "SHORT",
+        "strategyFamily": "TREND",
+        "minScore": 80,
+        "cooldownHours": 24,
+        "rewardRisk": 2,
+        "maxHoldHours": 48,
+        "stopAtrMultiplier": 0.75,
+        "localRegimeAlignment": true,
+        "btc4hRegimeAlignment": true,
+        "changedFromA": [
+          "dynamic universe size only"
+        ]
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 307,
+            "wins": 112,
+            "losses": 195,
+            "winRate": 0.364821,
+            "netPnlUsdt": 161.96134482,
+            "expectancyUsdt": 0.52756138,
+            "netR": 3.23231954,
+            "profitFactor": 1.01559233,
+            "maxDrawdownUsdt": 2183.19820789,
+            "maxDrawdownPercent": 0.21831982,
+            "averageWinnerUsdt": 94.18933119,
+            "averageLoserUsdt": -53.26791666,
+            "totalFeesUsdt": 679.65435106,
+            "totalFundingUsdt": -8.04686941,
+            "totalSlippageUsdt": 339.82722311,
+            "grossPnlUsdt": 849.66256529,
+            "pricePnlBeforeExecutionCostsUsdt": 1189.4897884,
+            "finalEquityUsdt": 10161.96134482
+          },
+          "rawMetrics": {
+            "trades": 374,
+            "wins": 142,
+            "losses": 232,
+            "winRate": 0.379679,
+            "netPnlUsdt": 1055.52287719,
+            "expectancyUsdt": 2.82225368,
+            "netR": 21.12255043,
+            "profitFactor": 1.08543645,
+            "maxDrawdownUsdt": 1833.25782227,
+            "maxDrawdownPercent": 0.18332578,
+            "averageWinnerUsdt": 94.43663423,
+            "averageLoserUsdt": -53.25206544,
+            "totalFeesUsdt": 823.33388309,
+            "totalFundingUsdt": -8.5293629,
+            "totalSlippageUsdt": 411.66703351,
+            "grossPnlUsdt": 1887.38612319,
+            "pricePnlBeforeExecutionCostsUsdt": 2299.0531567,
+            "finalEquityUsdt": 11055.52287719
+          },
+          "rawSignalCount": 374,
+          "selectedSignalCount": 307,
+          "portfolioRejections": {
+            "maxConcurrentPositions": 33,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 34,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 173,
+            "wins": 72,
+            "losses": 101,
+            "winRate": 0.416185,
+            "netPnlUsdt": 1130.01499348,
+            "expectancyUsdt": 6.53187858,
+            "netR": 22.68049925,
+            "profitFactor": 1.2091361,
+            "maxDrawdownUsdt": 772.3752135,
+            "maxDrawdownPercent": 0.07723752,
+            "averageWinnerUsdt": 90.73981731,
+            "averageLoserUsdt": -53.4975431,
+            "totalFeesUsdt": 411.3256326,
+            "totalFundingUsdt": -3.47449307,
+            "totalSlippageUsdt": 274.21737945,
+            "grossPnlUsdt": 1544.81511915,
+            "pricePnlBeforeExecutionCostsUsdt": 1819.0324986,
+            "finalEquityUsdt": 11130.01499348
+          },
+          "rawMetrics": {
+            "trades": 197,
+            "wins": 81,
+            "losses": 116,
+            "winRate": 0.411168,
+            "netPnlUsdt": 1168.1726669,
+            "expectancyUsdt": 5.92981049,
+            "netR": 23.45114074,
+            "profitFactor": 1.1886954,
+            "maxDrawdownUsdt": 1122.32199243,
+            "maxDrawdownPercent": 0.1122322,
+            "averageWinnerUsdt": 90.85133112,
+            "averageLoserUsdt": -53.36883753,
+            "totalFeesUsdt": 469.79311305,
+            "totalFundingUsdt": -3.43051512,
+            "totalSlippageUsdt": 313.19572143,
+            "grossPnlUsdt": 1641.39629507,
+            "pricePnlBeforeExecutionCostsUsdt": 1954.5920165,
+            "finalEquityUsdt": 11168.1726669
+          },
+          "rawSignalCount": 197,
+          "selectedSignalCount": 173,
+          "portfolioRejections": {
+            "maxConcurrentPositions": 16,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 8,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 27,
+            "wins": 6,
+            "losses": 21,
+            "winRate": 0.222222,
+            "netPnlUsdt": -568.2926065,
+            "expectancyUsdt": -21.04787431,
+            "netR": -11.41044758,
+            "profitFactor": 0.48473232,
+            "maxDrawdownUsdt": 704.41844263,
+            "maxDrawdownPercent": 0.07044184,
+            "averageWinnerUsdt": 89.10248835,
+            "averageLoserUsdt": -52.5194065,
+            "totalFeesUsdt": 68.23623487,
+            "totalFundingUsdt": -4.23755166,
+            "totalSlippageUsdt": 34.11809897,
+            "grossPnlUsdt": -495.81881997,
+            "pricePnlBeforeExecutionCostsUsdt": -461.700721,
+            "finalEquityUsdt": 9431.7073935
+          },
+          "rawMetrics": {
+            "trades": 27,
+            "wins": 6,
+            "losses": 21,
+            "winRate": 0.222222,
+            "netPnlUsdt": -568.2926065,
+            "expectancyUsdt": -21.04787431,
+            "netR": -11.41044758,
+            "profitFactor": 0.48473232,
+            "maxDrawdownUsdt": 704.41844263,
+            "maxDrawdownPercent": 0.07044184,
+            "averageWinnerUsdt": 89.10248835,
+            "averageLoserUsdt": -52.5194065,
+            "totalFeesUsdt": 68.23623487,
+            "totalFundingUsdt": -4.23755166,
+            "totalSlippageUsdt": 34.11809897,
+            "grossPnlUsdt": -495.81881997,
+            "pricePnlBeforeExecutionCostsUsdt": -461.700721,
+            "finalEquityUsdt": 9431.7073935
+          },
+          "rawSignalCount": 27,
+          "selectedSignalCount": 27,
+          "portfolioRejections": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 8,
+            "wins": 0,
+            "losses": 8,
+            "winRate": 0,
+            "netPnlUsdt": -408.15052704,
+            "expectancyUsdt": -51.01881588,
+            "netR": -8.21237712,
+            "profitFactor": 0,
+            "maxDrawdownUsdt": 408.15052704,
+            "maxDrawdownPercent": 0.04081505,
+            "averageWinnerUsdt": 0,
+            "averageLoserUsdt": -51.01881588,
+            "totalFeesUsdt": 20.27020645,
+            "totalFundingUsdt": -0.52404443,
+            "totalSlippageUsdt": 13.51341115,
+            "grossPnlUsdt": -387.35627615,
+            "pricePnlBeforeExecutionCostsUsdt": -373.842865,
+            "finalEquityUsdt": 9591.84947296
+          },
+          "rawMetrics": {
+            "trades": 8,
+            "wins": 0,
+            "losses": 8,
+            "winRate": 0,
+            "netPnlUsdt": -408.15052704,
+            "expectancyUsdt": -51.01881588,
+            "netR": -8.21237712,
+            "profitFactor": 0,
+            "maxDrawdownUsdt": 408.15052704,
+            "maxDrawdownPercent": 0.04081505,
+            "averageWinnerUsdt": 0,
+            "averageLoserUsdt": -51.01881588,
+            "totalFeesUsdt": 20.27020645,
+            "totalFundingUsdt": -0.52404443,
+            "totalSlippageUsdt": 13.51341115,
+            "grossPnlUsdt": -387.35627615,
+            "pricePnlBeforeExecutionCostsUsdt": -373.842865,
+            "finalEquityUsdt": 9591.84947296
+          },
+          "rawSignalCount": 8,
+          "selectedSignalCount": 8,
+          "portfolioRejections": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "selection": {
+        "base": {
+          "trades": 334,
+          "wins": 118,
+          "losses": 216,
+          "winRate": 0.353293,
+          "netPnlUsdt": -406.33126168,
+          "expectancyUsdt": -1.21656066,
+          "netR": -8.17812804,
+          "profitFactor": 0.96463656,
+          "maxDrawdownUsdt": 2183.19820789,
+          "maxDrawdownPercent": 0.21831982,
+          "averageWinnerUsdt": 93.93067816,
+          "averageLoserUsdt": -53.19514484,
+          "totalFeesUsdt": 747.89058593,
+          "totalFundingUsdt": -12.28442107,
+          "totalSlippageUsdt": 373.94532208,
+          "grossPnlUsdt": 353.84374532,
+          "pricePnlBeforeExecutionCostsUsdt": 727.7890674,
+          "finalEquityUsdt": 9593.66873832
+        },
+        "stress": {
+          "trades": 181,
+          "wins": 72,
+          "losses": 109,
+          "winRate": 0.39779,
+          "netPnlUsdt": 721.86446645,
+          "expectancyUsdt": 3.98820147,
+          "netR": 14.46812213,
+          "profitFactor": 1.12421519,
+          "maxDrawdownUsdt": 839.75068954,
+          "maxDrawdownPercent": 0.08397507,
+          "averageWinnerUsdt": 90.73981731,
+          "averageLoserUsdt": -53.31561817,
+          "totalFeesUsdt": 431.59583906,
+          "totalFundingUsdt": -3.9985375,
+          "totalSlippageUsdt": 287.7307906,
+          "grossPnlUsdt": 1157.458843,
+          "pricePnlBeforeExecutionCostsUsdt": 1445.1896336,
+          "finalEquityUsdt": 10721.86446645
+        },
+        "signalRate": {
+          "count": 334,
+          "uniqueSignalTimestamps": 256,
+          "observationDays": 271,
+          "signalsPerDay": 1.23247232,
+          "signalsPerWeek": 8.62730627,
+          "medianDaysBetweenSignals": 0.10416667,
+          "p90DaysBetweenSignals": 1.25625,
+          "p95DaysBetweenSignals": 4.34791667,
+          "annualizedSignals": 450.16051661
+        },
+        "profitabilityEligible": false
+      },
+      "finalOosStatus": "NOT_RUN_BEFORE_SELECTION",
+      "finalOos": null,
+      "finalOosSignalRate": null,
+      "finalOosBootstrap": null,
+      "finalOosProfitabilityGate": false,
+      "selectedForFinalOos": false,
+      "top1SymbolConcentration": null,
+      "top3SymbolConcentration": null
+    }
+  ],
+  "selection": {
+    "allowedChallengers": [
+      "B1",
+      "B2"
+    ],
+    "maximumChallengers": 2,
+    "selectedForFinalOos": null,
+    "ranking": [
+      {
+        "id": "B1",
+        "profitabilityEligible": false,
+        "expectancyUsdt": -0.3366524,
+        "profitFactor": 0.99009798,
+        "stressProfitFactor": 1.19631286,
+        "netPnlUsdt": -104.69889776,
+        "signalCount": 311,
+        "annualizedSignals": 419.16143911
+      },
+      {
+        "id": "B2",
+        "profitabilityEligible": false,
+        "expectancyUsdt": -1.21656066,
+        "profitFactor": 0.96463656,
+        "stressProfitFactor": 1.12421519,
+        "netPnlUsdt": -406.33126168,
+        "signalCount": 334,
+        "annualizedSignals": 450.16051661
+      }
+    ],
+    "rule": "Train + validation only; profitability eligibility precedes throughput ranking."
+  },
+  "comparison": null,
+  "productionReadOnlyAttribution": {
+    "source": "Read-only SELECT evidence from Supabase project jfvbikivtpfjgfsnggiz; no production write was issued by R7.2.",
+    "capturedAt": "2026-09-13T02:45:11.186Z",
+    "scanCount": 3284,
+    "failedScans": 0,
+    "firstScanStartedAt": "2026-08-09T17:34:48.982760Z",
+    "latestScanStartedAt": "2026-09-13T02:45:10.320958Z",
+    "latestScanFinishedAt": "2026-09-13T02:45:11.186Z",
+    "diagnosticsRows": 749,
+    "diagnosticsScanCount": 749,
+    "diagnosticsCoveragePercent": 22.80755177,
+    "strategy": {
+      "version": "hy-paper-candidate-v2",
+      "family": "TREND",
+      "status": "PAPER",
+      "createdAt": "2026-08-09T15:46:25.317519Z"
+    },
+    "currentForward": {
+      "signals": 1,
+      "maturedPaperTrades": 1,
+      "netPnlUsdt": 95.36074897,
+      "firstSignalEntryAt": "2026-09-10T19:14:59.999Z"
+    },
+    "runtimeSafety": {
+      "strategySource": "DB",
+      "strategyStage": "PAPER",
+      "dryRun": false,
+      "exchangeCredentialsConfigured": false,
+      "autoTrading": false,
+      "realEmail": "OFF"
+    },
+    "measuredDiagnostics": {
+      "marketDataOk": 7490,
+      "rawCandidates": 1283,
+      "strategyFamilyPass": 9,
+      "sidePass": 9,
+      "localRegimePass": 9,
+      "globalRegimePass": 9,
+      "scorePass": 57,
+      "riskPlanPass": 9,
+      "executionCostPass": 1,
+      "preCooldownCandidate": 1,
+      "cooldownPass": 1,
+      "claimed": 1,
+      "emailed": 1
+    },
+    "funnel": {
+      "complete": false,
+      "stages": [
+        {
+          "stage": "symbols considered",
+          "input": null,
+          "passed": null,
+          "rejected": null,
+          "passRate": null,
+          "cumulativePassRate": null,
+          "reason": "Production diagnostics do not cover every scan and do not expose a complete row-level chain; UNKNOWN is required."
+        },
+        {
+          "stage": "liquidity/universe eligible",
+          "input": null,
+          "passed": null,
+          "rejected": null,
+          "passRate": null,
+          "cumulativePassRate": null,
+          "reason": "Production diagnostics do not cover every scan and do not expose a complete row-level chain; UNKNOWN is required."
+        },
+        {
+          "stage": "TREND_PULLBACK condition met",
+          "input": null,
+          "passed": null,
+          "rejected": null,
+          "passRate": null,
+          "cumulativePassRate": null,
+          "reason": "Production diagnostics do not cover every scan and do not expose a complete row-level chain; UNKNOWN is required."
+        },
+        {
+          "stage": "SHORT side eligible",
+          "input": null,
+          "passed": null,
+          "rejected": null,
+          "passRate": null,
+          "cumulativePassRate": null,
+          "reason": "Production diagnostics do not cover every scan and do not expose a complete row-level chain; UNKNOWN is required."
+        },
+        {
+          "stage": "local regime aligned",
+          "input": null,
+          "passed": null,
+          "rejected": null,
+          "passRate": null,
+          "cumulativePassRate": null,
+          "reason": "Production diagnostics do not cover every scan and do not expose a complete row-level chain; UNKNOWN is required."
+        },
+        {
+          "stage": "BTC 4h regime aligned",
+          "input": null,
+          "passed": null,
+          "rejected": null,
+          "passRate": null,
+          "cumulativePassRate": null,
+          "reason": "Production diagnostics do not cover every scan and do not expose a complete row-level chain; UNKNOWN is required."
+        },
+        {
+          "stage": "score >=80",
+          "input": null,
+          "passed": null,
+          "rejected": null,
+          "passRate": null,
+          "cumulativePassRate": null,
+          "reason": "Production diagnostics do not cover every scan and do not expose a complete row-level chain; UNKNOWN is required."
+        },
+        {
+          "stage": "cooldown eligible",
+          "input": null,
+          "passed": null,
+          "rejected": null,
+          "passRate": null,
+          "cumulativePassRate": null,
+          "reason": "Production diagnostics do not cover every scan and do not expose a complete row-level chain; UNKNOWN is required."
+        },
+        {
+          "stage": "execution-cost eligible",
+          "input": null,
+          "passed": null,
+          "rejected": null,
+          "passRate": null,
+          "cumulativePassRate": null,
+          "reason": "Production diagnostics do not cover every scan and do not expose a complete row-level chain; UNKNOWN is required."
+        },
+        {
+          "stage": "final signal emitted",
+          "input": null,
+          "passed": null,
+          "rejected": null,
+          "passRate": null,
+          "cumulativePassRate": null,
+          "reason": "Production diagnostics do not cover every scan and do not expose a complete row-level chain; UNKNOWN is required."
+        }
+      ]
+    },
+    "measuredDiagnosticsUnits": {
+      "marketDataOk": "symbol",
+      "rawCandidates": "candidate",
+      "strategyFamilyPass": "candidate",
+      "sidePass": "candidate",
+      "localRegimePass": "candidate",
+      "globalRegimePass": "candidate",
+      "scorePass": "candidate",
+      "riskPlanPass": "candidate",
+      "executionCostPass": "candidate",
+      "preCooldownCandidate": "candidate",
+      "cooldownPass": "candidate",
+      "claimed": "candidate",
+      "emailed": "candidate"
+    },
+    "note": "The diagnostic counters are reported as observed values only; they are not converted into funnel rates because the scan-level denominator and row-level lineage are incomplete."
+  },
+  "signalRates": {
+    "candidateAHistoricalFinalOos": {
+      "count": 31,
+      "uniqueSignalTimestamps": 26,
+      "observationDays": 91.99999999,
+      "signalsPerDay": 0.33695652,
+      "signalsPerWeek": 2.35869565,
+      "medianDaysBetweenSignals": 0.3125,
+      "p90DaysBetweenSignals": 3.08541667,
+      "p95DaysBetweenSignals": 5.00208333,
+      "annualizedSignals": 123.07336958
+    },
+    "candidateAProductionForward": {
+      "count": 1,
+      "uniqueSignalTimestamps": 1,
+      "observationDays": 34.45747534,
+      "signalsPerDay": 0.02902128,
+      "signalsPerWeek": 0.20314895,
+      "medianDaysBetweenSignals": null,
+      "p90DaysBetweenSignals": null,
+      "p95DaysBetweenSignals": null,
+      "annualizedSignals": 10.6000221
+    },
+    "productionObservationDays": 34.45747534,
+    "estimatedDaysTo30Trades": 1033.7242602,
+    "estimatedDaysTo100Trades": 3445.747534,
+    "practicalGate": {
+      "targetSignalsPerWeek": 2,
+      "targetAnnualizedSignals": 100,
+      "tooSparseBelowSignalsPerWeek": 0.5,
+      "candidateAClassification": "NOT_TOO_SPARSE"
+    }
+  },
+  "failureSetAudit": {
+    "count": 37,
+    "retained": 0,
+    "suppressed": 37,
+    "retainedPnlUsdt": 0,
+    "usedForSelection": false,
+    "purpose": "Audit-only legacy 37-row failure set; excluded from all A/B selection and OOS metrics."
+  },
+  "forwardGateRedesign": {
+    "fixed100TradeGate": {
+      "minimumMaturedTrades": 100,
+      "status": "PROPOSAL_ONLY"
+    },
+    "statisticalConfidenceGate": {
+      "candidateAOosBootstrap": {
+        "expectancyUsdt": {
+          "sampleCount": 31,
+          "iterations": 2000,
+          "seed": 7201,
+          "p025": -9.27058142,
+          "median": 16.10767624,
+          "p975": 41.01727197
+        },
+        "profitFactor": {
+          "sampleCount": 31,
+          "iterations": 2000,
+          "seed": 7201,
+          "p025": 0.75142439,
+          "median": 1.60771902,
+          "p975": 3.2593025
+        }
+      },
+      "selectedCandidateBootstrap": null,
+      "requirements": [
+        "bootstrap expectancy 95% CI",
+        "bootstrap PF distribution",
+        "worst-case cost stress"
+      ],
+      "realEmailStillRequires": [
+        "at least 30 matured trades",
+        "at least 30 calendar days"
+      ],
+      "status": "PROPOSAL_ONLY; real email remains OFF"
+    },
+    "earlyKill": "At least 30 matured trades AND net PnL < 0 AND PF < 0.90 AND expectancy < 0; current Production sample does not trigger it."
+  },
+  "gates": {
+    "selectedCandidateProfitability": false,
+    "selectedCandidateThroughput": false,
+    "maxDrawdownTolerance": 0.092414,
+    "profitabilityRule": "OOS trades >= A, net > 0, expectancy > 0, PF >= 1.25, stress net > 0, stress PF >= 1.10, max DD not materially above A.",
+    "throughputRule": "OOS signal count >= A x 2 OR annualized signals >= 100/year."
+  },
+  "oosRunGuard": {
+    "perCandidateOneShot": true,
+    "executedFinalOosRuns": 1
+  },
+  "classification": "THROUGHPUT_PROFITABILITY_CANDIDATE_READY",
+  "verification": {
+    "tests": "191 passed / 192 (1 skipped)",
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "build": "PASS",
+    "diff": "PASS",
+    "githubCi": "pending push"
+  }
+}
