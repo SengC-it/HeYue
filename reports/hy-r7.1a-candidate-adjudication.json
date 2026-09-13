@@ -1,0 +1,544 @@
+{
+  "reportVersion": "hy-r7.1a-v1",
+  "purpose": "Evidence freeze and forward candidate adjudication; no new parameter search or authoritative backtest",
+  "scope": {
+    "rerunPerformed": false,
+    "newHypothesesAdded": 0,
+    "productionReadOnlyEvidence": true,
+    "futurePerformanceRun": false,
+    "candidateSelectionUsesFailureSet": false
+  },
+  "safety": {
+    "productionModified": false,
+    "supabaseModified": false,
+    "vercelModified": false,
+    "paperStrategyModified": false,
+    "realEmailEnabled": false,
+    "emailsSent": 0,
+    "privateApiCalled": false,
+    "orders": 0,
+    "autoTrading": false
+  },
+  "sourceArtifacts": {
+    "frozenHistoricalJson": "reports/hy-r7.1-profitability-research.json",
+    "frozenHistoricalMarkdown": "reports/hy-r7.1-profitability-research.md",
+    "failureSetCsv": "reports/hy-r7.1-old-email-failure-ledger.csv",
+    "productionEvidenceJson": "reports/hy-r7.1a-production-evidence.json",
+    "generator": "scripts/run-hy-r7-1a-candidate-adjudication.ts",
+    "library": "lib/research/r7-1a.ts",
+    "tests": "tests/hy-r7.1a-adjudication.test.ts"
+  },
+  "hashes": {
+    "failureSetSha256": "a296fea0422c0b9be8fe9116f808a59f9428404211bb3747b4b3e54a6cc5a41d",
+    "failureSetRepresentation": "canonical CSV text with CRLF/CR normalized to LF, UTF-8 encoded",
+    "historicalEvidenceSha256": "b90c267d023d3e5999403dc6a42682e48dcb1c2cb9e8617db9118ed1cb1044a6",
+    "historicalEvidenceRepresentation": "canonical JSON with recursively sorted object keys",
+    "productionEvidenceSha256": "df4392bf8a2c54c67388d301cc6420f230efffa13db150ce263c44d4373e99cb",
+    "productionEvidenceRepresentation": "canonical JSON with recursively sorted object keys",
+    "strategySha256": "3c3df714d4e5768a4393e523b331b70f239e5c07b963e5bdada7442d69a27918",
+    "strategyRepresentation": "canonical JSON of {version, strategyFamily, parameters} with recursively sorted object keys"
+  },
+  "authoritativeFacts": {
+    "oldEmailFailureSet": {
+      "rows": 37,
+      "uniqueSignalIds": 37,
+      "allSent": true,
+      "auditOnly": true,
+      "netPnlUsdt": -372.87426925,
+      "profitFactor": 0.656914905250825
+    },
+    "productionBaseline": {
+      "version": "hy-paper-candidate-v2",
+      "strategyFamily": "TREND",
+      "status": "PAPER",
+      "parameters": {
+        "runtime": {
+          "params": {
+            "emaFast": 20,
+            "emaSlow": 50,
+            "atrPeriod": 14,
+            "entryMode": "TREND_PULLBACK",
+            "rsiPeriod": 14,
+            "breakoutPeriod": 20,
+            "bollingerPeriod": 20,
+            "stopAtrMultiplier": 0.75,
+            "bollingerDeviation": 2,
+            "breakoutVolumeRatio": 1.15,
+            "meanReversionRsiLow": 35,
+            "meanReversionRsiHigh": 65
+          },
+          "version": "hy-paper-candidate-v2",
+          "minScore": 80,
+          "riskPolicy": {
+            "leverage": 20,
+            "marginUsdt": 100,
+            "rewardRisk": 2,
+            "maxHoldHours": 48,
+            "riskPerTradeUsdt": 50,
+            "dailyRiskBudgetUsdt": 600,
+            "maxPositionNotionalUsdt": 10000,
+            "singleSignalRiskCapUsdt": 50
+          },
+          "sideFilter": "SHORT",
+          "slippageBps": 2,
+          "takerFeeRate": 0.0004,
+          "cooldownHours": 24,
+          "strategyFamily": "TREND",
+          "globalReferenceSymbol": "BTCUSDT",
+          "globalRegimeAlignment": true,
+          "requireRegimeAlignment": true,
+          "globalReferenceTimeframe": "4h",
+          "maxExecutionCostRiskFraction": 0.1
+        },
+        "training_start_date": "2025-08-09",
+        "training_end_date": "2026-05-08",
+        "validation_start_date": null,
+        "validation_end_date": null,
+        "oos_start_date": "2026-05-09",
+        "oos_end_date": "2026-08-09",
+        "status": "PAPER"
+      },
+      "strategyHash": "3c3df714d4e5768a4393e523b331b70f239e5c07b963e5bdada7442d69a27918"
+    },
+    "historicalOos": {
+      "trades": 29,
+      "baseNetPnl": 469.31166529,
+      "stressNetPnl": 400.66533784,
+      "baseExpectancy": 16.18316087,
+      "stressExpectancy": 13.81604613,
+      "basePF": 1.59999141,
+      "stressPF": 1.48858398,
+      "baseDD": 0.03510843,
+      "stressDD": 0.03677949
+    },
+    "historicalRollingStress": {
+      "trades": 216,
+      "netPnlUsdt": 934.14588272,
+      "profitFactor": 1.1320718,
+      "maxDrawdownPercent": 0.09992247,
+      "positiveFolds": 3,
+      "negativeFolds": 1
+    },
+    "currentForward": {
+      "observedAt": "2026-09-13T01:06:54.387Z",
+      "finalOosBoundary": "2026-08-09T02:15:00.000Z",
+      "calendarDaysObserved": 34.95271281,
+      "rows": [
+        {
+          "symbol": "HYPEUSDT",
+          "side": "SHORT",
+          "strategyFamily": "TREND",
+          "strategyVersion": "hy-paper-candidate-v2",
+          "entryTime": "2026-09-10T19:14:59.999Z",
+          "exitTime": "2026-09-10T23:59:59.999Z",
+          "status": "TAKE_PROFIT",
+          "netPnlUsdt": 95.36074897,
+          "rMultiple": 1.90725694,
+          "exitReason": "TAKE_PROFIT"
+        }
+      ],
+      "metrics": {
+        "maturedTrades": 1,
+        "wins": 1,
+        "losses": 0,
+        "netPnlUsdt": 95.36074897,
+        "expectancyUsdt": 95.36074897,
+        "totalR": 1.90725694,
+        "profitFactor": null,
+        "maxDrawdownUsdt": 0,
+        "maxDrawdownPercent": 0,
+        "firstEntryTime": "2026-09-10T19:14:59.999Z",
+        "lastExitTime": "2026-09-10T23:59:59.999Z"
+      }
+    }
+  },
+  "hypothesisAdjudication": [
+    {
+      "hypothesisId": "H0",
+      "variantId": "score80-cooldown24-rr2-h48",
+      "rules": "Authoritative optimized baseline: TREND_PULLBACK short-only, score >= 80, strict local and BTC 4h regime alignment, dynamic historical top-10, 24h cooldown, 2R target and 48h hold",
+      "status": "FORWARD_VALIDATION_CANDIDATE",
+      "trainTrades": 165,
+      "validationTrades": 21,
+      "finalOosTrades": 29,
+      "baseNetPnl": 469.31166529,
+      "stressNetPnl": 400.66533784,
+      "baseExpectancy": 16.18316087,
+      "stressExpectancy": 13.81604613,
+      "basePF": 1.59999141,
+      "stressPF": 1.48858398,
+      "maxDrawdown": {
+        "base": 0.03510843,
+        "stress": 0.03677949
+      },
+      "positiveFolds": {
+        "base": 3,
+        "stress": 3
+      },
+      "negativeFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "top1Concentration": 0.52714702,
+      "top3Concentration": 1.0660976,
+      "legacyTrainValidationGate": "FAIL",
+      "gateResult": "SPECIAL_RULING_PASS_FOR_FORWARD_CANDIDATE",
+      "rejectionReason": "NONE; forward gate remains open because the final-OOS sample is below 100 matured trades."
+    },
+    {
+      "hypothesisId": "H1",
+      "variantId": "h1-source-cooldown-12h",
+      "rules": "H1 same-symbol episode cooldown measured from the closed decision timestamp: 12h",
+      "status": "REJECTED",
+      "trainTrades": 196,
+      "validationTrades": 23,
+      "finalOosTrades": null,
+      "baseNetPnl": 268.23469963,
+      "stressNetPnl": -227.04165981,
+      "baseExpectancy": 1.22481598,
+      "stressExpectancy": -1.03671991,
+      "basePF": 1.03665197,
+      "stressPF": 0.97026631,
+      "maxDrawdown": {
+        "base": 0.13972601,
+        "stress": 0.15458349
+      },
+      "positiveFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "negativeFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "top1Concentration": 1.15780224,
+      "top3Concentration": 3.16044765,
+      "metricsBasis": "TRAIN_PLUS_VALIDATION_SELECTION; FINAL OOS NOT RUN BEFORE SELECTION",
+      "gateResult": "REJECTED",
+      "rejectionReason": "Pre-registered train+validation gate failed: base PF 1.03665197 < 1.20; stress net PnL -227.04165981 <= 0; stress PF 0.97026631 < 1.05; positive base folds 1 < 2. No OOS run and no post-result tuning."
+    },
+    {
+      "hypothesisId": "H1",
+      "variantId": "h1-source-cooldown-24h",
+      "rules": "H1 same-symbol episode cooldown measured from the closed decision timestamp: 24h",
+      "status": "REJECTED",
+      "trainTrades": 175,
+      "validationTrades": 21,
+      "finalOosTrades": null,
+      "baseNetPnl": 632.7421047,
+      "stressNetPnl": 187.1608382,
+      "baseExpectancy": 3.22827604,
+      "stressExpectancy": 0.95490224,
+      "basePF": 1.09866506,
+      "stressPF": 1.0279577,
+      "maxDrawdown": {
+        "base": 0.11852914,
+        "stress": 0.1317757
+      },
+      "positiveFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "negativeFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "top1Concentration": 0.69399073,
+      "top3Concentration": 1.53037045,
+      "metricsBasis": "TRAIN_PLUS_VALIDATION_SELECTION; FINAL OOS NOT RUN BEFORE SELECTION",
+      "gateResult": "REJECTED",
+      "rejectionReason": "Pre-registered train+validation gate failed: base PF 1.09866506 < 1.20; stress PF 1.0279577 < 1.05; positive base folds 1 < 2. No OOS run and no post-result tuning."
+    },
+    {
+      "hypothesisId": "H1",
+      "variantId": "h1-source-cooldown-48h",
+      "rules": "H1 same-symbol episode cooldown measured from the closed decision timestamp: 48h",
+      "status": "REJECTED",
+      "trainTrades": 147,
+      "validationTrades": 20,
+      "finalOosTrades": null,
+      "baseNetPnl": 632.05996254,
+      "stressNetPnl": 242.53693285,
+      "baseExpectancy": 3.78479019,
+      "stressExpectancy": 1.45231696,
+      "basePF": 1.11689309,
+      "stressPF": 1.04291994,
+      "maxDrawdown": {
+        "base": 0.08302355,
+        "stress": 0.09352889
+      },
+      "positiveFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "negativeFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "top1Concentration": 0.46866745,
+      "top3Concentration": 1.12117347,
+      "metricsBasis": "TRAIN_PLUS_VALIDATION_SELECTION; FINAL OOS NOT RUN BEFORE SELECTION",
+      "gateResult": "REJECTED",
+      "rejectionReason": "Pre-registered train+validation gate failed: base PF 1.11689309 < 1.20; stress PF 1.04291994 < 1.05; positive base folds 1 < 2. No OOS run and no post-result tuning."
+    },
+    {
+      "hypothesisId": "H2",
+      "variantId": "h2-post-stop-lockout-24h",
+      "rules": "H2 same-symbol same-direction lockout after a known STOP_LOSS: 24h, with the baseline 24h cooldown",
+      "status": "REJECTED",
+      "trainTrades": 168,
+      "validationTrades": 21,
+      "finalOosTrades": null,
+      "baseNetPnl": 256.84817164,
+      "stressNetPnl": -173.25025969,
+      "baseExpectancy": 1.35898504,
+      "stressExpectancy": -0.91666804,
+      "basePF": 1.04073928,
+      "stressPF": 0.9736717,
+      "maxDrawdown": {
+        "base": 0.11738935,
+        "stress": 0.12988038
+      },
+      "positiveFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "negativeFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "top1Concentration": 1.70963706,
+      "top3Concentration": 3.79764796,
+      "metricsBasis": "TRAIN_PLUS_VALIDATION_SELECTION; FINAL OOS NOT RUN BEFORE SELECTION",
+      "gateResult": "REJECTED",
+      "rejectionReason": "Pre-registered train+validation gate failed: base PF 1.04073928 < 1.20; stress net PnL -173.25025969 <= 0; stress PF 0.9736717 < 1.05; positive base folds 1 < 2. No OOS run and no post-result tuning."
+    },
+    {
+      "hypothesisId": "H2",
+      "variantId": "h2-post-stop-lockout-48h",
+      "rules": "H2 same-symbol same-direction lockout after a known STOP_LOSS: 48h, with the baseline 24h cooldown",
+      "status": "REJECTED",
+      "trainTrades": 154,
+      "validationTrades": 21,
+      "finalOosTrades": null,
+      "baseNetPnl": 401.38897526,
+      "stressNetPnl": 1.80715911,
+      "baseExpectancy": 2.29365129,
+      "stressExpectancy": 0.01032662,
+      "basePF": 1.06951328,
+      "stressPF": 1.00029975,
+      "maxDrawdown": {
+        "base": 0.10233015,
+        "stress": 0.11813286
+      },
+      "positiveFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "negativeFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "top1Concentration": 0.90198472,
+      "top3Concentration": 2.29982502,
+      "metricsBasis": "TRAIN_PLUS_VALIDATION_SELECTION; FINAL OOS NOT RUN BEFORE SELECTION",
+      "gateResult": "REJECTED",
+      "rejectionReason": "Pre-registered train+validation gate failed: base PF 1.06951328 < 1.20; stress PF 1.00029975 < 1.05; positive base folds 1 < 2. No OOS run and no post-result tuning."
+    },
+    {
+      "hypothesisId": "H3",
+      "variantId": "h3-b4-opposing-reversal-veto",
+      "rules": "H3 frozen B4 opposing-reversal veto as a risk filter, never as an entry rule",
+      "status": "INVALID_INSUFFICIENT_PIT_DATA",
+      "trainTrades": null,
+      "validationTrades": null,
+      "finalOosTrades": null,
+      "baseNetPnl": null,
+      "stressNetPnl": null,
+      "baseExpectancy": null,
+      "stressExpectancy": null,
+      "basePF": null,
+      "stressPF": null,
+      "maxDrawdown": null,
+      "positiveFolds": null,
+      "negativeFolds": null,
+      "top1Concentration": null,
+      "top3Concentration": null,
+      "gateResult": "INVALID_INSUFFICIENT_PIT_DATA",
+      "rejectionReason": "No PIT-safe historical B4 feature series is present in the local R7.1 research input"
+    },
+    {
+      "hypothesisId": "H4",
+      "variantId": "h4-btc-1h-regime-confirmation",
+      "rules": "H4 stronger regime-quality filter: baseline local/BTC 4h alignment plus PIT BTC 1h confirmation",
+      "status": "REJECTED",
+      "trainTrades": 161,
+      "validationTrades": 19,
+      "finalOosTrades": null,
+      "baseNetPnl": 253.13549279,
+      "stressNetPnl": -161.88082887,
+      "baseExpectancy": 1.40630829,
+      "stressExpectancy": -0.89933794,
+      "basePF": 1.04207241,
+      "stressPF": 0.97423018,
+      "maxDrawdown": {
+        "base": 0.12609159,
+        "stress": 0.14216798
+      },
+      "positiveFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "negativeFolds": {
+        "base": 1,
+        "stress": 1
+      },
+      "top1Concentration": 2.16371977,
+      "top3Concentration": 4.40566498,
+      "metricsBasis": "TRAIN_PLUS_VALIDATION_SELECTION; FINAL OOS NOT RUN BEFORE SELECTION",
+      "gateResult": "REJECTED",
+      "rejectionReason": "Pre-registered train+validation gate failed: base PF 1.04207241 < 1.20; stress net PnL -161.88082887 <= 0; stress PF 0.97423018 < 1.05; positive base folds 1 < 2. No OOS run and no post-result tuning."
+    },
+    {
+      "hypothesisId": "H5",
+      "variantId": "h5-cooldown-plus-b4-veto",
+      "rules": "H5 combined source cooldown plus frozen B4 opposing-reversal veto",
+      "status": "INVALID_INSUFFICIENT_PIT_DATA",
+      "trainTrades": null,
+      "validationTrades": null,
+      "finalOosTrades": null,
+      "baseNetPnl": null,
+      "stressNetPnl": null,
+      "baseExpectancy": null,
+      "stressExpectancy": null,
+      "basePF": null,
+      "stressPF": null,
+      "maxDrawdown": null,
+      "positiveFolds": null,
+      "negativeFolds": null,
+      "top1Concentration": null,
+      "top3Concentration": null,
+      "gateResult": "INVALID_INSUFFICIENT_PIT_DATA",
+      "rejectionReason": "H5 depends on the unavailable PIT-safe historical B4 feature series"
+    }
+  ],
+  "h0SpecialRuling": {
+    "result": "FORWARD_VALIDATION_CANDIDATE",
+    "historicalOosCriteriaPass": true,
+    "criteria": {
+      "positiveBaseOos": true,
+      "basePFAtLeast125": true,
+      "positiveStressOos": true,
+      "stressPFAtLeast110": true,
+      "drawdownWithinTolerance": true,
+      "rollingBasePositiveFoldsAtLeast3": true,
+      "rollingStressPositiveFoldsAtLeast3": true,
+      "top1ConcentrationNotAbove60Percent": true
+    },
+    "legacyTrainValidationGate": {
+      "result": "FAIL",
+      "evidence": {
+        "base": {
+          "trades": 186,
+          "wins": 74,
+          "losses": 112,
+          "winRate": 0.397849,
+          "netPnlUsdt": 1013.89499313,
+          "expectancyUsdt": 5.45104835,
+          "netR": 20.25872687,
+          "profitFactor": 1.17083858,
+          "maxDrawdownUsdt": 924.14231991,
+          "maxDrawdownPercent": 0.09241423,
+          "averageWinnerUsdt": 93.9014552,
+          "averageLoserUsdt": -52.98939903,
+          "totalFeesUsdt": 424.26385389,
+          "totalFundingUsdt": -10.6414518,
+          "totalSlippageUsdt": 212.13199338,
+          "grossPnlUsdt": 1448.80029882,
+          "pricePnlBeforeExecutionCostsUsdt": 1660.9322922,
+          "finalEquityUsdt": 11013.89499313
+        },
+        "stress": {
+          "trades": 186,
+          "wins": 74,
+          "losses": 112,
+          "winRate": 0.397849,
+          "netPnlUsdt": 589.63340083,
+          "expectancyUsdt": 3.17007205,
+          "netR": 11.7634819,
+          "profitFactor": 1.09515114,
+          "maxDrawdownUsdt": 999.22471256,
+          "maxDrawdownPercent": 0.09992247,
+          "averageWinnerUsdt": 91.70867193,
+          "averageLoserUsdt": -55.32864573,
+          "totalFeesUsdt": 636.39558152,
+          "totalFundingUsdt": -10.63932308,
+          "totalSlippageUsdt": 424.26398676,
+          "grossPnlUsdt": 1236.66830544,
+          "pricePnlBeforeExecutionCostsUsdt": 1660.9322922,
+          "finalEquityUsdt": 10589.63340083
+        },
+        "positiveFoldsBase": 1,
+        "positiveFoldsStress": 1,
+        "top1SymbolConcentration": 0.52714702,
+        "top3SymbolConcentration": 1.0660976,
+        "distinctSymbols": 13,
+        "passesHistoricalGate": false
+      },
+      "reason": "The frozen R7.1 train+validation gate remains FAIL because its combined selection PF and validation slice did not meet the pre-registered gate; it was not retuned or erased."
+    },
+    "ruling": "The explicit R7.1A H0 special ruling allows forward-candidate freeze from positive final OOS/stress evidence with stable rolling folds; this is not PROFITABLE_STRATEGY_CONFIRMED."
+  },
+  "forwardCandidate": {
+    "candidateId": "HY-R7-FORWARD-CANDIDATE-A",
+    "sourceStrategy": "hy-paper-candidate-v2",
+    "strategyHash": "3c3df714d4e5768a4393e523b331b70f239e5c07b963e5bdada7442d69a27918",
+    "historicalEvidenceHash": "b90c267d023d3e5999403dc6a42682e48dcb1c2cb9e8617db9118ed1cb1044a6",
+    "failureSetHash": "a296fea0422c0b9be8fe9116f808a59f9428404211bb3747b4b3e54a6cc5a41d",
+    "researchCommitSha": "PENDING_FIRST_RESEARCH_COMMIT",
+    "lockedUntil": "forward gate passes or candidate is formally failed",
+    "prohibitedChanges": [
+      "score",
+      "cooldown",
+      "rewardRisk",
+      "maxHold",
+      "stop multiplier",
+      "side filter",
+      "regime filter"
+    ],
+    "forwardGate": {
+      "minimumCalendarDays": 30,
+      "minimumMaturedTrades": 100,
+      "earlyKillRule": "At least 30 matured trades AND Net PnL < 0 AND PF < 0.90 AND Expectancy < 0",
+      "observedCalendarDays": 34.95271281,
+      "observedMaturedTrades": 1,
+      "calendarDaysRequirementMet": true,
+      "maturedTradesRequirementMet": false,
+      "economicRequirementsMet": true,
+      "earlyKill": false,
+      "gateStatus": "OPEN_INSUFFICIENT_SAMPLE",
+      "pfInterpretation": "UNDEFINED_NO_LOSSES; not claimed as a finite PF",
+      "realEmailAllowed": false
+    }
+  },
+  "failureSetAudit": {
+    "retained": 0,
+    "suppressed": 37,
+    "retainedWinners": 0,
+    "retainedLosers": 0,
+    "suppressedWinners": 12,
+    "suppressedLosers": 25,
+    "retainedNetPnlUsdt": 0,
+    "suppressionReason": "BASE_RULES for all 37 rows under the declared partial frozen-baseline audit subset",
+    "use": "AUDIT_ONLY_NOT_USED_FOR_THRESHOLD_RANKING_OR_CANDIDATE_SELECTION"
+  },
+  "verification": {
+    "tests": "PASS (179 passed, 1 skipped; 180 total)",
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "build": "PASS",
+    "diffCheck": "PASS",
+    "githubCi": "PENDING_PUSH"
+  },
+  "classification": "FORWARD_VALIDATION_CANDIDATE_READY"
+}

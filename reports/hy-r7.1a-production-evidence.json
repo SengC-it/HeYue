@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "hy-r7.1a-production-evidence-v1",
+  "source": "Read-only Supabase snapshot of public.hy_strategy_versions and public.hy_paper_trades, plus read-only Production /api/health safety fields; no write or replay operation",
+  "projectRef": "jfvbikivtpfjgfsnggiz",
+  "observedAt": "2026-09-13T01:06:54.387Z",
+  "finalOosBoundary": "2026-08-09T02:15:00.000Z",
+  "strategy": {
+    "version": "hy-paper-candidate-v2",
+    "strategyFamily": "TREND",
+    "status": "PAPER",
+    "parameters": {
+      "runtime": {
+        "params": {
+          "emaFast": 20,
+          "emaSlow": 50,
+          "atrPeriod": 14,
+          "entryMode": "TREND_PULLBACK",
+          "rsiPeriod": 14,
+          "breakoutPeriod": 20,
+          "bollingerPeriod": 20,
+          "stopAtrMultiplier": 0.75,
+          "bollingerDeviation": 2,
+          "breakoutVolumeRatio": 1.15,
+          "meanReversionRsiLow": 35,
+          "meanReversionRsiHigh": 65
+        },
+        "version": "hy-paper-candidate-v2",
+        "minScore": 80,
+        "riskPolicy": {
+          "leverage": 20,
+          "marginUsdt": 100,
+          "rewardRisk": 2,
+          "maxHoldHours": 48,
+          "riskPerTradeUsdt": 50,
+          "dailyRiskBudgetUsdt": 600,
+          "maxPositionNotionalUsdt": 10000,
+          "singleSignalRiskCapUsdt": 50
+        },
+        "sideFilter": "SHORT",
+        "slippageBps": 2,
+        "takerFeeRate": 0.0004,
+        "cooldownHours": 24,
+        "strategyFamily": "TREND",
+        "globalReferenceSymbol": "BTCUSDT",
+        "globalRegimeAlignment": true,
+        "requireRegimeAlignment": true,
+        "globalReferenceTimeframe": "4h",
+        "maxExecutionCostRiskFraction": 0.1
+      },
+      "training_start_date": "2025-08-09",
+      "training_end_date": "2026-05-08",
+      "validation_start_date": null,
+      "validation_end_date": null,
+      "oos_start_date": "2026-05-09",
+      "oos_end_date": "2026-08-09",
+      "status": "PAPER"
+    }
+  },
+  "forwardPaperTrades": [
+    {
+      "symbol": "HYPEUSDT",
+      "side": "SHORT",
+      "strategyFamily": "TREND",
+      "strategyVersion": "hy-paper-candidate-v2",
+      "entryTime": "2026-09-10T19:14:59.999Z",
+      "exitTime": "2026-09-10T23:59:59.999Z",
+      "status": "TAKE_PROFIT",
+      "netPnlUsdt": 95.36074897,
+      "rMultiple": 1.90725694,
+      "exitReason": "TAKE_PROFIT"
+    }
+  ],
+  "runtimeSafety": {
+    "strategySource": "DB",
+    "strategyStage": "PAPER",
+    "strategyVersion": "hy-paper-candidate-v2",
+    "paperTradingEnabled": true,
+    "dryRun": false,
+    "exchangeCredentialsConfigured": false,
+    "autoTrading": false,
+    "b4ShadowEnabled": false,
+    "b4EmailSent": 0
+  }
+}
