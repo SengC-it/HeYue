@@ -83,4 +83,4 @@ The frozen 37-row failure set is audit-only: retained=0, suppressed=37, retained
 
 Classification: **CANDIDATE_A_TOO_SPARSE_NO_SAFE_EXPANSION**
 
-Local verification: tests **191 passed / 192 (1 skipped)**, typecheck **PASS**, lint **PASS**, build **PASS**, and diff **PASS**. GitHub CI is pending the push of this classification correction.
+Local verification: tests **191 passed / 192 (1 skipped)**, typecheck **PASS**, lint **PASS**, build **PASS**, and diff **PASS**. GitHub CI **PASS** (run `34742408750` for research HEAD `43aa251ef4f3ef4fabf5d558ffa27f9971dc3c7b`).
