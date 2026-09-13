@@ -83,4 +83,4 @@ The frozen 37-row failure set is audit-only: retained=0, suppressed=37, retained
 
 Classification: **THROUGHPUT_PROFITABILITY_CANDIDATE_READY**
 
-Local verification: tests **191 passed / 192 (1 skipped)**, typecheck **PASS**, lint **PASS**, build **PASS**, and diff **PASS**. GitHub CI is pending the push of this research-only commit.
+Local verification: tests **191 passed / 192 (1 skipped)**, typecheck **PASS**, lint **PASS**, build **PASS**, and diff **PASS**. GitHub CI **PASS** (run `34740882668` for research HEAD `bcb5c52bb08cd160bdbdf307e4303a1ee0c60d2c`).
