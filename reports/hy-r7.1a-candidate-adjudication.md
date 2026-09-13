@@ -70,7 +70,7 @@ For H1/H2/H4, the PnL/expectancy/PF fields below are the frozen train+validation
 - Strategy SHA256: `3c3df714d4e5768a4393e523b331b70f239e5c07b963e5bdada7442d69a27918`
 - Historical evidence SHA256: `b90c267d023d3e5999403dc6a42682e48dcb1c2cb9e8617db9118ed1cb1044a6`
 - Failure-set SHA256: `a296fea0422c0b9be8fe9116f808a59f9428404211bb3747b4b3e54a6cc5a41d`
-- Research commit SHA: `PENDING_FIRST_RESEARCH_COMMIT`
+- Research commit SHA: `3abc82435eab8c832a89017cf1f0c4799b794b5d`
 - Locked until the forward gate passes or the candidate is formally failed.
 - Prohibited changes during the lock: score, cooldown, rewardRisk, maxHold, stop multiplier, side filter, regime filter.
 
