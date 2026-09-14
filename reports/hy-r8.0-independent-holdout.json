@@ -1,0 +1,945 @@
+{
+  "reportVersion": "hy-r8.0-v1",
+  "generatedAt": "2026-09-14T06:53:00.260Z",
+  "purpose": "One-shot backward independent holdout validation of frozen Candidate A; research-only, no selection or production mutation.",
+  "classification": "PROFITABILITY_RESEARCH_INVALID",
+  "candidateFinalStatus": "INSUFFICIENT_EVIDENCE",
+  "holdoutDataValid": true,
+  "researchResultValid": false,
+  "protocolValidation": {
+    "quarterBoundaries": {
+      "pass": false,
+      "protocolEndExclusives": [
+        "2024-11-07T14:15:00.000Z",
+        "2025-02-06T02:15:00.000Z",
+        "2025-05-07T14:15:00.000Z",
+        "2025-08-09T02:15:00.000Z"
+      ],
+      "runnerUsedEndExclusives": [
+        "2024-11-08T08:15:00.000Z",
+        "2025-02-07T14:15:00.000Z",
+        "2025-05-09T20:15:00.000Z",
+        "2025-08-09T02:15:00.000Z"
+      ],
+      "reason": "The one-shot result was generated before the runner was corrected to the explicitly frozen protocol quarter boundaries; quarter metrics and the profitability gate are not authoritative."
+    }
+  },
+  "protocolCommit": "3e28d6179d6903c24b18b304c82f492997329bba",
+  "protocolCreatedBeforeHoldout": true,
+  "pullRequest": {
+    "number": 9,
+    "branch": "research/hy-r7-profitability",
+    "baseRef": "codex/paper-observation-deploy",
+    "researchBaseHead": "f02dc98eb48701cf9eff43f9ff91c69fc1b9888c",
+    "status": "DRAFT"
+  },
+  "candidate": {
+    "id": "HY-R7-FORWARD-CANDIDATE-A",
+    "strategyVersion": "hy-paper-candidate-v2",
+    "strategyHashSha256": "3c3df714d4e5768a4393e523b331b70f239e5c07b963e5bdada7442d69a27918",
+    "frozenRules": {
+      "entryMode": "TREND_PULLBACK",
+      "side": "SHORT",
+      "strategyFamily": "TREND",
+      "minScore": 80,
+      "cooldownHours": 24,
+      "rewardRisk": 2,
+      "maxHoldHours": 48,
+      "stopAtrMultiplier": 0.75,
+      "dynamicUniverseSize": 10,
+      "dynamicUniverseLookbackDays": 1,
+      "localRegimeAlignment": true,
+      "btc4hRegimeAlignment": true,
+      "globalReferenceSymbol": "BTCUSDT",
+      "globalReferenceTimeframe": "4h",
+      "baseTakerFeeRate": 0.0004,
+      "baseSlippageBps": 2,
+      "stressTakerFeeRate": 0.0006,
+      "stressSlippageBps": 4,
+      "maxExecutionCostRiskFraction": 0.1,
+      "funding": "PIT historical actual funding"
+    },
+    "parameters": {
+      "entryMode": "TREND_PULLBACK",
+      "emaFast": 20,
+      "emaSlow": 50,
+      "rsiPeriod": 14,
+      "atrPeriod": 14,
+      "stopAtrMultiplier": 0.75,
+      "breakoutPeriod": 20,
+      "breakoutVolumeRatio": 1.15,
+      "meanReversionRsiLow": 35,
+      "meanReversionRsiHigh": 65,
+      "bollingerPeriod": 20,
+      "bollingerDeviation": 2
+    },
+    "resultUsedForTuning": false
+  },
+  "candidateAReproduction": {
+    "pass": true,
+    "expected": {
+      "trades": 29,
+      "baseNetPnlUsdt": 469.31166529,
+      "baseProfitFactor": 1.59999141,
+      "stressNetPnlUsdt": 400.66533784,
+      "stressProfitFactor": 1.48858398
+    },
+    "actual": {
+      "base": {
+        "trades": 29,
+        "wins": 13,
+        "losses": 16,
+        "winRate": 0.448276,
+        "netPnlUsdt": 469.31166529,
+        "expectancyUsdt": 16.18316087,
+        "netR": 9.35404337,
+        "profitFactor": 1.59999141,
+        "maxDrawdownUsdt": 351.08433764,
+        "maxDrawdownPercent": 0.03510843,
+        "averageWinnerUsdt": 96.26992069,
+        "averageLoserUsdt": -48.88733148,
+        "totalFeesUsdt": 68.64637257,
+        "totalFundingUsdt": 0.00330584,
+        "totalSlippageUsdt": 34.32320918,
+        "grossPnlUsdt": 537.95473202,
+        "pricePnlBeforeExecutionCostsUsdt": 572.2779412,
+        "finalEquityUsdt": 10469.31166529
+      },
+      "stress": {
+        "trades": 29,
+        "wins": 13,
+        "losses": 16,
+        "winRate": 0.448276,
+        "netPnlUsdt": 400.66533784,
+        "expectancyUsdt": 13.81604613,
+        "netR": 7.97917342,
+        "profitFactor": 1.48858398,
+        "maxDrawdownUsdt": 367.79493094,
+        "maxDrawdownPercent": 0.03677949,
+        "averageWinnerUsdt": 93.90150221,
+        "averageLoserUsdt": -51.25338693,
+        "totalFeesUsdt": 102.96949018,
+        "totalFundingUsdt": 0.00330518,
+        "totalSlippageUsdt": 68.64641835,
+        "grossPnlUsdt": 503.63152285,
+        "pricePnlBeforeExecutionCostsUsdt": 572.2779412,
+        "finalEquityUsdt": 10400.66533784
+      }
+    }
+  },
+  "holdout": {
+    "label": "PRE-R7 INDEPENDENT HOLDOUT",
+    "start": "2024-08-09T02:15:00.000Z",
+    "end": "2025-08-09T02:14:59.999Z",
+    "source": "Binance public historical 15m/1h/4h klines and historical funding only",
+    "universe": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "BNBUSDT",
+      "SOLUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT",
+      "LINKUSDT",
+      "AVAXUSDT",
+      "SUIUSDT",
+      "1000SHIBUSDT",
+      "1000PEPEUSDT",
+      "AAVEUSDT",
+      "TRXUSDT",
+      "PAXGUSDT",
+      "INJUSDT",
+      "COTIUSDT",
+      "LTCUSDT",
+      "XLMUSDT",
+      "XMRUSDT"
+    ],
+    "oneShotRunCount": 1,
+    "availability": [
+      {
+        "symbol": "BTCUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "ETHUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "BNBUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "SOLUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "XRPUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "DOGEUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "ADAUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "LINKUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "AVAXUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "SUIUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "1000SHIBUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "1000PEPEUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "AAVEUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "TRXUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "PAXGUSDT",
+        "firstAvailableAt": 1743071400000,
+        "firstEligibleAt": 1743144299999,
+        "expected15mBars": 35040,
+        "actual15mBars": 12927,
+        "coverage": 0.36892123,
+        "coverageStatus": "PARTIAL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "INJUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "COTIUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "LTCUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "XLMUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      },
+      {
+        "symbol": "XMRUSDT",
+        "firstAvailableAt": 1721960100000,
+        "firstEligibleAt": 1722032999999,
+        "expected15mBars": 35040,
+        "actual15mBars": 35040,
+        "coverage": 1,
+        "coverageStatus": "FULL",
+        "eligibleInHoldout": true
+      }
+    ],
+    "dataManifestPath": "reports/hy-r8.0-data-manifest.json",
+    "base": {
+      "allSelectedSignals": 219,
+      "maturedTrades": 219,
+      "metrics": {
+        "trades": 219,
+        "wins": 82,
+        "losses": 137,
+        "winRate": 0.374429,
+        "netPnlUsdt": 404.96613442,
+        "expectancyUsdt": 1.84916043,
+        "netR": 8.10948775,
+        "profitFactor": 1.05536706,
+        "maxDrawdownUsdt": 1408.13499769,
+        "maxDrawdownPercent": 0.1408135,
+        "averageWinnerUsdt": 94.13625951,
+        "averageLoserUsdt": -53.38837332,
+        "totalFeesUsdt": 501.08691845,
+        "totalFundingUsdt": 5.83272843,
+        "totalSlippageUsdt": 250.54350526,
+        "grossPnlUsdt": 900.22032444,
+        "pricePnlBeforeExecutionCostsUsdt": 1150.7638297,
+        "finalEquityUsdt": 10404.96613442
+      },
+      "rawMetrics": {
+        "trades": 225,
+        "wins": 83,
+        "losses": 142,
+        "winRate": 0.368889,
+        "netPnlUsdt": 236.08604001,
+        "expectancyUsdt": 1.04927129,
+        "netR": 4.73187277,
+        "profitFactor": 1.03114738,
+        "maxDrawdownUsdt": 1495.38115092,
+        "maxDrawdownPercent": 0.14953812,
+        "averageWinnerUsdt": 94.16541821,
+        "averageLoserUsdt": -53.37777233,
+        "totalFeesUsdt": 513.2374044,
+        "totalFundingUsdt": 5.17893854,
+        "totalSlippageUsdt": 256.61874223,
+        "grossPnlUsdt": 744.14450587,
+        "pricePnlBeforeExecutionCostsUsdt": 1000.7632481,
+        "finalEquityUsdt": 10236.08604001
+      },
+      "signalRate": {
+        "count": 219,
+        "uniqueSignalTimestamps": 173,
+        "observationDays": 364.99999999,
+        "signalsPerDay": 0.6,
+        "signalsPerWeek": 4.2,
+        "medianDaysBetweenSignals": 0.16666667,
+        "p90DaysBetweenSignals": 4.490625,
+        "p95DaysBetweenSignals": 11.2671875,
+        "annualizedSignals": 219.15000001
+      },
+      "portfolioRejections": {
+        "maxConcurrentPositions": 6,
+        "singleSignalRisk": 0,
+        "dailyRiskBudget": 0,
+        "dailyLossLimit": 0,
+        "emailCap": 0,
+        "capitalFloor": 0
+      }
+    },
+    "stress": {
+      "allSelectedSignals": 219,
+      "maturedTrades": 219,
+      "metrics": {
+        "trades": 219,
+        "wins": 81,
+        "losses": 138,
+        "winRate": 0.369863,
+        "netPnlUsdt": -96.12185875,
+        "expectancyUsdt": -0.4389126,
+        "netR": -1.92484489,
+        "profitFactor": 0.98740276,
+        "maxDrawdownUsdt": 1565.69809543,
+        "maxDrawdownPercent": 0.15656981,
+        "averageWinnerUsdt": 93.01566528,
+        "averageLoserUsdt": -55.29268657,
+        "totalFeesUsdt": 751.63023959,
+        "totalFundingUsdt": 5.83156165,
+        "totalSlippageUsdt": 501.08701051,
+        "grossPnlUsdt": 649.67681919,
+        "pricePnlBeforeExecutionCostsUsdt": 1150.7638297,
+        "finalEquityUsdt": 9903.87814125
+      },
+      "rawMetrics": {
+        "trades": 225,
+        "wins": 82,
+        "losses": 143,
+        "winRate": 0.364444,
+        "netPnlUsdt": -277.15232032,
+        "expectancyUsdt": -1.23178809,
+        "netR": -5.54548248,
+        "profitFactor": 0.9649437,
+        "maxDrawdownUsdt": 1728.83720042,
+        "maxDrawdownPercent": 0.17288372,
+        "averageWinnerUsdt": 93.0337623,
+        "averageLoserUsdt": -55.28615964,
+        "totalFeesUsdt": 769.85598651,
+        "totalFundingUsdt": 5.17790255,
+        "totalSlippageUsdt": 513.23748446,
+        "grossPnlUsdt": 487.52576364,
+        "pricePnlBeforeExecutionCostsUsdt": 1000.7632481,
+        "finalEquityUsdt": 9722.84767968
+      },
+      "signalRate": {
+        "count": 219,
+        "uniqueSignalTimestamps": 173,
+        "observationDays": 364.99999999,
+        "signalsPerDay": 0.6,
+        "signalsPerWeek": 4.2,
+        "medianDaysBetweenSignals": 0.16666667,
+        "p90DaysBetweenSignals": 4.490625,
+        "p95DaysBetweenSignals": 11.2671875,
+        "annualizedSignals": 219.15000001
+      },
+      "portfolioRejections": {
+        "maxConcurrentPositions": 6,
+        "singleSignalRisk": 0,
+        "dailyRiskBudget": 0,
+        "dailyLossLimit": 0,
+        "emailCap": 0,
+        "capitalFloor": 0
+      }
+    },
+    "signalRate": {
+      "count": 219,
+      "uniqueSignalTimestamps": 173,
+      "observationDays": 364.99999999,
+      "signalsPerDay": 0.6,
+      "signalsPerWeek": 4.2,
+      "medianDaysBetweenSignals": 0.16666667,
+      "p90DaysBetweenSignals": 4.490625,
+      "p95DaysBetweenSignals": 11.2671875,
+      "annualizedSignals": 219.15000001
+    },
+    "pitValidation": {
+      "dataIntegrity": true,
+      "listingEligibility": true,
+      "dynamicTop10UsesClosedPITVolume": true,
+      "regimeUsesClosedPITCandles": true,
+      "fundingPIT": true,
+      "nextBarExecution": true,
+      "sameSignalSet": true,
+      "quarterBoundaries": true,
+      "noFutureOutcome": true,
+      "noFutureVolume": true,
+      "noFutureFunding": true,
+      "noFutureListing": true,
+      "noSameCloseFill": true,
+      "dataIssues": []
+    },
+    "quarters": [
+      {
+        "id": "Q1",
+        "start": "2024-08-09T02:15:00.000Z",
+        "endInclusive": "2024-11-08T08:14:59.999Z",
+        "endExclusive": "2024-11-08T08:15:00.000Z",
+        "base": {
+          "trades": 33,
+          "wins": 3,
+          "losses": 30,
+          "winRate": 0.090909,
+          "netPnlUsdt": -1310.48044404,
+          "expectancyUsdt": -39.71152861,
+          "netR": -26.27612967,
+          "profitFactor": 0.18107949,
+          "maxDrawdownUsdt": 1408.13499769,
+          "maxDrawdownPercent": 0.1408135,
+          "averageWinnerUsdt": 96.59102951,
+          "averageLoserUsdt": -53.34178442,
+          "totalFeesUsdt": 75.86400934,
+          "totalFundingUsdt": 0.93557177,
+          "totalSlippageUsdt": 37.93195677,
+          "grossPnlUsdt": -1235.55200647,
+          "pricePnlBeforeExecutionCostsUsdt": -1197.6200497,
+          "finalEquityUsdt": 8689.51955596
+        },
+        "stress": {
+          "trades": 33,
+          "wins": 3,
+          "losses": 30,
+          "winRate": 0.090909,
+          "netPnlUsdt": -1386.34473635,
+          "expectancyUsdt": -42.01044656,
+          "netR": -27.79558746,
+          "profitFactor": 0.16982251,
+          "maxDrawdownUsdt": 1482.5805377,
+          "maxDrawdownPercent": 0.14825805,
+          "averageWinnerUsdt": 94.53100913,
+          "averageLoserUsdt": -55.66459212,
+          "totalFeesUsdt": 113.79615773,
+          "totalFundingUsdt": 0.93538462,
+          "totalSlippageUsdt": 75.86391353,
+          "grossPnlUsdt": -1273.48396323,
+          "pricePnlBeforeExecutionCostsUsdt": -1197.6200497,
+          "finalEquityUsdt": 8613.65526365
+        },
+        "positiveBase": false,
+        "positiveStress": false
+      },
+      {
+        "id": "Q2",
+        "start": "2024-11-08T08:15:00.000Z",
+        "endInclusive": "2025-02-07T14:14:59.999Z",
+        "endExclusive": "2025-02-07T14:15:00.000Z",
+        "base": {
+          "trades": 60,
+          "wins": 25,
+          "losses": 35,
+          "winRate": 0.416667,
+          "netPnlUsdt": 556.51916392,
+          "expectancyUsdt": 9.2753194,
+          "netR": 11.12202686,
+          "profitFactor": 1.29989466,
+          "maxDrawdownUsdt": 874.06901931,
+          "maxDrawdownPercent": 0.0874069,
+          "averageWinnerUsdt": 96.48938592,
+          "averageLoserUsdt": -53.0204424,
+          "totalFeesUsdt": 130.12913043,
+          "totalFundingUsdt": 2.33857434,
+          "totalSlippageUsdt": 65.06459519,
+          "grossPnlUsdt": 684.30972001,
+          "pricePnlBeforeExecutionCostsUsdt": 749.3743152,
+          "finalEquityUsdt": 10556.51916392
+        },
+        "stress": {
+          "trades": 60,
+          "wins": 25,
+          "losses": 35,
+          "winRate": 0.416667,
+          "netPnlUsdt": 426.38962563,
+          "expectancyUsdt": 7.10649376,
+          "netR": 8.51641334,
+          "profitFactor": 1.22131166,
+          "maxDrawdownUsdt": 924.48601342,
+          "maxDrawdownPercent": 0.0924486,
+          "averageWinnerUsdt": 94.12149906,
+          "averageLoserUsdt": -55.04708145,
+          "totalFeesUsdt": 195.19360572,
+          "totalFundingUsdt": 2.33810653,
+          "totalSlippageUsdt": 130.12919038,
+          "grossPnlUsdt": 619.24512482,
+          "pricePnlBeforeExecutionCostsUsdt": 749.3743152,
+          "finalEquityUsdt": 10426.38962563
+        },
+        "positiveBase": true,
+        "positiveStress": true
+      },
+      {
+        "id": "Q3",
+        "start": "2025-02-07T14:15:00.000Z",
+        "endInclusive": "2025-05-09T20:14:59.999Z",
+        "endExclusive": "2025-05-09T20:15:00.000Z",
+        "base": {
+          "trades": 91,
+          "wins": 37,
+          "losses": 54,
+          "winRate": 0.406593,
+          "netPnlUsdt": 585.97626468,
+          "expectancyUsdt": 6.43929961,
+          "netR": 11.76259715,
+          "profitFactor": 1.20255266,
+          "maxDrawdownUsdt": 496.20264937,
+          "maxDrawdownPercent": 0.04962026,
+          "averageWinnerUsdt": 94.02523888,
+          "averageLoserUsdt": -53.5732884,
+          "totalFeesUsdt": 207.69527563,
+          "totalFundingUsdt": -1.8284449,
+          "totalSlippageUsdt": 103.84767379,
+          "grossPnlUsdt": 795.49998521,
+          "pricePnlBeforeExecutionCostsUsdt": 899.347659,
+          "finalEquityUsdt": 10585.97626468
+        },
+        "stress": {
+          "trades": 91,
+          "wins": 37,
+          "losses": 54,
+          "winRate": 0.406593,
+          "netPnlUsdt": 378.28142676,
+          "expectancyUsdt": 4.15693876,
+          "netR": 7.60272074,
+          "profitFactor": 1.12517727,
+          "maxDrawdownUsdt": 556.87221582,
+          "maxDrawdownPercent": 0.05568722,
+          "averageWinnerUsdt": 91.89857369,
+          "averageLoserUsdt": -55.96232962,
+          "totalFeesUsdt": 311.54280552,
+          "totalFundingUsdt": -1.82807914,
+          "totalSlippageUsdt": 207.69534758,
+          "grossPnlUsdt": 691.65231142,
+          "pricePnlBeforeExecutionCostsUsdt": 899.347659,
+          "finalEquityUsdt": 10378.28142676
+        },
+        "positiveBase": true,
+        "positiveStress": true
+      },
+      {
+        "id": "Q4",
+        "start": "2025-05-09T20:15:00.000Z",
+        "endInclusive": "2025-08-09T02:14:59.999Z",
+        "endExclusive": "2025-08-09T02:15:00.000Z",
+        "base": {
+          "trades": 35,
+          "wins": 17,
+          "losses": 18,
+          "winRate": 0.485714,
+          "netPnlUsdt": 572.95114986,
+          "expectancyUsdt": 16.37003285,
+          "netR": 11.50099341,
+          "profitFactor": 1.5935592,
+          "maxDrawdownUsdt": 430.87894887,
+          "maxDrawdownPercent": 0.04308789,
+          "averageWinnerUsdt": 90.4842179,
+          "averageLoserUsdt": -53.62669747,
+          "totalFeesUsdt": 87.39850305,
+          "totalFundingUsdt": 4.38702722,
+          "totalSlippageUsdt": 43.69927951,
+          "grossPnlUsdt": 655.96262569,
+          "pricePnlBeforeExecutionCostsUsdt": 699.6619052,
+          "finalEquityUsdt": 10572.95114986
+        },
+        "stress": {
+          "trades": 35,
+          "wins": 16,
+          "losses": 19,
+          "winRate": 0.457143,
+          "netPnlUsdt": 485.5518252,
+          "expectancyUsdt": 13.87290929,
+          "netR": 9.75160849,
+          "profitFactor": 1.47987048,
+          "maxDrawdownUsdt": 453.95761314,
+          "maxDrawdownPercent": 0.04539576,
+          "averageWinnerUsdt": 93.58694731,
+          "averageLoserUsdt": -53.25470167,
+          "totalFeesUsdt": 131.09767062,
+          "totalFundingUsdt": 4.38614964,
+          "totalSlippageUsdt": 87.39855902,
+          "grossPnlUsdt": 612.26334618,
+          "pricePnlBeforeExecutionCostsUsdt": 699.6619052,
+          "finalEquityUsdt": 10485.5518252
+        },
+        "positiveBase": true,
+        "positiveStress": true
+      }
+    ],
+    "symbols": {
+      "distinctTradedSymbols": 14,
+      "profitableSymbols": [
+        "XRPUSDT",
+        "DOGEUSDT",
+        "LINKUSDT",
+        "ETHUSDT",
+        "LTCUSDT",
+        "BTCUSDT",
+        "AAVEUSDT",
+        "SUIUSDT"
+      ],
+      "losingSymbols": [
+        "AVAXUSDT",
+        "1000SHIBUSDT",
+        "BNBUSDT",
+        "1000PEPEUSDT",
+        "ADAUSDT",
+        "SOLUSDT"
+      ],
+      "top1ProfitContribution": 1.29792646,
+      "top3ProfitContribution": 2.89668231,
+      "top5ProfitContribution": 4.02669345,
+      "concentrationRisk": true,
+      "bySymbol": [
+        {
+          "symbol": "XRPUSDT",
+          "trades": 21,
+          "netPnlUsdt": 525.61625938,
+          "contribution": 1.29792646
+        },
+        {
+          "symbol": "DOGEUSDT",
+          "trades": 24,
+          "netPnlUsdt": 368.5112666,
+          "contribution": 0.90998045
+        },
+        {
+          "symbol": "LINKUSDT",
+          "trades": 6,
+          "netPnlUsdt": 278.93071089,
+          "contribution": 0.6887754
+        },
+        {
+          "symbol": "ETHUSDT",
+          "trades": 23,
+          "netPnlUsdt": 229.20263075,
+          "contribution": 0.56597975
+        },
+        {
+          "symbol": "LTCUSDT",
+          "trades": 7,
+          "netPnlUsdt": 228.41361274,
+          "contribution": 0.56403139
+        },
+        {
+          "symbol": "BTCUSDT",
+          "trades": 14,
+          "netPnlUsdt": 149.97085948,
+          "contribution": 0.37032938
+        },
+        {
+          "symbol": "AAVEUSDT",
+          "trades": 2,
+          "netPnlUsdt": 43.73011381,
+          "contribution": 0.10798462
+        },
+        {
+          "symbol": "SUIUSDT",
+          "trades": 28,
+          "netPnlUsdt": 10.46765361,
+          "contribution": 0.02584822
+        },
+        {
+          "symbol": "AVAXUSDT",
+          "trades": 3,
+          "netPnlUsdt": -12.08322394,
+          "contribution": -0.02983762
+        },
+        {
+          "symbol": "1000SHIBUSDT",
+          "trades": 3,
+          "netPnlUsdt": -161.60784523,
+          "contribution": -0.39906509
+        },
+        {
+          "symbol": "BNBUSDT",
+          "trades": 6,
+          "netPnlUsdt": -174.47756237,
+          "contribution": -0.43084482
+        },
+        {
+          "symbol": "1000PEPEUSDT",
+          "trades": 34,
+          "netPnlUsdt": -313.08327045,
+          "contribution": -0.77310976
+        },
+        {
+          "symbol": "ADAUSDT",
+          "trades": 18,
+          "netPnlUsdt": -361.35812042,
+          "contribution": -0.89231689
+        },
+        {
+          "symbol": "SOLUSDT",
+          "trades": 30,
+          "netPnlUsdt": -407.26695042,
+          "contribution": -1.0056815
+        }
+      ]
+    },
+    "bootstrap": {
+      "expectancyUsdt": {
+        "sampleCount": 219,
+        "iterations": 10000,
+        "seed": 8052024,
+        "p025": -7.67205044,
+        "median": 1.81405285,
+        "p975": 11.6376351
+      },
+      "profitFactor": {
+        "sampleCount": 219,
+        "iterations": 10000,
+        "seed": 8052024,
+        "p025": 0.79119777,
+        "median": 1.05448767,
+        "p975": 1.38819843
+      },
+      "probabilityExpectancyPositive": 0.6452,
+      "probabilityProfitFactorGreaterThanOne": 0.6452,
+      "probabilityProfitFactorAtLeastOnePointTwo": 0.1758
+    },
+    "edgeGate": {
+      "maturedTradesPass": true,
+      "netPnlPass": true,
+      "expectancyPass": true,
+      "profitFactorPass": false,
+      "stressNetPass": false,
+      "stressProfitFactorPass": false,
+      "maxDrawdownPass": false,
+      "positiveQuartersPass": true,
+      "symbolBreadthPass": true,
+      "bootstrapExpectancyPass": false,
+      "pass": false
+    },
+    "regimeDistribution": {
+      "counts": {
+        "BULL": 10808,
+        "BEAR": 5450,
+        "RANGE": 12196,
+        "UNKNOWN": 0
+      },
+      "observations": 28454,
+      "bearShare": 0.19153722,
+      "rangeShare": 0.42862163
+    },
+    "classification": "PROFITABILITY_RESEARCH_INVALID"
+  },
+  "comparison": {
+    "usedForSelection": false,
+    "metrics": [
+      {
+        "window": "A_PRE_R7_INDEPENDENT_HOLDOUT",
+        "start": "2024-08-09T02:15:00.000Z",
+        "end": "2025-08-09T02:14:59.999Z",
+        "trades": 219,
+        "tradesPerWeek": 4.2,
+        "expectancyUsdt": 1.84916043,
+        "profitFactor": 1.05536706,
+        "maxDrawdownPercent": 0.1408135,
+        "bearShare": 0.19153722,
+        "rangeShare": 0.42862163
+      },
+      {
+        "window": "B_ORIGINAL_R7_HISTORICAL",
+        "start": "2025-08-09T02:15:00.000Z",
+        "end": "2026-08-09T02:14:59.999Z",
+        "trades": 216,
+        "tradesPerWeek": 4.14246575,
+        "expectancyUsdt": 6.61851291,
+        "profitFactor": 1.21114746,
+        "maxDrawdownPercent": 0.09241423,
+        "bearShare": 0.31505748,
+        "rangeShare": 0.4243282
+      },
+      {
+        "window": "C_PRODUCTION_FORWARD",
+        "start": "2026-08-09T17:34:48.982760Z",
+        "end": "2026-09-13T15:44:59.999Z",
+        "trades": 1,
+        "tradesPerWeek": 0.20043673,
+        "expectancyUsdt": 95.31484745,
+        "profitFactor": 999,
+        "maxDrawdownPercent": 0,
+        "bearShare": 0.20017899761336516,
+        "rangeShare": 0.48001193317422436,
+        "signalCount": 1,
+        "source": "reports/hy-r7.4-forward-parity-regime-audit.json; post-hoc and not a selection input"
+      }
+    ]
+  },
+  "conditionalAggregate": {
+    "status": "NOT_AUTHORIZED_HOLDOUT_DID_NOT_PASS",
+    "label": "DESCRIPTIVE_AGGREGATE",
+    "executed": false
+  },
+  "futureOutcomeNegativeEvidence": "NONE in the R8 runner/module/tests; no future-label builder was called",
+  "legacyFailureSetAudit": {
+    "rows": 37,
+    "retained": 0,
+    "suppressed": 37,
+    "usedForSelection": false,
+    "rowCount": 37,
+    "uniqueNotificationIds": 37,
+    "uniqueSignalIds": 37,
+    "role": "audit-only historical failure set; not a selection, holdout, threshold, or symbol input"
+  },
+  "safety": {
+    "productionModified": false,
+    "supabaseModified": false,
+    "vercelModified": false,
+    "paperStrategyModified": false,
+    "newRealEmails": 0,
+    "privateApi": false,
+    "orders": 0,
+    "autoTrading": false,
+    "dataWrites": false,
+    "researchOnly": true
+  },
+  "verification": {
+    "tests": "PASS (231 passed, 1 skipped of 232)",
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "build": "PASS",
+    "diff": "PASS",
+    "githubCi": "PENDING PUSH"
+  }
+}
