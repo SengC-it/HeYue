@@ -291,6 +291,6 @@ The frozen 37-row historical email failure set was read only after the holdout r
 
 ## Verification and safety
 
-- Tests: **PASS (231 passed, 1 skipped of 232)**; typecheck: **PASS**; lint: **PASS**; build: **PASS**; diff: **PASS**; GitHub CI: **PENDING PUSH**.
+- Tests: **PASS (231 passed, 1 skipped of 232)**; typecheck: **PASS**; lint: **PASS**; build: **PASS**; diff: **PASS**; GitHub CI: **PASS**.
 - Production modified: **NO**; Supabase modified: **NO**; Vercel modified: **NO**; PAPER strategy modified: **NO**.
 - Real emails: **0**; private API: **NO**; orders: **0**; AUTO_TRADING: **FALSE**.
