@@ -62,6 +62,6 @@ Candidate E was not run because no RANGE candidate passed selection.
 ## Verification and safety
 
 - Tests: **220 passed / 1 skipped (221 total)**
-- Typecheck: **PASS**; lint: **PASS**; build: **PASS**; diff: **PASS**; GitHub CI: **pending push**.
+- Typecheck: **PASS**; lint: **PASS**; build: **PASS**; diff: **PASS**; GitHub CI: **PASS** (verify run 34811427478; check 103873388843).
 - Production modified: **NO**; Supabase modified: **NO**; Vercel modified: **NO**; PAPER strategy modified: **NO**; real emails: **0**; private API: **NO**; orders: **0**; AUTO_TRADING: **FALSE**.
 - Final classification: **NO_RANGE_PROFITABLE_CANDIDATE**.
