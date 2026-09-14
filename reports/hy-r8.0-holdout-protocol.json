@@ -1,0 +1,261 @@
+{
+  "protocolVersion": "hy-r8.0-v1",
+  "protocolId": "HY-R8.0-EXTENDED-INDEPENDENT-HOLDOUT",
+  "frozenAt": "2026-09-14T06:16:14.061Z",
+  "purpose": "One-shot backward independent holdout validation of the frozen Candidate A; no parameter search, strategy search, threshold tuning, or new indicators.",
+  "pullRequest": {
+    "number": 9,
+    "branch": "research/hy-r7-profitability",
+    "researchBaseHead": "f02dc98eb48701cf9eff43f9ff91c69fc1b9888c",
+    "draftRequired": true
+  },
+  "candidate": {
+    "id": "HY-R7-FORWARD-CANDIDATE-A",
+    "strategyVersion": "hy-paper-candidate-v2",
+    "strategyHashSha256": "3c3df714d4e5768a4393e523b331b70f239e5c07b963e5bdada7442d69a27918",
+    "entryMode": "TREND_PULLBACK",
+    "side": "SHORT",
+    "strategyFamily": "TREND",
+    "minScore": 80,
+    "cooldownHours": 24,
+    "rewardRisk": 2,
+    "maxHoldHours": 48,
+    "stopAtrMultiplier": 0.75,
+    "dynamicUniverse": {
+      "size": 10,
+      "lookbackDays": 1,
+      "ranking": "PIT rolling quote volume from closed 15m candles only"
+    },
+    "localRegimeAlignment": true,
+    "globalRegimeAlignment": {
+      "enabled": true,
+      "referenceSymbol": "BTCUSDT",
+      "referenceTimeframe": "4h",
+      "directional": true
+    },
+    "execution": {
+      "decision": "closed 15m candle",
+      "entry": "next executable 15m open",
+      "entryDelayBars": 1,
+      "sameCloseFill": false,
+      "stopTp": "authoritative backtest engine",
+      "sameCandleStopFirst": true
+    },
+    "funding": {
+      "source": "PIT historical actual funding rates",
+      "futureFunding": false
+    }
+  },
+  "authorityReproductionGate": {
+    "requiredBeforeHoldout": true,
+    "expected": {
+      "trades": 29,
+      "baseNetPnlUsdt": 469.31166529,
+      "baseProfitFactor": 1.59999141,
+      "stressNetPnlUsdt": 400.66533784,
+      "stressProfitFactor": 1.48858398
+    },
+    "failureClassification": "BACKTEST_REPRODUCIBILITY_FAILURE"
+  },
+  "holdout": {
+    "label": "PRE-R7 INDEPENDENT HOLDOUT",
+    "independence": "Backward independent; not used in R7.1-R7.5 selection, threshold optimization, strategy search, or candidate adjudication.",
+    "start": "2024-08-09T02:15:00.000Z",
+    "end": "2025-08-09T02:14:59.999Z",
+    "dataSource": "Binance public historical data only",
+    "requiredTimeframes": ["15m", "1h", "4h"],
+    "requiredFunding": true,
+    "localDatasetDirectory": "data/hy-r2b-history-24m",
+    "oneShot": true,
+    "noPeek": true
+  },
+  "universe": {
+    "size": 20,
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "BNBUSDT",
+      "SOLUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT",
+      "LINKUSDT",
+      "AVAXUSDT",
+      "SUIUSDT",
+      "1000SHIBUSDT",
+      "1000PEPEUSDT",
+      "AAVEUSDT",
+      "TRXUSDT",
+      "PAXGUSDT",
+      "INJUSDT",
+      "COTIUSDT",
+      "LTCUSDT",
+      "XLMUSDT",
+      "XMRUSDT"
+    ],
+    "selection": "fixed R7.1 20-symbol research universe; no result-based deletion",
+    "listingEligibility": {
+      "firstAvailableAt": "first actual local candle timestamp per symbol",
+      "firstEligibleAt": "first decision timestamp after the existing strategy warm-up requirement and available PIT inputs",
+      "notListedHandling": "NOT_ELIGIBLE",
+      "futureListingKnowledge": false,
+      "laterPopularityBackfill": false
+    }
+  },
+  "costs": {
+    "base": {
+      "takerFeeRate": 0.0004,
+      "slippageBps": 2
+    },
+    "stress": {
+      "takerFeeRate": 0.0006,
+      "slippageBps": 4
+    },
+    "sameSignalSet": true,
+    "selectionEligibilityUsesBaseCosts": true,
+    "fundingIncluded": true
+  },
+  "riskAndPortfolio": {
+    "initialCapitalUsdt": 10000,
+    "marginUsdt": 100,
+    "leverage": 20,
+    "riskPerTradeUsdt": 50,
+    "singleSignalRiskCapUsdt": 50,
+    "dailyRiskBudgetUsdt": 600,
+    "dailyLossLimitUsdt": 600,
+    "maxConcurrentPositions": 6,
+    "maxPositionNotionalUsdt": 10000,
+    "maxExecutionCostRiskFraction": 0.1,
+    "portfolioCapsUnchanged": true
+  },
+  "pitRules": {
+    "decisionInputs": "Only closed candles and funding observations available through decision timestamp t",
+    "dynamicTop10": "Rolling 1-day quote volume from each symbol's closed 15m candles through t; no download-time ticker volume",
+    "regime": "BTCUSDT 4h classification from candles through t only",
+    "funding": "Funding observations are charged only when fundingTime > entryTime and fundingTime <= exitTime",
+    "futureVolume": false,
+    "futureFunding": false,
+    "futureListing": false,
+    "sameCloseFill": false
+  },
+  "quarterBoundaries": {
+    "method": "four equal contiguous timestamp intervals across the frozen holdout window; boundaries are fixed before execution",
+    "q1": {"start": "2024-08-09T02:15:00.000Z", "endExclusive": "2024-11-07T14:15:00.000Z"},
+    "q2": {"start": "2024-11-07T14:15:00.000Z", "endExclusive": "2025-02-06T02:15:00.000Z"},
+    "q3": {"start": "2025-02-06T02:15:00.000Z", "endExclusive": "2025-05-07T14:15:00.000Z"},
+    "q4": {"start": "2025-05-07T14:15:00.000Z", "endExclusive": "2025-08-09T02:15:00.000Z"}
+  },
+  "bootstrap": {
+    "iterations": 10000,
+    "seed": 8052024,
+    "resampleUnit": "holdout trade net PnL",
+    "replacement": true,
+    "reported": [
+      "net expectancy 95% CI",
+      "median expectancy",
+      "P(expectancy > 0)",
+      "PF distribution",
+      "P(PF > 1)",
+      "P(PF >= 1.20)"
+    ]
+  },
+  "primaryMetrics": [
+    "trades",
+    "wins",
+    "losses",
+    "winRate",
+    "netPnlUsdt",
+    "grossPnlUsdt",
+    "feesUsdt",
+    "slippageUsdt",
+    "fundingUsdt",
+    "netExpectancyUsdt",
+    "profitFactor",
+    "netR",
+    "averageWinnerUsdt",
+    "averageLoserUsdt",
+    "maxDrawdownUsdt",
+    "maxDrawdownPercent",
+    "signalsPerWeek",
+    "annualizedSignalRate"
+  ],
+  "edgeGate": {
+    "passClassification": "EXTENDED_INDEPENDENT_EDGE_PASS",
+    "failClassification": "EXTENDED_INDEPENDENT_EDGE_FAIL",
+    "requirements": {
+      "minimumMaturedTrades": 75,
+      "netPnlPositive": true,
+      "netExpectancyPositive": true,
+      "profitFactorMinimum": 1.2,
+      "stressNetPnlPositive": true,
+      "stressProfitFactorMinimum": 1.1,
+      "maxDrawdownPercentMaximum": 10,
+      "positiveQuartersMinimum": 3,
+      "distinctTradedSymbolsMinimum": 6,
+      "bootstrapPExpectancyPositiveMinimum": 0.95
+    },
+    "sampleFailureClassification": "INSUFFICIENT_HOLDOUT_SAMPLE",
+    "doNotLowerSampleRequirement": true
+  },
+  "concentration": {
+    "warningIfTop1ContributionGreaterThan": 0.5,
+    "warningIfTop3ContributionGreaterThan": 0.8,
+    "warningClassification": "CONCENTRATION_RISK",
+    "deleteLosingSymbols": false
+  },
+  "comparison": {
+    "windows": [
+      {"id": "A", "label": "PRE-R7 independent holdout", "start": "2024-08-09T02:15:00.000Z", "end": "2025-08-09T02:14:59.999Z"},
+      {"id": "B", "label": "Original authoritative R7 historical", "start": "2025-08-09T02:15:00.000Z", "end": "2026-08-09T02:14:59.999Z"},
+      {"id": "C", "label": "Production Forward", "start": "2026-08-09T17:34:48.982760Z", "end": "available endpoint"}
+    ],
+    "metrics": ["tradesPerWeek", "expectancy", "profitFactor", "maxDrawdown", "bearShare", "rangeShare"],
+    "usedForSelection": false
+  },
+  "conditionalAggregate": {
+    "allowedOnlyIf": "PRE-R7 independent holdout passes",
+    "window": "2024-08-09T02:15:00.000Z through 2026-08-09T02:14:59.999Z",
+    "label": "DESCRIPTIVE_AGGREGATE",
+    "replacesIndependentGate": false
+  },
+  "legacyFailureSet": {
+    "source": "frozen 37-row historical email failure audit",
+    "usedForSelection": false,
+    "usedForHoldoutGate": false,
+    "usedForThresholds": false,
+    "usedForSymbolChoice": false,
+    "mayBeReferencedAfterResultsFreeze": true
+  },
+  "excludedResearch": [
+    "RANGE_RECLAIM",
+    "BREAKOUT_RETEST",
+    "D1",
+    "D2",
+    "C1",
+    "C2",
+    "B1",
+    "B2",
+    "B4",
+    "parameter search",
+    "threshold tuning",
+    "new indicators",
+    "forward rule changes"
+  ],
+  "artifacts": {
+    "protocol": "reports/hy-r8.0-holdout-protocol.json",
+    "resultJson": "reports/hy-r8.0-independent-holdout.json",
+    "resultMarkdown": "reports/hy-r8.0-independent-holdout.md",
+    "dataManifest": "reports/hy-r8.0-data-manifest.json",
+    "rawDatasetsCommitted": false
+  },
+  "safety": {
+    "productionModified": false,
+    "supabaseWrites": false,
+    "vercelDeploy": false,
+    "paperStrategyModified": false,
+    "newRealEmails": 0,
+    "privateApi": false,
+    "orders": 0,
+    "autoTrading": false
+  }
+}

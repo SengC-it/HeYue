@@ -1,0 +1,150 @@
+{
+  "reportVersion": "hy-r8.0-v1",
+  "datasetDirectory": "data/hy-r2b-history-24m",
+  "source": "Binance public historical data only",
+  "rawDatasetsCommitted": false,
+  "files": [
+    {
+      "path": "data/hy-r2b-history-24m/1000PEPEUSDT.json",
+      "bytes": 16065728,
+      "sha256": "08344432c5a481fcf0cf5dcd3f8bb6a7e783a2d757ed9d503b8a61a3d613c999"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/1000SHIBUSDT.json",
+      "bytes": 15451402,
+      "sha256": "e8ebd62306268491981fed3a9a55c5b487f57443624254eedc950cc53ae20365"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/AAVEUSDT.json",
+      "bytes": 14155739,
+      "sha256": "5378ae565c68ae5da9f1cfca4e72af9ffd0ee5189cb9bf7ffec0e86ed5836afa"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/ADAUSDT.json",
+      "bytes": 14455004,
+      "sha256": "fab091da1fe2e02e0b66536929b8042a693b85e71892565044c4a1124c6686f5"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/AVAXUSDT.json",
+      "bytes": 14091538,
+      "sha256": "c41462bb7aae1030fa95a62e1d9b772f7618c01cc43aedd97014113c32aeebaa"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/BNBUSDT.json",
+      "bytes": 14442136,
+      "sha256": "c454c0ca1da4f9d3e307767ae98babccfd1b2a96397da1a87c375f9a7c9786b2"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/BTCUSDT.json",
+      "bytes": 14992034,
+      "sha256": "add48747b265db0f17f1fa14d160fd6f60ac3da9c057134a8b050683a82e37e9"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/COTIUSDT.json",
+      "bytes": 14717532,
+      "sha256": "72c1839e9520d24d147324d68a0f3c69d3fa37d178a7499741bff8009d7e47c2"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/DOGEUSDT.json",
+      "bytes": 15048679,
+      "sha256": "249dd5a2d7585377bea4154ce2dc8843cc8a38f6a36c6c51e57456389217cdab"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/ETHUSDT.json",
+      "bytes": 15138139,
+      "sha256": "04388875073c31d43ae1ba5b4d6cf6774bea0001eaf5c4b576b0d7e014c4d877"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/INJUSDT.json",
+      "bytes": 14190764,
+      "sha256": "29387d0383dd86c3fe29ccd858fd2b1b5ca86d96ef8991234c087f177026c065"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/LINKUSDT.json",
+      "bytes": 14562578,
+      "sha256": "3bb2fbffb2c697571b03dd90c4d4cb8c9cbeb70cfb02542e460cb5793e21afd3"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/LTCUSDT.json",
+      "bytes": 14370815,
+      "sha256": "bc3bf55e0897718984bf40249ab0b617d4dfbac53793c30b2f769568de61edd2"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/PAXGUSDT.json",
+      "bytes": 9970635,
+      "sha256": "0ff2c598bf164f6f42358a2087430b8a20194134375f8c35d8badcec38298519"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/SOLUSDT.json",
+      "bytes": 14488502,
+      "sha256": "d37e0d139f4810791264fe925c031f07035d4f6ae08e796d6fdd5834d5f45919"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/SUIUSDT.json",
+      "bytes": 14685654,
+      "sha256": "633e601712e830908ab5686641226e7b4981946d04bb0bebd269b3731c00e342"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/TRXUSDT.json",
+      "bytes": 14841848,
+      "sha256": "7ba81a2e6783ee83528ed5fda839c6f1736af1ca6819c09c57f929bb8fd01438"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/XLMUSDT.json",
+      "bytes": 14839868,
+      "sha256": "848c55249f4b1e06a9501aeae5da64463c18c08f5d81b46b2838f1dde6a40b14"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/XMRUSDT.json",
+      "bytes": 14433690,
+      "sha256": "99f8fdba684e1562536af8ba97f98c6d2d48ad4265b3750ee8fff4e49cea59a6"
+    },
+    {
+      "path": "data/hy-r2b-history-24m/XRPUSDT.json",
+      "bytes": 14767110,
+      "sha256": "05f527a7e948cfaa7235df4fac8f24c144076b61c6852211d2380f7ffa3f9f0c"
+    }
+  ],
+  "representation": "sorted UTF-8 newline-delimited relativePath:rawFileSHA256 rows with final newline",
+  "manifestRows": [
+    "data/hy-r2b-history-24m/1000PEPEUSDT.json:08344432c5a481fcf0cf5dcd3f8bb6a7e783a2d757ed9d503b8a61a3d613c999",
+    "data/hy-r2b-history-24m/1000SHIBUSDT.json:e8ebd62306268491981fed3a9a55c5b487f57443624254eedc950cc53ae20365",
+    "data/hy-r2b-history-24m/AAVEUSDT.json:5378ae565c68ae5da9f1cfca4e72af9ffd0ee5189cb9bf7ffec0e86ed5836afa",
+    "data/hy-r2b-history-24m/ADAUSDT.json:fab091da1fe2e02e0b66536929b8042a693b85e71892565044c4a1124c6686f5",
+    "data/hy-r2b-history-24m/AVAXUSDT.json:c41462bb7aae1030fa95a62e1d9b772f7618c01cc43aedd97014113c32aeebaa",
+    "data/hy-r2b-history-24m/BNBUSDT.json:c454c0ca1da4f9d3e307767ae98babccfd1b2a96397da1a87c375f9a7c9786b2",
+    "data/hy-r2b-history-24m/BTCUSDT.json:add48747b265db0f17f1fa14d160fd6f60ac3da9c057134a8b050683a82e37e9",
+    "data/hy-r2b-history-24m/COTIUSDT.json:72c1839e9520d24d147324d68a0f3c69d3fa37d178a7499741bff8009d7e47c2",
+    "data/hy-r2b-history-24m/DOGEUSDT.json:249dd5a2d7585377bea4154ce2dc8843cc8a38f6a36c6c51e57456389217cdab",
+    "data/hy-r2b-history-24m/ETHUSDT.json:04388875073c31d43ae1ba5b4d6cf6774bea0001eaf5c4b576b0d7e014c4d877",
+    "data/hy-r2b-history-24m/INJUSDT.json:29387d0383dd86c3fe29ccd858fd2b1b5ca86d96ef8991234c087f177026c065",
+    "data/hy-r2b-history-24m/LINKUSDT.json:3bb2fbffb2c697571b03dd90c4d4cb8c9cbeb70cfb02542e460cb5793e21afd3",
+    "data/hy-r2b-history-24m/LTCUSDT.json:bc3bf55e0897718984bf40249ab0b617d4dfbac53793c30b2f769568de61edd2",
+    "data/hy-r2b-history-24m/PAXGUSDT.json:0ff2c598bf164f6f42358a2087430b8a20194134375f8c35d8badcec38298519",
+    "data/hy-r2b-history-24m/SOLUSDT.json:d37e0d139f4810791264fe925c031f07035d4f6ae08e796d6fdd5834d5f45919",
+    "data/hy-r2b-history-24m/SUIUSDT.json:633e601712e830908ab5686641226e7b4981946d04bb0bebd269b3731c00e342",
+    "data/hy-r2b-history-24m/TRXUSDT.json:7ba81a2e6783ee83528ed5fda839c6f1736af1ca6819c09c57f929bb8fd01438",
+    "data/hy-r2b-history-24m/XLMUSDT.json:848c55249f4b1e06a9501aeae5da64463c18c08f5d81b46b2838f1dde6a40b14",
+    "data/hy-r2b-history-24m/XMRUSDT.json:99f8fdba684e1562536af8ba97f98c6d2d48ad4265b3750ee8fff4e49cea59a6",
+    "data/hy-r2b-history-24m/XRPUSDT.json:05f527a7e948cfaa7235df4fac8f24c144076b61c6852211d2380f7ffa3f9f0c"
+  ],
+  "manifestSha256": "94881ee2e8dcfaf5856b8585cf084f97f14461751d42391ad2af65dc65fde8aa",
+  "sourceFiles": [
+    {
+      "path": "lib/research/r8-0-holdout.ts",
+      "sha256": "36b92063bd325eeb79e59339f3358cb797a267a9ae68b7a30629ee16e12889f0"
+    },
+    {
+      "path": "scripts/run-hy-r8.0-independent-holdout.ts",
+      "sha256": "e6d914d7fa5b2c231e1a2c0195b5ae88c97b7df3aa7d5ef9c7d9d0cca36e525b"
+    },
+    {
+      "path": "tests/hy-r8.0-holdout.test.ts",
+      "sha256": "cd8f9abd4af6474c859448663719ab81e84d766b0af4cbf467658bc8f69a2269"
+    },
+    {
+      "path": "reports/hy-r8.0-holdout-protocol.json",
+      "sha256": "e284cfaa04867d40d7bad8cf12b49fa2c04cbf232a7818c030c68fab6f92da8d"
+    }
+  ]
+}

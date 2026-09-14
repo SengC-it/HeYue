@@ -1,0 +1,2847 @@
+{
+  "reportVersion": "hy-r7.1-v1",
+  "generatedAt": "2026-09-13T00:53:37.148Z",
+  "purpose": "Research-only profitability and candidate selection; no production behavior changed",
+  "safety": {
+    "productionModified": false,
+    "productionStrategyModified": false,
+    "paperStrategyModified": false,
+    "emailsEnabled": false,
+    "emailsSent": 0,
+    "privateApiCalled": false,
+    "orders": 0,
+    "autoTrading": false,
+    "supabaseModified": false,
+    "vercelModified": false,
+    "b4RealEmailEnabled": false
+  },
+  "frozenFailureSet": {
+    "count": 37,
+    "start": "2026-08-12T00:00:00.000Z",
+    "endExclusive": "2026-08-24T00:00:00.000Z",
+    "netPnlUsdt": -372.87426925,
+    "profitFactor": 0.656914905250825,
+    "actualRows": 37,
+    "mappedSignalAndPaperTradeRows": 37
+  },
+  "window": {
+    "start": "2025-08-09T02:15:00.000Z",
+    "end": "2026-08-09T02:14:59.999Z",
+    "train": {
+      "start": "2025-08-09T02:15:00.000Z",
+      "end": "2026-02-07T02:15:00.000Z"
+    },
+    "validation": {
+      "start": "2026-02-09T02:15:00.000Z",
+      "end": "2026-05-07T02:15:00.000Z"
+    },
+    "finalOos": {
+      "start": "2026-05-09T02:15:00.000Z",
+      "end": "2026-08-09T02:14:59.999Z"
+    },
+    "embargoHours": 48,
+    "finalOosMinimumTrades": 100
+  },
+  "universe": {
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "BNBUSDT",
+      "SOLUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT",
+      "LINKUSDT",
+      "AVAXUSDT",
+      "SUIUSDT",
+      "1000SHIBUSDT",
+      "1000PEPEUSDT",
+      "AAVEUSDT",
+      "TRXUSDT",
+      "PAXGUSDT",
+      "INJUSDT",
+      "COTIUSDT",
+      "LTCUSDT",
+      "XLMUSDT",
+      "XMRUSDT"
+    ],
+    "count": 20,
+    "selection": "fixed 20-symbol universe from the authoritative baseline; no universe expansion or post-result selection",
+    "dataSource": "data/validation-cache/<symbol>-1754705700000-1786241699999.json",
+    "fingerprints": {
+      "BTCUSDT": "d79556fc72a4eb09032cb654cffdab37e72a7279c89edc2e1e902ea860f09abd",
+      "ETHUSDT": "4529c6441f99054a0cad9a9cfb275c03487ae81bcd6c4538d8087bc0a8cff6b9",
+      "BNBUSDT": "ee92447a27d3dab14427e81ef021e2faf9b26d4088c6cc1460256af1acf9bbe2",
+      "SOLUSDT": "1db09cd6efa92fddc4aaa6b2e6fbb2f4973b5885e4a808652ab36a0ea6b934f2",
+      "XRPUSDT": "f67a384653de3aa213701c5061b479ddb8f28e26524b4673a1ad07901b3426f7",
+      "DOGEUSDT": "b1553a90f437e82b7e36811f984df8ccb58efad306780f638e9f533780b6883a",
+      "ADAUSDT": "19e654ffd4fa607d07621bee4f1592f4ef22bf28eebec30c70fafae2163afaba",
+      "LINKUSDT": "e81c629371ef60326343b458cb8f10a187b6d7dd19a388f0e7b060656774ace4",
+      "AVAXUSDT": "1edb8c58c1ba60ac11ae0c160e084b43d030e5e39853a636b6d5df61141c2b11",
+      "SUIUSDT": "d9950ac48531c036c2ebd8e7dc1c699372280c2e5343721d1b10d89c531c1adb",
+      "1000SHIBUSDT": "d3ef8775ff40cb45c6467cdf0fab011d1a7b8ca4dc0b5f701ebe348c4af55e10",
+      "1000PEPEUSDT": "93df58855c45b8ae6247e22770d82c161d4807b572b8b754cde721c15076395a",
+      "AAVEUSDT": "45853cfe50069d7d56fb35116d1ffe43881151092fdac84cd12ad538dcfbcb9d",
+      "TRXUSDT": "eec2011f58313a45ddf9e01ce49d18903ab5bcd3b43eb3c449781bdd8bdd68ca",
+      "PAXGUSDT": "0b8c425e08b6fe13c8e9f94dc8341aa0403c177227cd7b7e414f1882a8bfde0b",
+      "INJUSDT": "b47931955bbbb9b2fc8c166f1d59066c81b02f014776b4dfc5a4db47266b1e65",
+      "COTIUSDT": "1ae310c10558f365936153b63c544505c7fafe048b8383b85b6c1426e1bdf6b0",
+      "LTCUSDT": "590123b7b13761eb0d61fa51d32ed945f648ac251aed265ae1a349084f0e0729",
+      "XLMUSDT": "5e939601596ba829d9f41d2efab48b31ec1239cdf0d8e3e298d3cb7f891caa63",
+      "XMRUSDT": "f58f5d18f0d3c7cd88ee314ca163c8b9a8a061e19d3fafd26af171cae0ea46bd"
+    }
+  },
+  "execution": {
+    "signalDecision": "closed 15m candle only",
+    "execution": "next 15m open plus adverse slippage",
+    "noSameCloseFill": true,
+    "stopModel": "stop-first intrabar; gap-through stop fills at worse candle open",
+    "funding": "historical funding points with fundingTime > entryTime and <= exitTime",
+    "liquidity": "PIT trailing 24h quote volume dynamic top-10 universe",
+    "regime": "PIT BTC 4h global alignment; H4 adds PIT BTC 1h confirmation",
+    "noFutureUniverseMembership": true
+  },
+  "costModels": {
+    "base": {
+      "name": "BASE_REALISTIC",
+      "takerFeeRate": 0.0004,
+      "slippageBps": 2,
+      "selectionTakerFeeRate": 0.0004,
+      "selectionSlippageBps": 2
+    },
+    "stress": {
+      "name": "STRESS",
+      "takerFeeRate": 0.0006,
+      "slippageBps": 4,
+      "selectionTakerFeeRate": 0.0004,
+      "selectionSlippageBps": 2
+    },
+    "sameCostsForAllCandidates": true
+  },
+  "baselines": {
+    "correctedPrevious": {
+      "id": "score75-cooldown8-rr2.5-h72",
+      "description": "Authoritative corrected previous policy: same frozen TREND_PULLBACK short-only policy, score >= 75, 8h cooldown, 2.5R target and 72h hold",
+      "params": {
+        "entryMode": "TREND_PULLBACK",
+        "emaFast": 20,
+        "emaSlow": 50,
+        "rsiPeriod": 14,
+        "atrPeriod": 14,
+        "stopAtrMultiplier": 0.75,
+        "breakoutPeriod": 20,
+        "breakoutVolumeRatio": 1.15,
+        "meanReversionRsiLow": 35,
+        "meanReversionRsiHigh": 65,
+        "bollingerPeriod": 20,
+        "bollingerDeviation": 2
+      },
+      "options": {
+        "initialCapitalUsdt": 10000,
+        "minimumSampleDays": 0,
+        "singleSignalRiskCapUsdt": 50,
+        "dailyRiskBudgetUsdt": 600,
+        "dailyLossLimitUsdt": 600,
+        "maxConcurrentPositions": 6,
+        "maxEmailsPerDay": 10,
+        "maxEmailsPerScan": 6,
+        "capitalFloorUsdt": 0,
+        "marginUsdt": 100,
+        "leverage": 20,
+        "riskPerTradeUsdt": 50,
+        "maxPositionNotionalUsdt": 10000,
+        "requireRegimeAlignment": true,
+        "sideFilter": "SHORT",
+        "strategyFamilies": [
+          "TREND"
+        ],
+        "maxExecutionCostRiskFraction": 0.1,
+        "dynamicUniverseSize": 10,
+        "dynamicUniverseLookbackDays": 1,
+        "globalReferenceSymbol": "BTCUSDT",
+        "globalReferenceTimeframe": "4h",
+        "globalRegimeAlignment": true,
+        "entryDelayBars": 1,
+        "minScore": 75,
+        "maxHoldHours": 72,
+        "rewardRisk": 2.5,
+        "cooldownHours": 8
+      },
+      "full": {
+        "base": {
+          "metrics": {
+            "trades": 516,
+            "wins": 171,
+            "losses": 345,
+            "winRate": 0.331395,
+            "netPnlUsdt": 326.56390588,
+            "expectancyUsdt": 0.63287579,
+            "netR": 6.75167157,
+            "profitFactor": 1.01817023,
+            "maxDrawdownUsdt": 2149.15278697,
+            "maxDrawdownPercent": 0.21491528,
+            "averageWinnerUsdt": 107.01187624,
+            "averageLoserUsdt": -52.09410705,
+            "totalFeesUsdt": 1144.76369222,
+            "totalFundingUsdt": -13.6952915,
+            "totalSlippageUsdt": 572.38192841,
+            "grossPnlUsdt": 1485.02288959,
+            "pricePnlBeforeExecutionCostsUsdt": 2057.404818,
+            "finalEquityUsdt": 10326.56390588
+          },
+          "rawTradeCount": 602,
+          "selectedTradeCount": 516,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 74,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 1,
+            "emailCap": 11,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 516,
+            "wins": 169,
+            "losses": 347,
+            "winRate": 0.327519,
+            "netPnlUsdt": -818.19688214,
+            "expectancyUsdt": -1.58565287,
+            "netR": -16.17517518,
+            "profitFactor": 0.95640806,
+            "maxDrawdownUsdt": 2580.90143731,
+            "maxDrawdownPercent": 0.25809014,
+            "averageWinnerUsdt": 106.22044151,
+            "averageLoserUsdt": -54.09063832,
+            "totalFeesUsdt": 1717.14529144,
+            "totalFundingUsdt": -13.69255189,
+            "totalSlippageUsdt": 1144.76385681,
+            "grossPnlUsdt": 912.64096119,
+            "pricePnlBeforeExecutionCostsUsdt": 2057.404818,
+            "finalEquityUsdt": 9181.80311786
+          },
+          "rawTradeCount": 602,
+          "selectedTradeCount": 516,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 74,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 1,
+            "emailCap": 11,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 338,
+            "wins": 117,
+            "losses": 221,
+            "winRate": 0.346154,
+            "netPnlUsdt": 887.7922676,
+            "expectancyUsdt": 2.62660434,
+            "netR": 17.95976108,
+            "profitFactor": 1.07662357,
+            "maxDrawdownUsdt": 2149.15278697,
+            "maxDrawdownPercent": 0.21491528,
+            "averageWinnerUsdt": 106.61713169,
+            "averageLoserUsdt": -52.42720425,
+            "totalFeesUsdt": 734.99283981,
+            "totalFundingUsdt": 7.03174194,
+            "totalSlippageUsdt": 367.49649924,
+            "grossPnlUsdt": 1615.75336546,
+            "pricePnlBeforeExecutionCostsUsdt": 1983.2498647,
+            "finalEquityUsdt": 10887.7922676
+          },
+          "rawTradeCount": 401,
+          "selectedTradeCount": 338,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 51,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 1,
+            "emailCap": 11,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 338,
+            "wins": 116,
+            "losses": 222,
+            "winRate": 0.343195,
+            "netPnlUsdt": 152.79817981,
+            "expectancyUsdt": 0.45206562,
+            "netR": 3.23865262,
+            "profitFactor": 1.01264044,
+            "maxDrawdownUsdt": 2580.90143731,
+            "maxDrawdownPercent": 0.25809014,
+            "averageWinnerUsdt": 105.52453119,
+            "averageLoserUsdt": -54.45066414,
+            "totalFeesUsdt": 1102.48902173,
+            "totalFundingUsdt": 7.03033531,
+            "totalSlippageUsdt": 734.99299847,
+            "grossPnlUsdt": 1248.25686623,
+            "pricePnlBeforeExecutionCostsUsdt": 1983.2498647,
+            "finalEquityUsdt": 10152.79817981
+          },
+          "rawTradeCount": 401,
+          "selectedTradeCount": 338,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 51,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 1,
+            "emailCap": 11,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 69,
+            "wins": 17,
+            "losses": 52,
+            "winRate": 0.246377,
+            "netPnlUsdt": -813.46566576,
+            "expectancyUsdt": -11.78935747,
+            "netR": -16.27122042,
+            "profitFactor": 0.69923162,
+            "maxDrawdownUsdt": 1306.73562345,
+            "maxDrawdownPercent": 0.13067356,
+            "averageWinnerUsdt": 111.2446655,
+            "averageLoserUsdt": -52.01201883,
+            "totalFeesUsdt": 161.7282252,
+            "totalFundingUsdt": -17.81037108,
+            "totalSlippageUsdt": 80.86409048,
+            "grossPnlUsdt": -633.92706948,
+            "pricePnlBeforeExecutionCostsUsdt": -553.062979,
+            "finalEquityUsdt": 9186.53433424
+          },
+          "rawTradeCount": 78,
+          "selectedTradeCount": 69,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 9,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 69,
+            "wins": 17,
+            "losses": 52,
+            "winRate": 0.246377,
+            "netPnlUsdt": -975.19037242,
+            "expectancyUsdt": -14.1331938,
+            "netR": -19.50983365,
+            "profitFactor": 0.65496773,
+            "maxDrawdownUsdt": 1389.42630069,
+            "maxDrawdownPercent": 0.13894263,
+            "averageWinnerUsdt": 108.89317812,
+            "averageLoserUsdt": -54.35335386,
+            "totalFeesUsdt": 242.59240417,
+            "totalFundingUsdt": -17.80680829,
+            "totalSlippageUsdt": 161.72818096,
+            "grossPnlUsdt": -714.79115996,
+            "pricePnlBeforeExecutionCostsUsdt": -553.062979,
+            "finalEquityUsdt": 9024.80962758
+          },
+          "rawTradeCount": 78,
+          "selectedTradeCount": 69,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 9,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "oos": {
+        "base": {
+          "metrics": {
+            "trades": 99,
+            "wins": 35,
+            "losses": 64,
+            "winRate": 0.353535,
+            "netPnlUsdt": 475.76657114,
+            "expectancyUsdt": 4.80572294,
+            "netR": 9.59839372,
+            "profitFactor": 1.14594961,
+            "maxDrawdownUsdt": 1037.66826187,
+            "maxDrawdownPercent": 0.10376683,
+            "averageWinnerUsdt": 106.73047675,
+            "averageLoserUsdt": -50.9343768,
+            "totalFeesUsdt": 227.61690516,
+            "totalFundingUsdt": -2.56406103,
+            "totalSlippageUsdt": 113.80848537,
+            "grossPnlUsdt": 705.94753733,
+            "pricePnlBeforeExecutionCostsUsdt": 819.7560227,
+            "finalEquityUsdt": 10475.76657114
+          },
+          "rawTradeCount": 114,
+          "selectedTradeCount": 99,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 15,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 99,
+            "wins": 34,
+            "losses": 65,
+            "winRate": 0.343434,
+            "netPnlUsdt": 248.15024448,
+            "expectancyUsdt": 2.50656813,
+            "netR": 5.04110946,
+            "profitFactor": 1.07262889,
+            "maxDrawdownUsdt": 1142.20579652,
+            "maxDrawdownPercent": 0.11422058,
+            "averageWinnerUsdt": 107.78935031,
+            "averageLoserUsdt": -52.56442563,
+            "totalFeesUsdt": 341.42525937,
+            "totalFundingUsdt": -2.56354811,
+            "totalSlippageUsdt": 227.61697074,
+            "grossPnlUsdt": 592.13905196,
+            "pricePnlBeforeExecutionCostsUsdt": 819.7560227,
+            "finalEquityUsdt": 10248.15024448
+          },
+          "rawTradeCount": 114,
+          "selectedTradeCount": 99,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 15,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "rollingFolds": [
+        {
+          "id": "q1",
+          "start": "2025-08-09T02:15:00.000Z",
+          "end": "2025-11-08T08:14:59.999Z",
+          "base": {
+            "metrics": {
+              "trades": 158,
+              "wins": 45,
+              "losses": 113,
+              "winRate": 0.28481,
+              "netPnlUsdt": -1118.58428746,
+              "expectancyUsdt": -7.07964739,
+              "netR": -22.37431039,
+              "profitFactor": 0.81028043,
+              "maxDrawdownUsdt": 1452.77516768,
+              "maxDrawdownPercent": 0.14527752,
+              "averageWinnerUsdt": 106.16452212,
+              "averageLoserUsdt": -52.17688303,
+              "totalFeesUsdt": 358.72237765,
+              "totalFundingUsdt": 2.62076359,
+              "totalSlippageUsdt": 179.3611655,
+              "grossPnlUsdt": -762.4826734,
+              "pricePnlBeforeExecutionCostsUsdt": -583.1215079,
+              "finalEquityUsdt": 8881.41571254
+            },
+            "rawTradeCount": 181,
+            "selectedTradeCount": 158,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 16,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 1,
+              "emailCap": 6,
+              "capitalFloor": 0
+            }
+          },
+          "stress": {
+            "metrics": {
+              "trades": 158,
+              "wins": 44,
+              "losses": 114,
+              "winRate": 0.278481,
+              "netPnlUsdt": -1477.30723602,
+              "expectancyUsdt": -9.3500458,
+              "netR": -29.55903656,
+              "profitFactor": 0.76009606,
+              "maxDrawdownUsdt": 1558.74849891,
+              "maxDrawdownPercent": 0.15587485,
+              "averageWinnerUsdt": 106.37736774,
+              "averageLoserUsdt": -54.01676681,
+              "totalFeesUsdt": 538.08363645,
+              "totalFundingUsdt": 2.62023934,
+              "totalSlippageUsdt": 358.722331,
+              "grossPnlUsdt": -941.8438389,
+              "pricePnlBeforeExecutionCostsUsdt": -583.1215079,
+              "finalEquityUsdt": 8522.69276398
+            },
+            "rawTradeCount": 181,
+            "selectedTradeCount": 158,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 16,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 1,
+              "emailCap": 6,
+              "capitalFloor": 0
+            }
+          }
+        },
+        {
+          "id": "q2",
+          "start": "2025-11-08T08:15:00.000Z",
+          "end": "2026-02-07T14:14:59.999Z",
+          "base": {
+            "metrics": {
+              "trades": 181,
+              "wins": 72,
+              "losses": 109,
+              "winRate": 0.39779,
+              "netPnlUsdt": 2000.33341471,
+              "expectancyUsdt": 11.05156583,
+              "netR": 40.21314215,
+              "profitFactor": 1.35115331,
+              "maxDrawdownUsdt": 1657.77467976,
+              "maxDrawdownPercent": 0.16577747,
+              "averageWinnerUsdt": 106.90001267,
+              "averageLoserUsdt": -52.2611697,
+              "totalFeesUsdt": 377.41922251,
+              "totalFundingUsdt": 4.41097835,
+              "totalSlippageUsdt": 188.70971373,
+              "grossPnlUsdt": 2373.34165887,
+              "pricePnlBeforeExecutionCostsUsdt": 2562.0513726,
+              "finalEquityUsdt": 12000.33341471
+            },
+            "rawTradeCount": 221,
+            "selectedTradeCount": 181,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 35,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 5,
+              "capitalFloor": 0
+            }
+          },
+          "stress": {
+            "metrics": {
+              "trades": 181,
+              "wins": 72,
+              "losses": 109,
+              "winRate": 0.39779,
+              "netPnlUsdt": 1622.91351479,
+              "expectancyUsdt": 8.96637301,
+              "netR": 32.65377201,
+              "profitFactor": 1.27334072,
+              "maxDrawdownUsdt": 1799.99478578,
+              "maxDrawdownPercent": 0.17999948,
+              "averageWinnerUsdt": 105.00335331,
+              "averageLoserUsdt": -54.47089838,
+              "totalFeesUsdt": 566.12852631,
+              "totalFundingUsdt": 4.41009598,
+              "totalSlippageUsdt": 377.41942747,
+              "grossPnlUsdt": 2184.63194513,
+              "pricePnlBeforeExecutionCostsUsdt": 2562.0513726,
+              "finalEquityUsdt": 11622.91351479
+            },
+            "rawTradeCount": 221,
+            "selectedTradeCount": 181,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 35,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 5,
+              "capitalFloor": 0
+            }
+          }
+        },
+        {
+          "id": "q3",
+          "start": "2026-02-07T14:15:00.000Z",
+          "end": "2026-05-09T20:14:59.999Z",
+          "base": {
+            "metrics": {
+              "trades": 76,
+              "wins": 18,
+              "losses": 58,
+              "winRate": 0.236842,
+              "netPnlUsdt": -1012.03267297,
+              "expectancyUsdt": -13.31621938,
+              "netR": -20.24786313,
+              "profitFactor": 0.66545539,
+              "maxDrawdownUsdt": 1306.73562345,
+              "maxDrawdownPercent": 0.13067356,
+              "averageWinnerUsdt": 111.83736996,
+              "averageLoserUsdt": -52.15698849,
+              "totalFeesUsdt": 177.54522179,
+              "totalFundingUsdt": -17.7820632,
+              "totalSlippageUsdt": 88.77258178,
+              "grossPnlUsdt": -816.70538798,
+              "pricePnlBeforeExecutionCostsUsdt": -727.9328062,
+              "finalEquityUsdt": 8987.96732703
+            },
+            "rawTradeCount": 85,
+            "selectedTradeCount": 76,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 9,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          },
+          "stress": {
+            "metrics": {
+              "trades": 76,
+              "wins": 18,
+              "losses": 58,
+              "winRate": 0.236842,
+              "netPnlUsdt": -1189.57439587,
+              "expectancyUsdt": -15.65229468,
+              "netR": -23.80306562,
+              "profitFactor": 0.62365677,
+              "maxDrawdownUsdt": 1389.42630069,
+              "maxDrawdownPercent": 0.13894263,
+              "averageWinnerUsdt": 109.51677129,
+              "averageLoserUsdt": -54.49786688,
+              "totalFeesUsdt": 266.31792004,
+              "totalFundingUsdt": -17.77850608,
+              "totalSlippageUsdt": 177.54516356,
+              "grossPnlUsdt": -905.47796976,
+              "pricePnlBeforeExecutionCostsUsdt": -727.9328062,
+              "finalEquityUsdt": 8810.42560413
+            },
+            "rawTradeCount": 85,
+            "selectedTradeCount": 76,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 9,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          }
+        },
+        {
+          "id": "q4",
+          "start": "2026-05-09T20:15:00.000Z",
+          "end": "2026-08-09T02:14:59.999Z",
+          "base": {
+            "metrics": {
+              "trades": 99,
+              "wins": 35,
+              "losses": 64,
+              "winRate": 0.353535,
+              "netPnlUsdt": 475.76657114,
+              "expectancyUsdt": 4.80572294,
+              "netR": 9.59839372,
+              "profitFactor": 1.14594961,
+              "maxDrawdownUsdt": 1037.66826187,
+              "maxDrawdownPercent": 0.10376683,
+              "averageWinnerUsdt": 106.73047675,
+              "averageLoserUsdt": -50.9343768,
+              "totalFeesUsdt": 227.61690516,
+              "totalFundingUsdt": -2.56406103,
+              "totalSlippageUsdt": 113.80848537,
+              "grossPnlUsdt": 705.94753733,
+              "pricePnlBeforeExecutionCostsUsdt": 819.7560227,
+              "finalEquityUsdt": 10475.76657114
+            },
+            "rawTradeCount": 114,
+            "selectedTradeCount": 99,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 15,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          },
+          "stress": {
+            "metrics": {
+              "trades": 99,
+              "wins": 34,
+              "losses": 65,
+              "winRate": 0.343434,
+              "netPnlUsdt": 248.15024448,
+              "expectancyUsdt": 2.50656813,
+              "netR": 5.04110946,
+              "profitFactor": 1.07262889,
+              "maxDrawdownUsdt": 1142.20579652,
+              "maxDrawdownPercent": 0.11422058,
+              "averageWinnerUsdt": 107.78935031,
+              "averageLoserUsdt": -52.56442563,
+              "totalFeesUsdt": 341.42525937,
+              "totalFundingUsdt": -2.56354811,
+              "totalSlippageUsdt": 227.61697074,
+              "grossPnlUsdt": 592.13905196,
+              "pricePnlBeforeExecutionCostsUsdt": 819.7560227,
+              "finalEquityUsdt": 10248.15024448
+            },
+            "rawTradeCount": 114,
+            "selectedTradeCount": 99,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 15,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          }
+        }
+      ]
+    },
+    "optimized": {
+      "id": "score80-cooldown24-rr2-h48",
+      "description": "Authoritative optimized baseline: TREND_PULLBACK short-only, score >= 80, strict local and BTC 4h regime alignment, dynamic historical top-10, 24h cooldown, 2R target and 48h hold",
+      "params": {
+        "entryMode": "TREND_PULLBACK",
+        "emaFast": 20,
+        "emaSlow": 50,
+        "rsiPeriod": 14,
+        "atrPeriod": 14,
+        "stopAtrMultiplier": 0.75,
+        "breakoutPeriod": 20,
+        "breakoutVolumeRatio": 1.15,
+        "meanReversionRsiLow": 35,
+        "meanReversionRsiHigh": 65,
+        "bollingerPeriod": 20,
+        "bollingerDeviation": 2
+      },
+      "options": {
+        "initialCapitalUsdt": 10000,
+        "minimumSampleDays": 0,
+        "singleSignalRiskCapUsdt": 50,
+        "dailyRiskBudgetUsdt": 600,
+        "dailyLossLimitUsdt": 600,
+        "maxConcurrentPositions": 6,
+        "maxEmailsPerDay": 10,
+        "maxEmailsPerScan": 6,
+        "capitalFloorUsdt": 0,
+        "marginUsdt": 100,
+        "leverage": 20,
+        "riskPerTradeUsdt": 50,
+        "maxPositionNotionalUsdt": 10000,
+        "requireRegimeAlignment": true,
+        "sideFilter": "SHORT",
+        "strategyFamilies": [
+          "TREND"
+        ],
+        "maxExecutionCostRiskFraction": 0.1,
+        "dynamicUniverseSize": 10,
+        "dynamicUniverseLookbackDays": 1,
+        "globalReferenceSymbol": "BTCUSDT",
+        "globalReferenceTimeframe": "4h",
+        "globalRegimeAlignment": true,
+        "entryDelayBars": 1,
+        "minScore": 80,
+        "maxHoldHours": 48,
+        "rewardRisk": 2,
+        "cooldownHours": 24
+      },
+      "full": {
+        "base": {
+          "metrics": {
+            "trades": 216,
+            "wins": 87,
+            "losses": 129,
+            "winRate": 0.402778,
+            "netPnlUsdt": 1429.59878804,
+            "expectancyUsdt": 6.61851291,
+            "netR": 28.53609943,
+            "profitFactor": 1.21114746,
+            "maxDrawdownUsdt": 924.14231991,
+            "maxDrawdownPercent": 0.09241423,
+            "averageWinnerUsdt": 94.25536383,
+            "averageLoserUsdt": -52.48540981,
+            "totalFeesUsdt": 495.45520804,
+            "totalFundingUsdt": -10.63814596,
+            "totalSlippageUsdt": 247.72769136,
+            "grossPnlUsdt": 1935.69214204,
+            "pricePnlBeforeExecutionCostsUsdt": 2183.4198334,
+            "finalEquityUsdt": 11429.59878804
+          },
+          "rawTradeCount": 219,
+          "selectedTradeCount": 216,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 3,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 216,
+            "wins": 87,
+            "losses": 129,
+            "winRate": 0.402778,
+            "netPnlUsdt": 934.14588272,
+            "expectancyUsdt": 4.32474946,
+            "netR": 18.61487054,
+            "profitFactor": 1.1320718,
+            "maxDrawdownUsdt": 999.22471256,
+            "maxDrawdownPercent": 0.09992247,
+            "averageWinnerUsdt": 92.03633622,
+            "averageLoserUsdt": -54.8295765,
+            "totalFeesUsdt": 743.18255006,
+            "totalFundingUsdt": -10.6360179,
+            "totalSlippageUsdt": 495.45538272,
+            "grossPnlUsdt": 1687.96445068,
+            "pricePnlBeforeExecutionCostsUsdt": 2183.4198334,
+            "finalEquityUsdt": 10934.14588272
+          },
+          "rawTradeCount": 219,
+          "selectedTradeCount": 216,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 3,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 165,
+            "wins": 69,
+            "losses": 96,
+            "winRate": 0.418182,
+            "netPnlUsdt": 1411.17765101,
+            "expectancyUsdt": 8.55259182,
+            "netR": 28.24748742,
+            "profitFactor": 1.2767248,
+            "maxDrawdownUsdt": 924.14231991,
+            "maxDrawdownPercent": 0.09241423,
+            "averageWinnerUsdt": 94.35867094,
+            "averageLoserUsdt": -53.12052754,
+            "totalFeesUsdt": 370.59028799,
+            "totalFundingUsdt": -5.6399553,
+            "totalSlippageUsdt": 185.2952229,
+            "grossPnlUsdt": 1787.4078943,
+            "pricePnlBeforeExecutionCostsUsdt": 1972.7031172,
+            "finalEquityUsdt": 11411.17765101
+          },
+          "rawTradeCount": 168,
+          "selectedTradeCount": 165,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 3,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 165,
+            "wins": 69,
+            "losses": 96,
+            "winRate": 0.418182,
+            "netPnlUsdt": 1040.58864906,
+            "expectancyUsdt": 6.30659787,
+            "netR": 20.82719674,
+            "profitFactor": 1.19553465,
+            "maxDrawdownUsdt": 999.22471256,
+            "maxDrawdownPercent": 0.09992247,
+            "averageWinnerUsdt": 92.20796471,
+            "averageLoserUsdt": -55.43500954,
+            "totalFeesUsdt": 555.88519525,
+            "totalFundingUsdt": -5.63882708,
+            "totalSlippageUsdt": 370.5904458,
+            "grossPnlUsdt": 1602.1126714,
+            "pricePnlBeforeExecutionCostsUsdt": 1972.7031172,
+            "finalEquityUsdt": 11040.58864906
+          },
+          "rawTradeCount": 168,
+          "selectedTradeCount": 165,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 3,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 21,
+            "wins": 5,
+            "losses": 16,
+            "winRate": 0.238095,
+            "netPnlUsdt": -397.28265788,
+            "expectancyUsdt": -18.9182218,
+            "netR": -7.98876055,
+            "profitFactor": 0.52435027,
+            "maxDrawdownUsdt": 572.68688281,
+            "maxDrawdownPercent": 0.05726869,
+            "averageWinnerUsdt": 87.591878,
+            "averageLoserUsdt": -52.20262799,
+            "totalFeesUsdt": 53.6735659,
+            "totalFundingUsdt": -5.0014965,
+            "totalSlippageUsdt": 26.83677048,
+            "grossPnlUsdt": -338.60759548,
+            "pricePnlBeforeExecutionCostsUsdt": -311.770825,
+            "finalEquityUsdt": 9602.71734212
+          },
+          "rawTradeCount": 21,
+          "selectedTradeCount": 21,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 21,
+            "wins": 5,
+            "losses": 16,
+            "winRate": 0.238095,
+            "netPnlUsdt": -450.95524823,
+            "expectancyUsdt": -21.47405944,
+            "netR": -9.06371484,
+            "profitFactor": 0.48465049,
+            "maxDrawdownUsdt": 611.91848675,
+            "maxDrawdownPercent": 0.06119185,
+            "averageWinnerUsdt": 84.81843147,
+            "averageLoserUsdt": -54.69046285,
+            "totalFeesUsdt": 80.51038627,
+            "totalFundingUsdt": -5.000496,
+            "totalSlippageUsdt": 53.67354096,
+            "grossPnlUsdt": -365.44436596,
+            "pricePnlBeforeExecutionCostsUsdt": -311.770825,
+            "finalEquityUsdt": 9549.04475177
+          },
+          "rawTradeCount": 21,
+          "selectedTradeCount": 21,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "oos": {
+        "base": {
+          "metrics": {
+            "trades": 29,
+            "wins": 13,
+            "losses": 16,
+            "winRate": 0.448276,
+            "netPnlUsdt": 469.31166529,
+            "expectancyUsdt": 16.18316087,
+            "netR": 9.35404337,
+            "profitFactor": 1.59999141,
+            "maxDrawdownUsdt": 351.08433764,
+            "maxDrawdownPercent": 0.03510843,
+            "averageWinnerUsdt": 96.26992069,
+            "averageLoserUsdt": -48.88733148,
+            "totalFeesUsdt": 68.64637257,
+            "totalFundingUsdt": 0.00330584,
+            "totalSlippageUsdt": 34.32320918,
+            "grossPnlUsdt": 537.95473202,
+            "pricePnlBeforeExecutionCostsUsdt": 572.2779412,
+            "finalEquityUsdt": 10469.31166529
+          },
+          "rawTradeCount": 29,
+          "selectedTradeCount": 29,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 29,
+            "wins": 13,
+            "losses": 16,
+            "winRate": 0.448276,
+            "netPnlUsdt": 400.66533784,
+            "expectancyUsdt": 13.81604613,
+            "netR": 7.97917342,
+            "profitFactor": 1.48858398,
+            "maxDrawdownUsdt": 367.79493094,
+            "maxDrawdownPercent": 0.03677949,
+            "averageWinnerUsdt": 93.90150221,
+            "averageLoserUsdt": -51.25338693,
+            "totalFeesUsdt": 102.96949018,
+            "totalFundingUsdt": 0.00330518,
+            "totalSlippageUsdt": 68.64641835,
+            "grossPnlUsdt": 503.63152285,
+            "pricePnlBeforeExecutionCostsUsdt": 572.2779412,
+            "finalEquityUsdt": 10400.66533784
+          },
+          "rawTradeCount": 29,
+          "selectedTradeCount": 29,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "rollingFolds": [
+        {
+          "id": "q1",
+          "start": "2025-08-09T02:15:00.000Z",
+          "end": "2025-11-08T08:14:59.999Z",
+          "base": {
+            "metrics": {
+              "trades": 78,
+              "wins": 31,
+              "losses": 47,
+              "winRate": 0.397436,
+              "netPnlUsdt": 391.48561569,
+              "expectancyUsdt": 5.01904636,
+              "netR": 7.7524828,
+              "profitFactor": 1.15597441,
+              "maxDrawdownUsdt": 924.14231991,
+              "maxDrawdownPercent": 0.09241423,
+              "averageWinnerUsdt": 93.59421095,
+              "averageLoserUsdt": -53.40287072,
+              "totalFeesUsdt": 178.76393,
+              "totalFundingUsdt": -6.79641884,
+              "totalSlippageUsdt": 89.38199166,
+              "grossPnlUsdt": 577.04596454,
+              "pricePnlBeforeExecutionCostsUsdt": 666.4279562,
+              "finalEquityUsdt": 10391.48561569
+            },
+            "rawTradeCount": 80,
+            "selectedTradeCount": 78,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 2,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          },
+          "stress": {
+            "metrics": {
+              "trades": 78,
+              "wins": 31,
+              "losses": 47,
+              "winRate": 0.397436,
+              "netPnlUsdt": 212.72309856,
+              "expectancyUsdt": 2.72721921,
+              "netR": 4.17241784,
+              "profitFactor": 1.08121629,
+              "maxDrawdownUsdt": 975.60090302,
+              "maxDrawdownPercent": 0.09756009,
+              "averageWinnerUsdt": 91.35291593,
+              "averageLoserUsdt": -55.72802756,
+              "totalFeesUsdt": 268.14581503,
+              "totalFundingUsdt": -6.79505929,
+              "totalSlippageUsdt": 178.76398332,
+              "grossPnlUsdt": 487.66397288,
+              "pricePnlBeforeExecutionCostsUsdt": 666.4279562,
+              "finalEquityUsdt": 10212.72309856
+            },
+            "rawTradeCount": 80,
+            "selectedTradeCount": 78,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 2,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          }
+        },
+        {
+          "id": "q2",
+          "start": "2025-11-08T08:15:00.000Z",
+          "end": "2026-02-07T14:14:59.999Z",
+          "base": {
+            "metrics": {
+              "trades": 87,
+              "wins": 38,
+              "losses": 49,
+              "winRate": 0.436782,
+              "netPnlUsdt": 1019.69203532,
+              "expectancyUsdt": 11.72059811,
+              "netR": 20.49500462,
+              "profitFactor": 1.39375887,
+              "maxDrawdownUsdt": 878.18306466,
+              "maxDrawdownPercent": 0.08781831,
+              "averageWinnerUsdt": 94.98230935,
+              "averageLoserUsdt": -52.84970857,
+              "totalFeesUsdt": 191.82635798,
+              "totalFundingUsdt": 1.15646354,
+              "totalSlippageUsdt": 95.91323124,
+              "grossPnlUsdt": 1210.36192976,
+              "pricePnlBeforeExecutionCostsUsdt": 1306.275161,
+              "finalEquityUsdt": 11019.69203532
+            },
+            "rawTradeCount": 88,
+            "selectedTradeCount": 87,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 1,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          },
+          "stress": {
+            "metrics": {
+              "trades": 87,
+              "wins": 38,
+              "losses": 49,
+              "winRate": 0.436782,
+              "netPnlUsdt": 827.8655505,
+              "expectancyUsdt": 9.51569598,
+              "netR": 16.65477891,
+              "profitFactor": 1.30632828,
+              "maxDrawdownUsdt": 999.22471256,
+              "maxDrawdownPercent": 0.09992247,
+              "averageWinnerUsdt": 92.90550451,
+              "averageLoserUsdt": -55.15395144,
+              "totalFeesUsdt": 287.73938022,
+              "totalFundingUsdt": 1.1562322,
+              "totalSlippageUsdt": 191.82646248,
+              "grossPnlUsdt": 1114.44869852,
+              "pricePnlBeforeExecutionCostsUsdt": 1306.275161,
+              "finalEquityUsdt": 10827.8655505
+            },
+            "rawTradeCount": 88,
+            "selectedTradeCount": 87,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 1,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          }
+        },
+        {
+          "id": "q3",
+          "start": "2026-02-07T14:15:00.000Z",
+          "end": "2026-05-09T20:14:59.999Z",
+          "base": {
+            "metrics": {
+              "trades": 22,
+              "wins": 5,
+              "losses": 17,
+              "winRate": 0.227273,
+              "netPnlUsdt": -450.89052827,
+              "expectancyUsdt": -20.49502401,
+              "netR": -9.06543136,
+              "profitFactor": 0.49272592,
+              "maxDrawdownUsdt": 572.68688281,
+              "maxDrawdownPercent": 0.05726869,
+              "averageWinnerUsdt": 87.591878,
+              "averageLoserUsdt": -52.28528931,
+              "totalFeesUsdt": 56.21854749,
+              "totalFundingUsdt": -5.0014965,
+              "totalSlippageUsdt": 28.10925928,
+              "grossPnlUsdt": -389.67048428,
+              "pricePnlBeforeExecutionCostsUsdt": -361.561225,
+              "finalEquityUsdt": 9549.10947173
+            },
+            "rawTradeCount": 22,
+            "selectedTradeCount": 22,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 0,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          },
+          "stress": {
+            "metrics": {
+              "trades": 22,
+              "wins": 5,
+              "losses": 17,
+              "winRate": 0.227273,
+              "netPnlUsdt": -507.10810418,
+              "expectancyUsdt": -23.05036837,
+              "netR": -10.19149963,
+              "profitFactor": 0.4554253,
+              "maxDrawdownUsdt": 611.91848675,
+              "maxDrawdownPercent": 0.06119185,
+              "averageWinnerUsdt": 84.81843147,
+              "averageLoserUsdt": -54.77648597,
+              "totalFeesUsdt": 84.32786462,
+              "totalFundingUsdt": -5.000496,
+              "totalSlippageUsdt": 56.21851856,
+              "grossPnlUsdt": -417.77974356,
+              "pricePnlBeforeExecutionCostsUsdt": -361.561225,
+              "finalEquityUsdt": 9492.89189582
+            },
+            "rawTradeCount": 22,
+            "selectedTradeCount": 22,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 0,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          }
+        },
+        {
+          "id": "q4",
+          "start": "2026-05-09T20:15:00.000Z",
+          "end": "2026-08-09T02:14:59.999Z",
+          "base": {
+            "metrics": {
+              "trades": 29,
+              "wins": 13,
+              "losses": 16,
+              "winRate": 0.448276,
+              "netPnlUsdt": 469.31166529,
+              "expectancyUsdt": 16.18316087,
+              "netR": 9.35404337,
+              "profitFactor": 1.59999141,
+              "maxDrawdownUsdt": 351.08433764,
+              "maxDrawdownPercent": 0.03510843,
+              "averageWinnerUsdt": 96.26992069,
+              "averageLoserUsdt": -48.88733148,
+              "totalFeesUsdt": 68.64637257,
+              "totalFundingUsdt": 0.00330584,
+              "totalSlippageUsdt": 34.32320918,
+              "grossPnlUsdt": 537.95473202,
+              "pricePnlBeforeExecutionCostsUsdt": 572.2779412,
+              "finalEquityUsdt": 10469.31166529
+            },
+            "rawTradeCount": 29,
+            "selectedTradeCount": 29,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 0,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          },
+          "stress": {
+            "metrics": {
+              "trades": 29,
+              "wins": 13,
+              "losses": 16,
+              "winRate": 0.448276,
+              "netPnlUsdt": 400.66533784,
+              "expectancyUsdt": 13.81604613,
+              "netR": 7.97917342,
+              "profitFactor": 1.48858398,
+              "maxDrawdownUsdt": 367.79493094,
+              "maxDrawdownPercent": 0.03677949,
+              "averageWinnerUsdt": 93.90150221,
+              "averageLoserUsdt": -51.25338693,
+              "totalFeesUsdt": 102.96949018,
+              "totalFundingUsdt": 0.00330518,
+              "totalSlippageUsdt": 68.64641835,
+              "grossPnlUsdt": 503.63152285,
+              "pricePnlBeforeExecutionCostsUsdt": 572.2779412,
+              "finalEquityUsdt": 10400.66533784
+            },
+            "rawTradeCount": 29,
+            "selectedTradeCount": 29,
+            "rejectionCounts": {
+              "maxConcurrentPositions": 0,
+              "singleSignalRisk": 0,
+              "dailyRiskBudget": 0,
+              "dailyLossLimit": 0,
+              "emailCap": 0,
+              "capitalFloor": 0
+            }
+          }
+        }
+      ]
+    }
+  },
+  "hypotheses": [
+    {
+      "hypothesisId": "H0",
+      "variantId": "score80-cooldown24-rr2-h48",
+      "description": "Authoritative optimized baseline: TREND_PULLBACK short-only, score >= 80, strict local and BTC 4h regime alignment, dynamic historical top-10, 24h cooldown, 2R target and 48h hold",
+      "status": "VALID",
+      "filters": {
+        "sameSymbolCooldownHours": 24
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 165,
+            "wins": 69,
+            "losses": 96,
+            "winRate": 0.418182,
+            "netPnlUsdt": 1411.17765101,
+            "expectancyUsdt": 8.55259182,
+            "netR": 28.24748742,
+            "profitFactor": 1.2767248,
+            "maxDrawdownUsdt": 924.14231991,
+            "maxDrawdownPercent": 0.09241423,
+            "averageWinnerUsdt": 94.35867094,
+            "averageLoserUsdt": -53.12052754,
+            "totalFeesUsdt": 370.59028799,
+            "totalFundingUsdt": -5.6399553,
+            "totalSlippageUsdt": 185.2952229,
+            "grossPnlUsdt": 1787.4078943,
+            "pricePnlBeforeExecutionCostsUsdt": 1972.7031172,
+            "finalEquityUsdt": 11411.17765101
+          },
+          "rawTradeCount": 168,
+          "selectedTradeCount": 165,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 3,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 165,
+            "wins": 69,
+            "losses": 96,
+            "winRate": 0.418182,
+            "netPnlUsdt": 1040.58864906,
+            "expectancyUsdt": 6.30659787,
+            "netR": 20.82719674,
+            "profitFactor": 1.19553465,
+            "maxDrawdownUsdt": 999.22471256,
+            "maxDrawdownPercent": 0.09992247,
+            "averageWinnerUsdt": 92.20796471,
+            "averageLoserUsdt": -55.43500954,
+            "totalFeesUsdt": 555.88519525,
+            "totalFundingUsdt": -5.63882708,
+            "totalSlippageUsdt": 370.5904458,
+            "grossPnlUsdt": 1602.1126714,
+            "pricePnlBeforeExecutionCostsUsdt": 1972.7031172,
+            "finalEquityUsdt": 11040.58864906
+          },
+          "rawTradeCount": 168,
+          "selectedTradeCount": 165,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 3,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 21,
+            "wins": 5,
+            "losses": 16,
+            "winRate": 0.238095,
+            "netPnlUsdt": -397.28265788,
+            "expectancyUsdt": -18.9182218,
+            "netR": -7.98876055,
+            "profitFactor": 0.52435027,
+            "maxDrawdownUsdt": 572.68688281,
+            "maxDrawdownPercent": 0.05726869,
+            "averageWinnerUsdt": 87.591878,
+            "averageLoserUsdt": -52.20262799,
+            "totalFeesUsdt": 53.6735659,
+            "totalFundingUsdt": -5.0014965,
+            "totalSlippageUsdt": 26.83677048,
+            "grossPnlUsdt": -338.60759548,
+            "pricePnlBeforeExecutionCostsUsdt": -311.770825,
+            "finalEquityUsdt": 9602.71734212
+          },
+          "rawTradeCount": 21,
+          "selectedTradeCount": 21,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 21,
+            "wins": 5,
+            "losses": 16,
+            "winRate": 0.238095,
+            "netPnlUsdt": -450.95524823,
+            "expectancyUsdt": -21.47405944,
+            "netR": -9.06371484,
+            "profitFactor": 0.48465049,
+            "maxDrawdownUsdt": 611.91848675,
+            "maxDrawdownPercent": 0.06119185,
+            "averageWinnerUsdt": 84.81843147,
+            "averageLoserUsdt": -54.69046285,
+            "totalFeesUsdt": 80.51038627,
+            "totalFundingUsdt": -5.000496,
+            "totalSlippageUsdt": 53.67354096,
+            "grossPnlUsdt": -365.44436596,
+            "pricePnlBeforeExecutionCostsUsdt": -311.770825,
+            "finalEquityUsdt": 9549.04475177
+          },
+          "rawTradeCount": 21,
+          "selectedTradeCount": 21,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "selection": {
+        "base": {
+          "trades": 186,
+          "wins": 74,
+          "losses": 112,
+          "winRate": 0.397849,
+          "netPnlUsdt": 1013.89499313,
+          "expectancyUsdt": 5.45104835,
+          "netR": 20.25872687,
+          "profitFactor": 1.17083858,
+          "maxDrawdownUsdt": 924.14231991,
+          "maxDrawdownPercent": 0.09241423,
+          "averageWinnerUsdt": 93.9014552,
+          "averageLoserUsdt": -52.98939903,
+          "totalFeesUsdt": 424.26385389,
+          "totalFundingUsdt": -10.6414518,
+          "totalSlippageUsdt": 212.13199338,
+          "grossPnlUsdt": 1448.80029882,
+          "pricePnlBeforeExecutionCostsUsdt": 1660.9322922,
+          "finalEquityUsdt": 11013.89499313
+        },
+        "stress": {
+          "trades": 186,
+          "wins": 74,
+          "losses": 112,
+          "winRate": 0.397849,
+          "netPnlUsdt": 589.63340083,
+          "expectancyUsdt": 3.17007205,
+          "netR": 11.7634819,
+          "profitFactor": 1.09515114,
+          "maxDrawdownUsdt": 999.22471256,
+          "maxDrawdownPercent": 0.09992247,
+          "averageWinnerUsdt": 91.70867193,
+          "averageLoserUsdt": -55.32864573,
+          "totalFeesUsdt": 636.39558152,
+          "totalFundingUsdt": -10.63932308,
+          "totalSlippageUsdt": 424.26398676,
+          "grossPnlUsdt": 1236.66830544,
+          "pricePnlBeforeExecutionCostsUsdt": 1660.9322922,
+          "finalEquityUsdt": 10589.63340083
+        },
+        "positiveFoldsBase": 1,
+        "positiveFoldsStress": 1,
+        "top1SymbolConcentration": 0.52714702,
+        "top3SymbolConcentration": 1.0660976,
+        "distinctSymbols": 13,
+        "passesHistoricalGate": false
+      },
+      "oos": "NOT_RUN_BEFORE_SELECTION"
+    },
+    {
+      "hypothesisId": "H1",
+      "variantId": "h1-source-cooldown-12h",
+      "description": "H1 same-symbol episode cooldown measured from the closed decision timestamp: 12h",
+      "status": "VALID",
+      "filters": {
+        "sameSymbolCooldownHours": 12
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 196,
+            "wins": 76,
+            "losses": 120,
+            "winRate": 0.387755,
+            "netPnlUsdt": 777.05994424,
+            "expectancyUsdt": 3.96459155,
+            "netR": 15.58053192,
+            "profitFactor": 1.12195602,
+            "maxDrawdownUsdt": 1397.26008357,
+            "maxDrawdownPercent": 0.13972601,
+            "averageWinnerUsdt": 94.06184807,
+            "averageLoserUsdt": -53.09700424,
+            "totalFeesUsdt": 434.69724911,
+            "totalFundingUsdt": -4.77959114,
+            "totalSlippageUsdt": 217.34868191,
+            "grossPnlUsdt": 1216.53678449,
+            "pricePnlBeforeExecutionCostsUsdt": 1433.8854664,
+            "finalEquityUsdt": 10777.05994424
+          },
+          "rawTradeCount": 209,
+          "selectedTradeCount": 196,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 7,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 6,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 196,
+            "wins": 76,
+            "losses": 120,
+            "winRate": 0.387755,
+            "netPnlUsdt": 342.36376595,
+            "expectancyUsdt": 1.74675391,
+            "netR": 6.87740153,
+            "profitFactor": 1.05154264,
+            "maxDrawdownUsdt": 1545.8349293,
+            "maxDrawdownPercent": 0.15458349,
+            "averageWinnerUsdt": 91.9040089,
+            "averageLoserUsdt": -55.35284092,
+            "totalFeesUsdt": 652.0457016,
+            "totalFundingUsdt": -4.77863503,
+            "totalSlippageUsdt": 434.69736382,
+            "grossPnlUsdt": 999.18810258,
+            "pricePnlBeforeExecutionCostsUsdt": 1433.8854664,
+            "finalEquityUsdt": 10342.36376595
+          },
+          "rawTradeCount": 209,
+          "selectedTradeCount": 196,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 7,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 6,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 23,
+            "wins": 5,
+            "losses": 18,
+            "winRate": 0.217391,
+            "netPnlUsdt": -508.82524461,
+            "expectancyUsdt": -22.12283672,
+            "netR": -10.21981837,
+            "profitFactor": 0.46257552,
+            "maxDrawdownUsdt": 644.95108074,
+            "maxDrawdownPercent": 0.06449511,
+            "averageWinnerUsdt": 87.591878,
+            "averageLoserUsdt": -52.59914637,
+            "totalFeesUsdt": 60.58138674,
+            "totalFundingUsdt": -6.19145596,
+            "totalSlippageUsdt": 30.2906769,
+            "grossPnlUsdt": -442.0524019,
+            "pricePnlBeforeExecutionCostsUsdt": -411.761725,
+            "finalEquityUsdt": 9491.17475539
+          },
+          "rawTradeCount": 23,
+          "selectedTradeCount": 23,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 23,
+            "wins": 5,
+            "losses": 18,
+            "winRate": 0.217391,
+            "netPnlUsdt": -569.40542575,
+            "expectancyUsdt": -24.75675764,
+            "netR": -11.43293808,
+            "profitFactor": 0.42686783,
+            "maxDrawdownUsdt": 696.88157351,
+            "maxDrawdownPercent": 0.06968816,
+            "averageWinnerUsdt": 84.81843147,
+            "averageLoserUsdt": -55.19431017,
+            "totalFeesUsdt": 90.87212953,
+            "totalFundingUsdt": -6.19021742,
+            "totalSlippageUsdt": 60.5813538,
+            "grossPnlUsdt": -472.3430788,
+            "pricePnlBeforeExecutionCostsUsdt": -411.761725,
+            "finalEquityUsdt": 9430.59457425
+          },
+          "rawTradeCount": 23,
+          "selectedTradeCount": 23,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "selection": {
+        "base": {
+          "trades": 219,
+          "wins": 81,
+          "losses": 138,
+          "winRate": 0.369863,
+          "netPnlUsdt": 268.23469963,
+          "expectancyUsdt": 1.22481598,
+          "netR": 5.36071355,
+          "profitFactor": 1.03665197,
+          "maxDrawdownUsdt": 1397.26008357,
+          "maxDrawdownPercent": 0.13972601,
+          "averageWinnerUsdt": 93.6624672,
+          "averageLoserUsdt": -53.03206626,
+          "totalFeesUsdt": 495.27863585,
+          "totalFundingUsdt": -10.9710471,
+          "totalSlippageUsdt": 247.63935881,
+          "grossPnlUsdt": 774.48438259,
+          "pricePnlBeforeExecutionCostsUsdt": 1022.1237414,
+          "finalEquityUsdt": 10268.23469963
+        },
+        "stress": {
+          "trades": 219,
+          "wins": 81,
+          "losses": 138,
+          "winRate": 0.369863,
+          "netPnlUsdt": -227.04165981,
+          "expectancyUsdt": -1.03671991,
+          "netR": -4.55553655,
+          "profitFactor": 0.97026631,
+          "maxDrawdownUsdt": 1545.8349293,
+          "maxDrawdownPercent": 0.15458349,
+          "averageWinnerUsdt": 91.46662758,
+          "averageLoserUsdt": -55.332163,
+          "totalFeesUsdt": 742.91783113,
+          "totalFundingUsdt": -10.96885246,
+          "totalSlippageUsdt": 495.27871762,
+          "grossPnlUsdt": 526.84502378,
+          "pricePnlBeforeExecutionCostsUsdt": 1022.1237414,
+          "finalEquityUsdt": 9772.95834019
+        },
+        "positiveFoldsBase": 1,
+        "positiveFoldsStress": 1,
+        "top1SymbolConcentration": 1.15780224,
+        "top3SymbolConcentration": 3.16044765,
+        "distinctSymbols": 13,
+        "passesHistoricalGate": false
+      },
+      "oos": "NOT_RUN_BEFORE_SELECTION"
+    },
+    {
+      "hypothesisId": "H1",
+      "variantId": "h1-source-cooldown-24h",
+      "description": "H1 same-symbol episode cooldown measured from the closed decision timestamp: 24h",
+      "status": "VALID",
+      "filters": {
+        "sameSymbolCooldownHours": 24
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 175,
+            "wins": 70,
+            "losses": 105,
+            "winRate": 0.4,
+            "netPnlUsdt": 1030.21918351,
+            "expectancyUsdt": 5.88696676,
+            "netR": 20.61284755,
+            "profitFactor": 1.18470671,
+            "maxDrawdownUsdt": 1185.29138336,
+            "maxDrawdownPercent": 0.11852914,
+            "averageWinnerUsdt": 94.39734412,
+            "averageLoserUsdt": -53.11995147,
+            "totalFeesUsdt": 391.38695857,
+            "totalFundingUsdt": -6.39199879,
+            "totalSlippageUsdt": 195.69354423,
+            "grossPnlUsdt": 1427.99814087,
+            "pricePnlBeforeExecutionCostsUsdt": 1623.6916851,
+            "finalEquityUsdt": 11030.21918351
+          },
+          "rawTradeCount": 179,
+          "selectedTradeCount": 175,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 4,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 175,
+            "wins": 70,
+            "losses": 105,
+            "winRate": 0.4,
+            "netPnlUsdt": 638.8336335,
+            "expectancyUsdt": 3.65047791,
+            "netR": 12.7766979,
+            "profitFactor": 1.10979041,
+            "maxDrawdownUsdt": 1317.75703404,
+            "maxDrawdownPercent": 0.1317757,
+            "averageWinnerUsdt": 92.24998139,
+            "averageLoserUsdt": -55.41585775,
+            "totalFeesUsdt": 587.08024301,
+            "totalFundingUsdt": -6.39072014,
+            "totalSlippageUsdt": 391.38708846,
+            "grossPnlUsdt": 1232.30459664,
+            "pricePnlBeforeExecutionCostsUsdt": 1623.6916851,
+            "finalEquityUsdt": 10638.8336335
+          },
+          "rawTradeCount": 179,
+          "selectedTradeCount": 175,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 4,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 21,
+            "wins": 5,
+            "losses": 16,
+            "winRate": 0.238095,
+            "netPnlUsdt": -397.47707881,
+            "expectancyUsdt": -18.92747994,
+            "netR": -7.99259161,
+            "profitFactor": 0.52422824,
+            "maxDrawdownUsdt": 572.88130373,
+            "maxDrawdownPercent": 0.05728813,
+            "averageWinnerUsdt": 87.591878,
+            "averageLoserUsdt": -52.2147793,
+            "totalFeesUsdt": 54.19657346,
+            "totalFundingUsdt": -4.40870608,
+            "totalSlippageUsdt": 27.09827426,
+            "grossPnlUsdt": -338.87179926,
+            "pricePnlBeforeExecutionCostsUsdt": -311.773525,
+            "finalEquityUsdt": 9602.52292119
+          },
+          "rawTradeCount": 21,
+          "selectedTradeCount": 21,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 21,
+            "wins": 5,
+            "losses": 16,
+            "winRate": 0.238095,
+            "netPnlUsdt": -451.6727953,
+            "expectancyUsdt": -21.50822835,
+            "netR": -9.07800702,
+            "profitFactor": 0.4842534,
+            "maxDrawdownUsdt": 612.63603382,
+            "maxDrawdownPercent": 0.0612636,
+            "averageWinnerUsdt": 84.81843147,
+            "averageLoserUsdt": -54.73530954,
+            "totalFeesUsdt": 81.29489761,
+            "totalFundingUsdt": -4.40782416,
+            "totalSlippageUsdt": 54.19654852,
+            "grossPnlUsdt": -365.97007352,
+            "pricePnlBeforeExecutionCostsUsdt": -311.773525,
+            "finalEquityUsdt": 9548.3272047
+          },
+          "rawTradeCount": 21,
+          "selectedTradeCount": 21,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "selection": {
+        "base": {
+          "trades": 196,
+          "wins": 75,
+          "losses": 121,
+          "winRate": 0.382653,
+          "netPnlUsdt": 632.7421047,
+          "expectancyUsdt": 3.22827604,
+          "netR": 12.62025594,
+          "profitFactor": 1.09866506,
+          "maxDrawdownUsdt": 1185.29138336,
+          "maxDrawdownPercent": 0.11852914,
+          "averageWinnerUsdt": 93.94364638,
+          "averageLoserUsdt": -53.00025929,
+          "totalFeesUsdt": 445.58353203,
+          "totalFundingUsdt": -10.80070488,
+          "totalSlippageUsdt": 222.79181849,
+          "grossPnlUsdt": 1089.12634161,
+          "pricePnlBeforeExecutionCostsUsdt": 1311.9181601,
+          "finalEquityUsdt": 10632.7421047
+        },
+        "stress": {
+          "trades": 196,
+          "wins": 75,
+          "losses": 121,
+          "winRate": 0.382653,
+          "netPnlUsdt": 187.1608382,
+          "expectancyUsdt": 0.95490224,
+          "netR": 3.69869089,
+          "profitFactor": 1.0279577,
+          "maxDrawdownUsdt": 1317.75703404,
+          "maxDrawdownPercent": 0.1317757,
+          "averageWinnerUsdt": 91.75454473,
+          "averageLoserUsdt": -55.32586791,
+          "totalFeesUsdt": 668.37514061,
+          "totalFundingUsdt": -10.7985443,
+          "totalSlippageUsdt": 445.58363698,
+          "grossPnlUsdt": 866.33452312,
+          "pricePnlBeforeExecutionCostsUsdt": 1311.9181601,
+          "finalEquityUsdt": 10187.1608382
+        },
+        "positiveFoldsBase": 1,
+        "positiveFoldsStress": 1,
+        "top1SymbolConcentration": 0.69399073,
+        "top3SymbolConcentration": 1.53037045,
+        "distinctSymbols": 13,
+        "passesHistoricalGate": false
+      },
+      "oos": "NOT_RUN_BEFORE_SELECTION"
+    },
+    {
+      "hypothesisId": "H1",
+      "variantId": "h1-source-cooldown-48h",
+      "description": "H1 same-symbol episode cooldown measured from the closed decision timestamp: 48h",
+      "status": "VALID",
+      "filters": {
+        "sameSymbolCooldownHours": 48
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 147,
+            "wins": 60,
+            "losses": 87,
+            "winRate": 0.408163,
+            "netPnlUsdt": 976.05155786,
+            "expectancyUsdt": 6.63980652,
+            "netR": 19.48545784,
+            "profitFactor": 1.2110285,
+            "maxDrawdownUsdt": 830.23550741,
+            "maxDrawdownPercent": 0.08302355,
+            "averageWinnerUsdt": 93.35439192,
+            "averageLoserUsdt": -53.16335583,
+            "totalFeesUsdt": 337.65391406,
+            "totalFundingUsdt": -5.43640774,
+            "totalSlippageUsdt": 168.82701655,
+            "grossPnlUsdt": 1319.14187965,
+            "pricePnlBeforeExecutionCostsUsdt": 1487.9688962,
+            "finalEquityUsdt": 10976.05155786
+          },
+          "rawTradeCount": 149,
+          "selectedTradeCount": 147,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 2,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 147,
+            "wins": 60,
+            "losses": 87,
+            "winRate": 0.408163,
+            "netPnlUsdt": 638.39885034,
+            "expectancyUsdt": 4.34284932,
+            "netR": 12.72523139,
+            "profitFactor": 1.13214738,
+            "maxDrawdownUsdt": 935.28889366,
+            "maxDrawdownPercent": 0.09352889,
+            "averageWinnerUsdt": 91.15599771,
+            "averageLoserUsdt": -55.5282875,
+            "totalFeesUsdt": 506.48069253,
+            "totalFundingUsdt": -5.43532024,
+            "totalSlippageUsdt": 337.65403309,
+            "grossPnlUsdt": 1150.31486311,
+            "pricePnlBeforeExecutionCostsUsdt": 1487.9688962,
+            "finalEquityUsdt": 10638.39885034
+          },
+          "rawTradeCount": 149,
+          "selectedTradeCount": 147,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 2,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 20,
+            "wins": 5,
+            "losses": 15,
+            "winRate": 0.25,
+            "netPnlUsdt": -343.99159533,
+            "expectancyUsdt": -17.19957977,
+            "netR": -6.92282631,
+            "profitFactor": 0.56008548,
+            "maxDrawdownUsdt": 519.39582025,
+            "maxDrawdownPercent": 0.05193958,
+            "averageWinnerUsdt": 87.591878,
+            "averageLoserUsdt": -52.13006569,
+            "totalFeesUsdt": 51.87118314,
+            "totalFundingUsdt": -4.40870608,
+            "totalSlippageUsdt": 25.9355811,
+            "grossPnlUsdt": -287.7117061,
+            "pricePnlBeforeExecutionCostsUsdt": -261.776125,
+            "finalEquityUsdt": 9656.00840467
+          },
+          "rawTradeCount": 20,
+          "selectedTradeCount": 20,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 20,
+            "wins": 5,
+            "losses": 15,
+            "winRate": 0.25,
+            "netPnlUsdt": -395.8619175,
+            "expectancyUsdt": -19.79309587,
+            "netR": -7.96173141,
+            "profitFactor": 0.51721453,
+            "maxDrawdownUsdt": 556.82515602,
+            "maxDrawdownPercent": 0.05568252,
+            "averageWinnerUsdt": 84.81843147,
+            "averageLoserUsdt": -54.66360499,
+            "totalFeesUsdt": 77.80680613,
+            "totalFundingUsdt": -4.40782416,
+            "totalSlippageUsdt": 51.8711622,
+            "grossPnlUsdt": -313.6472872,
+            "pricePnlBeforeExecutionCostsUsdt": -261.776125,
+            "finalEquityUsdt": 9604.1380825
+          },
+          "rawTradeCount": 20,
+          "selectedTradeCount": 20,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "selection": {
+        "base": {
+          "trades": 167,
+          "wins": 65,
+          "losses": 102,
+          "winRate": 0.389222,
+          "netPnlUsdt": 632.05996254,
+          "expectancyUsdt": 3.78479019,
+          "netR": 12.56263153,
+          "profitFactor": 1.11689309,
+          "maxDrawdownUsdt": 830.23550741,
+          "maxDrawdownPercent": 0.08302355,
+          "averageWinnerUsdt": 92.91112162,
+          "averageLoserUsdt": -53.0114014,
+          "totalFeesUsdt": 389.5250972,
+          "totalFundingUsdt": -9.84511382,
+          "totalSlippageUsdt": 194.76259765,
+          "grossPnlUsdt": 1031.43017355,
+          "pricePnlBeforeExecutionCostsUsdt": 1226.1927712,
+          "finalEquityUsdt": 10632.05996254
+        },
+        "stress": {
+          "trades": 167,
+          "wins": 65,
+          "losses": 102,
+          "winRate": 0.389222,
+          "netPnlUsdt": 242.53693285,
+          "expectancyUsdt": 1.45231696,
+          "netR": 4.76349997,
+          "profitFactor": 1.04291994,
+          "maxDrawdownUsdt": 935.28889366,
+          "maxDrawdownPercent": 0.09352889,
+          "averageWinnerUsdt": 90.66849262,
+          "averageLoserUsdt": -55.40112831,
+          "totalFeesUsdt": 584.28749866,
+          "totalFundingUsdt": -9.8431444,
+          "totalSlippageUsdt": 389.52519529,
+          "grossPnlUsdt": 836.66757591,
+          "pricePnlBeforeExecutionCostsUsdt": 1226.1927712,
+          "finalEquityUsdt": 10242.53693285
+        },
+        "positiveFoldsBase": 1,
+        "positiveFoldsStress": 1,
+        "top1SymbolConcentration": 0.46866745,
+        "top3SymbolConcentration": 1.12117347,
+        "distinctSymbols": 13,
+        "passesHistoricalGate": false
+      },
+      "oos": "NOT_RUN_BEFORE_SELECTION"
+    },
+    {
+      "hypothesisId": "H2",
+      "variantId": "h2-post-stop-lockout-24h",
+      "description": "H2 same-symbol same-direction lockout after a known STOP_LOSS: 24h, with the baseline 24h cooldown",
+      "status": "VALID",
+      "filters": {
+        "sameSymbolCooldownHours": 24,
+        "postStopLossLockoutHours": 24
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 168,
+            "wins": 65,
+            "losses": 103,
+            "winRate": 0.386905,
+            "netPnlUsdt": 654.32525045,
+            "expectancyUsdt": 3.89479316,
+            "netR": 13.09136878,
+            "profitFactor": 1.11963722,
+            "maxDrawdownUsdt": 1173.89345934,
+            "maxDrawdownPercent": 0.11738935,
+            "averageWinnerUsdt": 94.20877199,
+            "averageLoserUsdt": -53.09946533,
+            "totalFeesUsdt": 375.90400787,
+            "totalFundingUsdt": -5.97424909,
+            "totalSlippageUsdt": 187.9520529,
+            "grossPnlUsdt": 1036.2035074,
+            "pricePnlBeforeExecutionCostsUsdt": 1224.1555603,
+            "finalEquityUsdt": 10654.32525045
+          },
+          "rawTradeCount": 172,
+          "selectedTradeCount": 168,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 4,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 168,
+            "wins": 65,
+            "losses": 103,
+            "winRate": 0.386905,
+            "netPnlUsdt": 278.42253561,
+            "expectancyUsdt": 1.657277,
+            "netR": 5.56485128,
+            "profitFactor": 1.04880653,
+            "maxDrawdownUsdt": 1298.80381992,
+            "maxDrawdownPercent": 0.12988038,
+            "averageWinnerUsdt": 92.04675662,
+            "averageLoserUsdt": -55.38462762,
+            "totalFeesUsdt": 563.8558649,
+            "totalFundingUsdt": -5.973054,
+            "totalSlippageUsdt": 375.9041058,
+            "grossPnlUsdt": 848.2514545,
+            "pricePnlBeforeExecutionCostsUsdt": 1224.1555603,
+            "finalEquityUsdt": 10278.42253561
+          },
+          "rawTradeCount": 172,
+          "selectedTradeCount": 168,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 4,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 21,
+            "wins": 5,
+            "losses": 16,
+            "winRate": 0.238095,
+            "netPnlUsdt": -397.47707881,
+            "expectancyUsdt": -18.92747994,
+            "netR": -7.99259161,
+            "profitFactor": 0.52422824,
+            "maxDrawdownUsdt": 572.88130373,
+            "maxDrawdownPercent": 0.05728813,
+            "averageWinnerUsdt": 87.591878,
+            "averageLoserUsdt": -52.2147793,
+            "totalFeesUsdt": 54.19657346,
+            "totalFundingUsdt": -4.40870608,
+            "totalSlippageUsdt": 27.09827426,
+            "grossPnlUsdt": -338.87179926,
+            "pricePnlBeforeExecutionCostsUsdt": -311.773525,
+            "finalEquityUsdt": 9602.52292119
+          },
+          "rawTradeCount": 21,
+          "selectedTradeCount": 21,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 21,
+            "wins": 5,
+            "losses": 16,
+            "winRate": 0.238095,
+            "netPnlUsdt": -451.6727953,
+            "expectancyUsdt": -21.50822835,
+            "netR": -9.07800702,
+            "profitFactor": 0.4842534,
+            "maxDrawdownUsdt": 612.63603382,
+            "maxDrawdownPercent": 0.0612636,
+            "averageWinnerUsdt": 84.81843147,
+            "averageLoserUsdt": -54.73530954,
+            "totalFeesUsdt": 81.29489761,
+            "totalFundingUsdt": -4.40782416,
+            "totalSlippageUsdt": 54.19654852,
+            "grossPnlUsdt": -365.97007352,
+            "pricePnlBeforeExecutionCostsUsdt": -311.773525,
+            "finalEquityUsdt": 9548.3272047
+          },
+          "rawTradeCount": 21,
+          "selectedTradeCount": 21,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "selection": {
+        "base": {
+          "trades": 189,
+          "wins": 70,
+          "losses": 119,
+          "winRate": 0.37037,
+          "netPnlUsdt": 256.84817164,
+          "expectancyUsdt": 1.35898504,
+          "netR": 5.09877717,
+          "profitFactor": 1.04073928,
+          "maxDrawdownUsdt": 1173.89345934,
+          "maxDrawdownPercent": 0.11738935,
+          "averageWinnerUsdt": 93.73613671,
+          "averageLoserUsdt": -52.98051595,
+          "totalFeesUsdt": 430.10058133,
+          "totalFundingUsdt": -10.38295517,
+          "totalSlippageUsdt": 215.05032716,
+          "grossPnlUsdt": 697.33170814,
+          "pricePnlBeforeExecutionCostsUsdt": 912.3820353,
+          "finalEquityUsdt": 10256.84817164
+        },
+        "stress": {
+          "trades": 189,
+          "wins": 70,
+          "losses": 119,
+          "winRate": 0.37037,
+          "netPnlUsdt": -173.25025969,
+          "expectancyUsdt": -0.91666804,
+          "netR": -3.51315574,
+          "profitFactor": 0.9736717,
+          "maxDrawdownUsdt": 1298.80381992,
+          "maxDrawdownPercent": 0.12988038,
+          "averageWinnerUsdt": 91.53044768,
+          "averageLoserUsdt": -55.29732434,
+          "totalFeesUsdt": 645.15076251,
+          "totalFundingUsdt": -10.38087816,
+          "totalSlippageUsdt": 430.10065432,
+          "grossPnlUsdt": 482.28138098,
+          "pricePnlBeforeExecutionCostsUsdt": 912.3820353,
+          "finalEquityUsdt": 9826.74974031
+        },
+        "positiveFoldsBase": 1,
+        "positiveFoldsStress": 1,
+        "top1SymbolConcentration": 1.70963706,
+        "top3SymbolConcentration": 3.79764796,
+        "distinctSymbols": 13,
+        "passesHistoricalGate": false
+      },
+      "oos": "NOT_RUN_BEFORE_SELECTION"
+    },
+    {
+      "hypothesisId": "H2",
+      "variantId": "h2-post-stop-lockout-48h",
+      "description": "H2 same-symbol same-direction lockout after a known STOP_LOSS: 48h, with the baseline 24h cooldown",
+      "status": "VALID",
+      "filters": {
+        "sameSymbolCooldownHours": 24,
+        "postStopLossLockoutHours": 48
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 154,
+            "wins": 61,
+            "losses": 93,
+            "winRate": 0.396104,
+            "netPnlUsdt": 798.86605406,
+            "expectancyUsdt": 5.18744191,
+            "netR": 15.99481386,
+            "profitFactor": 1.16175172,
+            "maxDrawdownUsdt": 1023.30146536,
+            "maxDrawdownPercent": 0.10233015,
+            "averageWinnerUsdt": 94.06077264,
+            "averageLoserUsdt": -53.10581803,
+            "totalFeesUsdt": 345.38751693,
+            "totalFundingUsdt": -6.5556312,
+            "totalSlippageUsdt": 172.69381141,
+            "grossPnlUsdt": 1150.80920219,
+            "pricePnlBeforeExecutionCostsUsdt": 1323.5030136,
+            "finalEquityUsdt": 10798.86605406
+          },
+          "rawTradeCount": 156,
+          "selectedTradeCount": 154,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 2,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 154,
+            "wins": 61,
+            "losses": 93,
+            "winRate": 0.396104,
+            "netPnlUsdt": 453.4799544,
+            "expectancyUsdt": 2.94467503,
+            "netR": 9.07946728,
+            "profitFactor": 1.08800225,
+            "maxDrawdownUsdt": 1181.32855033,
+            "maxDrawdownPercent": 0.11813286,
+            "averageWinnerUsdt": 91.91031918,
+            "averageLoserUsdt": -55.40913458,
+            "totalFeesUsdt": 518.08111657,
+            "totalFundingUsdt": -6.55431981,
+            "totalSlippageUsdt": 345.38762281,
+            "grossPnlUsdt": 978.11539079,
+            "pricePnlBeforeExecutionCostsUsdt": 1323.5030136,
+            "finalEquityUsdt": 10453.4799544
+          },
+          "rawTradeCount": 156,
+          "selectedTradeCount": 154,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 2,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 21,
+            "wins": 5,
+            "losses": 16,
+            "winRate": 0.238095,
+            "netPnlUsdt": -397.47707881,
+            "expectancyUsdt": -18.92747994,
+            "netR": -7.99259161,
+            "profitFactor": 0.52422824,
+            "maxDrawdownUsdt": 572.88130373,
+            "maxDrawdownPercent": 0.05728813,
+            "averageWinnerUsdt": 87.591878,
+            "averageLoserUsdt": -52.2147793,
+            "totalFeesUsdt": 54.19657346,
+            "totalFundingUsdt": -4.40870608,
+            "totalSlippageUsdt": 27.09827426,
+            "grossPnlUsdt": -338.87179926,
+            "pricePnlBeforeExecutionCostsUsdt": -311.773525,
+            "finalEquityUsdt": 9602.52292119
+          },
+          "rawTradeCount": 21,
+          "selectedTradeCount": 21,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 21,
+            "wins": 5,
+            "losses": 16,
+            "winRate": 0.238095,
+            "netPnlUsdt": -451.6727953,
+            "expectancyUsdt": -21.50822835,
+            "netR": -9.07800702,
+            "profitFactor": 0.4842534,
+            "maxDrawdownUsdt": 612.63603382,
+            "maxDrawdownPercent": 0.0612636,
+            "averageWinnerUsdt": 84.81843147,
+            "averageLoserUsdt": -54.73530954,
+            "totalFeesUsdt": 81.29489761,
+            "totalFundingUsdt": -4.40782416,
+            "totalSlippageUsdt": 54.19654852,
+            "grossPnlUsdt": -365.97007352,
+            "pricePnlBeforeExecutionCostsUsdt": -311.773525,
+            "finalEquityUsdt": 9548.3272047
+          },
+          "rawTradeCount": 21,
+          "selectedTradeCount": 21,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "selection": {
+        "base": {
+          "trades": 175,
+          "wins": 66,
+          "losses": 109,
+          "winRate": 0.377143,
+          "netPnlUsdt": 401.38897526,
+          "expectancyUsdt": 2.29365129,
+          "netR": 8.00222225,
+          "profitFactor": 1.06951328,
+          "maxDrawdownUsdt": 1023.30146536,
+          "maxDrawdownPercent": 0.10233015,
+          "averageWinnerUsdt": 93.57070486,
+          "averageLoserUsdt": -52.97502335,
+          "totalFeesUsdt": 399.58409039,
+          "totalFundingUsdt": -10.96433728,
+          "totalSlippageUsdt": 199.79208567,
+          "grossPnlUsdt": 811.93740293,
+          "pricePnlBeforeExecutionCostsUsdt": 1011.7294886,
+          "finalEquityUsdt": 10401.38897526
+        },
+        "stress": {
+          "trades": 175,
+          "wins": 66,
+          "losses": 109,
+          "winRate": 0.377143,
+          "netPnlUsdt": 1.80715911,
+          "expectancyUsdt": 0.01032662,
+          "netR": 0.00146027,
+          "profitFactor": 1.00029975,
+          "maxDrawdownUsdt": 1181.32855033,
+          "maxDrawdownPercent": 0.11813286,
+          "averageWinnerUsdt": 91.37305496,
+          "averageLoserUsdt": -55.31022448,
+          "totalFeesUsdt": 599.37601418,
+          "totalFundingUsdt": -10.96214398,
+          "totalSlippageUsdt": 399.58417133,
+          "grossPnlUsdt": 612.14531727,
+          "pricePnlBeforeExecutionCostsUsdt": 1011.7294886,
+          "finalEquityUsdt": 10001.80715911
+        },
+        "positiveFoldsBase": 1,
+        "positiveFoldsStress": 1,
+        "top1SymbolConcentration": 0.90198472,
+        "top3SymbolConcentration": 2.29982502,
+        "distinctSymbols": 13,
+        "passesHistoricalGate": false
+      },
+      "oos": "NOT_RUN_BEFORE_SELECTION"
+    },
+    {
+      "hypothesisId": "H3",
+      "variantId": "h3-b4-opposing-reversal-veto",
+      "description": "H3 frozen B4 opposing-reversal veto as a risk filter, never as an entry rule",
+      "status": "INVALID",
+      "invalidReason": "No PIT-safe historical B4 feature series is present in the local R7.1 research input"
+    },
+    {
+      "hypothesisId": "H4",
+      "variantId": "h4-btc-1h-regime-confirmation",
+      "description": "H4 stronger regime-quality filter: baseline local/BTC 4h alignment plus PIT BTC 1h confirmation",
+      "status": "VALID",
+      "filters": {
+        "sameSymbolCooldownHours": 24
+      },
+      "train": {
+        "base": {
+          "metrics": {
+            "trades": 161,
+            "wins": 64,
+            "losses": 97,
+            "winRate": 0.397516,
+            "netPnlUsdt": 841.66461337,
+            "expectancyUsdt": 5.22773052,
+            "netR": 16.84015628,
+            "profitFactor": 1.16244272,
+            "maxDrawdownUsdt": 1260.91590251,
+            "maxDrawdownPercent": 0.12609159,
+            "averageWinnerUsdt": 94.10883712,
+            "averageLoserUsdt": -53.41547384,
+            "totalFeesUsdt": 365.83658649,
+            "totalFundingUsdt": -6.18738832,
+            "totalSlippageUsdt": 182.91834911,
+            "grossPnlUsdt": 1213.68858819,
+            "pricePnlBeforeExecutionCostsUsdt": 1396.6069373,
+            "finalEquityUsdt": 10841.66461337
+          },
+          "rawTradeCount": 164,
+          "selectedTradeCount": 161,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 3,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 161,
+            "wins": 64,
+            "losses": 97,
+            "winRate": 0.397516,
+            "netPnlUsdt": 475.82937633,
+            "expectancyUsdt": 2.95546196,
+            "netR": 9.51510987,
+            "profitFactor": 1.08801721,
+            "maxDrawdownUsdt": 1391.87005724,
+            "maxDrawdownPercent": 0.13918701,
+            "averageWinnerUsdt": 91.90506652,
+            "averageLoserUsdt": -55.73293692,
+            "totalFeesUsdt": 548.75471215,
+            "totalFundingUsdt": -6.1861506,
+            "totalSlippageUsdt": 365.83669822,
+            "grossPnlUsdt": 1030.77023908,
+            "pricePnlBeforeExecutionCostsUsdt": 1396.6069373,
+            "finalEquityUsdt": 10475.82937633
+          },
+          "rawTradeCount": 164,
+          "selectedTradeCount": 161,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 3,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "validation": {
+        "base": {
+          "metrics": {
+            "trades": 19,
+            "wins": 3,
+            "losses": 16,
+            "winRate": 0.157895,
+            "netPnlUsdt": -588.52912058,
+            "expectancyUsdt": -30.97521687,
+            "netR": -11.81384932,
+            "profitFactor": 0.29547937,
+            "maxDrawdownUsdt": 668.3280595,
+            "maxDrawdownPercent": 0.06683281,
+            "averageWinnerUsdt": 82.27732182,
+            "averageLoserUsdt": -52.21006788,
+            "totalFeesUsdt": 49.18164357,
+            "totalFundingUsdt": -2.99889069,
+            "totalSlippageUsdt": 24.59080132,
+            "grossPnlUsdt": -536.34858632,
+            "pricePnlBeforeExecutionCostsUsdt": -511.757785,
+            "finalEquityUsdt": 9411.47087942
+          },
+          "rawTradeCount": 19,
+          "selectedTradeCount": 19,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        },
+        "stress": {
+          "metrics": {
+            "trades": 19,
+            "wins": 3,
+            "losses": 16,
+            "winRate": 0.157895,
+            "netPnlUsdt": -637.7102052,
+            "expectancyUsdt": -33.56369501,
+            "netR": -12.79891094,
+            "profitFactor": 0.27177434,
+            "maxDrawdownUsdt": 705.98328973,
+            "maxDrawdownPercent": 0.07059833,
+            "averageWinnerUsdt": 79.33130223,
+            "averageLoserUsdt": -54.73150699,
+            "totalFeesUsdt": 73.77252677,
+            "totalFundingUsdt": -2.99829079,
+            "totalSlippageUsdt": 49.18160263,
+            "grossPnlUsdt": -560.93938763,
+            "pricePnlBeforeExecutionCostsUsdt": -511.757785,
+            "finalEquityUsdt": 9362.2897948
+          },
+          "rawTradeCount": 19,
+          "selectedTradeCount": 19,
+          "rejectionCounts": {
+            "maxConcurrentPositions": 0,
+            "singleSignalRisk": 0,
+            "dailyRiskBudget": 0,
+            "dailyLossLimit": 0,
+            "emailCap": 0,
+            "capitalFloor": 0
+          }
+        }
+      },
+      "selection": {
+        "base": {
+          "trades": 180,
+          "wins": 67,
+          "losses": 113,
+          "winRate": 0.372222,
+          "netPnlUsdt": 253.13549279,
+          "expectancyUsdt": 1.40630829,
+          "netR": 5.02630696,
+          "profitFactor": 1.04207241,
+          "maxDrawdownUsdt": 1260.91590251,
+          "maxDrawdownPercent": 0.12609159,
+          "averageWinnerUsdt": 93.57906778,
+          "averageLoserUsdt": -53.24479689,
+          "totalFeesUsdt": 415.01823007,
+          "totalFundingUsdt": -9.18627901,
+          "totalSlippageUsdt": 207.50915043,
+          "grossPnlUsdt": 677.34000187,
+          "pricePnlBeforeExecutionCostsUsdt": 884.8491523,
+          "finalEquityUsdt": 10253.13549279
+        },
+        "stress": {
+          "trades": 180,
+          "wins": 67,
+          "losses": 113,
+          "winRate": 0.372222,
+          "netPnlUsdt": -161.88082887,
+          "expectancyUsdt": -0.89933794,
+          "netR": -3.28380107,
+          "profitFactor": 0.97423018,
+          "maxDrawdownUsdt": 1421.67975635,
+          "maxDrawdownPercent": 0.14216798,
+          "averageWinnerUsdt": 91.34206215,
+          "averageLoserUsdt": -55.59114153,
+          "totalFeesUsdt": 622.52723892,
+          "totalFundingUsdt": -9.18444139,
+          "totalSlippageUsdt": 415.01830086,
+          "grossPnlUsdt": 469.83085144,
+          "pricePnlBeforeExecutionCostsUsdt": 884.8491523,
+          "finalEquityUsdt": 9838.11917113
+        },
+        "positiveFoldsBase": 1,
+        "positiveFoldsStress": 1,
+        "top1SymbolConcentration": 2.16371977,
+        "top3SymbolConcentration": 4.40566498,
+        "distinctSymbols": 12,
+        "passesHistoricalGate": false
+      },
+      "oos": "NOT_RUN_BEFORE_SELECTION"
+    },
+    {
+      "hypothesisId": "H5",
+      "variantId": "h5-cooldown-plus-b4-veto",
+      "description": "H5 combined source cooldown plus frozen B4 opposing-reversal veto",
+      "status": "INVALID",
+      "invalidReason": "H5 depends on the unavailable PIT-safe historical B4 feature series"
+    }
+  ],
+  "candidateSelection": {
+    "rule": "Train + validation only; stability, expectancy, PF, drawdown, sample size, then deterministic tie-break by variant id",
+    "candidateCountMaximum": 2,
+    "historicalEligibleCandidates": [],
+    "primary": "NONE",
+    "backup": "NONE",
+    "primaryRules": "NONE",
+    "primarySelection": null,
+    "primaryOos": "NOT_RUN",
+    "oosRunsAfterSelection": 0,
+    "baselineOosRunsBeforeSelection": 1
+  },
+  "oldFailureAudit": {
+    "frozenSet": {
+      "count": 37,
+      "start": "2026-08-12T00:00:00.000Z",
+      "endExclusive": "2026-08-24T00:00:00.000Z",
+      "netPnlUsdt": -372.87426925,
+      "profitFactor": 0.656914905250825,
+      "actualRows": 37,
+      "mappedSignalAndPaperTradeRows": 37
+    },
+    "source": "Read-only Supabase snapshot of public.bca_notifications joined to public.bca_signals and public.bca_paper_trades; no query in this runner mutates the database.",
+    "attribution": {
+      "strategyVersion": {
+        "rules-profit-oriented-v4": 25,
+        "trend-rejection-short-v1": 12
+      },
+      "side": {
+        "SHORT": 36,
+        "LONG": 1
+      },
+      "scoreBand": {
+        "<80": 37
+      },
+      "symbolFrequency": {
+        "MOVRUSDT": 2,
+        "COTIUSDT": 1,
+        "LABUSDT": 5,
+        "KAITOUSDT": 4,
+        "BLESSUSDT": 4,
+        "HEIUSDT": 3,
+        "EPICUSDT": 2,
+        "ONEUSDT": 4,
+        "BICOUSDT": 3,
+        "1000BONKUSDT": 1,
+        "ALLOUSDT": 1,
+        "HUSDT": 1,
+        "DOLOUSDT": 1,
+        "TUTUSDT": 1,
+        "HOMEUSDT": 2,
+        "APRUSDT": 1,
+        "GRVTUSDT": 1
+      },
+      "marketRegime": {
+        "BEAR": 36,
+        "BULL": 1
+      },
+      "utcHour": {
+        "10": 1,
+        "11": 2,
+        "12": 4,
+        "13": 1,
+        "14": 3,
+        "15": 2,
+        "16": 1,
+        "17": 2,
+        "18": 1,
+        "19": 1,
+        "20": 1,
+        "21": 2,
+        "23": 1,
+        "06": 1,
+        "08": 3,
+        "05": 1,
+        "07": 1,
+        "09": 3,
+        "02": 1,
+        "00": 1,
+        "01": 4
+      },
+      "utcDayOfWeek": {
+        "WEDNESDAY": 6,
+        "THURSDAY": 11,
+        "FRIDAY": 10,
+        "SATURDAY": 3,
+        "SUNDAY": 4,
+        "MONDAY": 2,
+        "TUESDAY": 1
+      },
+      "stopDistancePct": {
+        "count": 37,
+        "mean": 0.02612775,
+        "median": 0.02525979,
+        "min": 0.01265922,
+        "max": 0.0571385
+      },
+      "holdingHours": {
+        "count": 37,
+        "mean": 3.64189189,
+        "median": 1.75,
+        "min": 0.25,
+        "max": 26
+      },
+      "exitReason": {
+        "SIGNAL_REPLACED": 7,
+        "TAKE_PROFIT": 8,
+        "STOP_LOSS": 22
+      },
+      "repeatSymbolRows": 20,
+      "repeatedShortEpisodes": 36,
+      "mfeMae": {
+        "availableRows": 0,
+        "unavailableRows": 37,
+        "favorableMovePct": {
+          "count": 0,
+          "mean": null,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "adverseMovePct": {
+          "count": 0,
+          "mean": null,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "limitation": "Failure rows occur after the local candle endpoint (2026-08-09); no row had a complete local path through its exit, so all MFE/MAE are NOT_AVAILABLE rather than inferred."
+      }
+    },
+    "costAttribution": {
+      "grossPnlAfterSlippageUsdt": -278.64303527,
+      "pricePnlBeforeSlippageUsdt": -251.780783,
+      "feesUsdt": 53.72452475,
+      "slippageUsdt": 26.86225227,
+      "fundingUsdt": -40.50670923,
+      "netPnlUsdt": -372.87426925,
+      "positiveNetRows": 12,
+      "negativeNetRows": 25,
+      "conclusion": "EDGE_LOSS_PRECEDES_COSTS; costs enlarge the loss"
+    },
+    "auditOnlyRule": "Partial frozen-baseline subset only: SHORT + TREND + score >= 80 + BEAR, then declared same-symbol episode filters. Dynamic universe cannot be evaluated beyond the local data end 2026-08-09.",
+    "wouldSend": 0,
+    "wouldSuppress": 37,
+    "suppressedReasons": {
+      "BASE_RULES": 37
+    },
+    "suppressedLosers": 25,
+    "suppressedWinners": 12,
+    "retainedNetPnlUsdt": 0,
+    "oosUse": "AUDIT_ONLY_NOT_USED_FOR_SELECTION_OR_FINAL_OOS"
+  },
+  "knownLimitations": [
+    "B4 is INVALID for R7.1 because no PIT-safe historical B4 feature series is present in the local research input; frozen B4 semantics are recorded but not approximated.",
+    "The local validation universe ends at 2026-08-09, so the post-2026-08-12 failure set cannot be dynamically replayed against future universe membership.",
+    "Final OOS is a fixed three-month holdout; readiness still requires the pre-registered 100-trade sample gate."
+  ],
+  "b4": {
+    "role": "veto/risk filter only; not an entry rule",
+    "status": "INVALID_NO_PIT_HISTORICAL_FEATURE_SERIES",
+    "frozenThresholds": {
+      "lowerPercentile": 0.25,
+      "upperPercentile": 0.75,
+      "bullish": "price percentile <= 0.25 AND premium-change percentile >= 0.75",
+      "bearish": "price percentile >= 0.75 AND premium-change percentile <= 0.25"
+    },
+    "noThresholdReoptimization": true
+  },
+  "artifacts": {
+    "reports": [
+      "reports/hy-r7.1-profitability-research.json",
+      "reports/hy-r7.1-profitability-research.md",
+      "reports/hy-r7.1-old-email-failure-ledger.csv"
+    ],
+    "sourceCode": [
+      "lib/backtest/engine.ts",
+      "lib/research/r7-1.ts",
+      "scripts/run-hy-r7-1-profitability-research.ts"
+    ],
+    "tests": [
+      "tests/hy-r7.1-research.test.ts"
+    ],
+    "productionArtifactsRead": false
+  },
+  "verification": {
+    "tests": "PASS (run before final artifact generation)",
+    "typecheck": "PASS (run before final artifact generation)",
+    "lint": "PASS (run before final artifact generation)",
+    "build": "PASS (run before final artifact generation)",
+    "diffCheck": "PASS (run after artifact generation)",
+    "githubCi": "NOT_RUN_NO_COMMIT"
+  },
+  "classification": "NO_PROFITABLE_CANDIDATE"
+}
